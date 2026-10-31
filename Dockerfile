@@ -1,6 +1,8 @@
-FROM node:20-alpine
+FROM node:22-alpine
 
 WORKDIR /app
+
+RUN npm install -g npm@11 --no-audit --no-fund
 
 COPY package.json package-lock.json ./
 RUN npm ci --include=dev --no-audit --no-fund
