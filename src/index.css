@@ -1,0 +1,138 @@
+@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    /* Palette: Marshall's blue pages, black writing, blue bubble action buttons */
+    --background: 207 70% 96%; /* pale blue page */
+    --foreground: 220 24% 12%; /* blue-black writing */
+    --card: 0 0% 100%; /* white cards */
+    --card-foreground: 220 24% 12%;
+    --popover: 0 0% 100%;
+    --popover-foreground: 220 24% 12%;
+    --primary: 212 78% 46%; /* action blue bubble, white writing — no orange, no green */
+    --primary-foreground: 0 0% 100%;
+    --secondary: 204 85% 84%; /* light blue */
+    --secondary-foreground: 220 24% 12%;
+    --muted: 204 60% 90%;
+    --muted-foreground: 220 15% 32%;
+    --accent: 212 72% 42%; /* Marshall's royal blue */
+    --accent-foreground: 207 70% 98%;
+    --destructive: 0 72% 45%;
+    --destructive-foreground: 207 70% 98%;
+    --border: 220 24% 12%;
+    --input: 220 24% 12%;
+    --ring: 212 72% 42%;
+    --radius: 0px;
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  html {
+    scroll-behavior: smooth;
+  }
+  body {
+    @apply bg-background text-foreground font-sans antialiased;
+    font-size: 17px;
+    line-height: 1.6;
+  }
+  h1, h2, h3 {
+    font-family: "Figtree", "Hanken Grotesk", system-ui, sans-serif;
+    letter-spacing: -0.015em;
+  }
+  a {
+    @apply text-accent underline-offset-4;
+  }
+  a:hover {
+    text-decoration: underline;
+  }
+  :focus-visible {
+    outline: 3px solid hsl(var(--ring));
+    outline-offset: 2px;
+  }
+}
+
+@layer components {
+  /* Signature: mint pill button, hover inverts to charcoal */
+  .btn-pill {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-primary px-7 py-3 font-semibold text-primary-foreground transition-all duration-200 ease-out cursor-pointer;
+    text-decoration: none;
+  }
+  .btn-pill:hover {
+    @apply bg-foreground text-primary;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -8px rgb(30 30 30 / 0.35);
+    text-decoration: none;
+  }
+  .btn-pill:active {
+    transform: translateY(0);
+  }
+  .btn-pill-dark {
+    @apply inline-flex items-center justify-center gap-2 rounded-full bg-foreground px-7 py-3 font-semibold text-background transition-all duration-200 ease-out cursor-pointer;
+    text-decoration: none;
+  }
+  .btn-pill-dark:hover {
+    @apply bg-accent text-accent-foreground;
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px -8px rgb(30 30 30 / 0.35);
+    text-decoration: none;
+  }
+  /* Sharp-cornered inputs with forest focus ring */
+  .input-sharp {
+    @apply w-full rounded-none border-[1.5px] border-foreground bg-background px-4 py-3 text-foreground transition-shadow duration-150;
+  }
+  .input-sharp:focus {
+    outline: none;
+    box-shadow: 0 0 0 3px hsl(var(--ring) / 0.45);
+    border-color: hsl(var(--ring));
+  }
+  /* Offset royal-blue block shadow — the paper-cut signature */
+  .offset-shadow {
+    box-shadow: 1.25rem 1.25rem 0 0 hsl(var(--accent));
+  }
+  @media (min-width: 768px) {
+    .offset-shadow {
+      box-shadow: 2.5rem 2.5rem 0 0 hsl(var(--accent));
+    }
+  }
+  .offset-shadow-sm {
+    box-shadow: 0.6rem 0.6rem 0 0 hsl(var(--secondary));
+  }
+}
+
+/* Marquee ticker */
+@keyframes marquee-x {
+  from { transform: translateX(0); }
+  to { transform: translateX(-50%); }
+}
+.marquee-track {
+  animation: marquee-x 28s linear infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .marquee-track { animation: none; }
+  html { scroll-behavior: auto; }
+  .btn-pill:hover, .btn-pill-dark:hover { transform: none; }
+}
+
+/* Quote total tick animation */
+@keyframes total-pop {
+  0% { transform: scale(0.95); }
+  100% { transform: scale(1); }
+}
+.total-pop {
+  animation: total-pop 0.2s ease-out;
+}

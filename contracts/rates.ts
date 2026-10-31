@@ -1,0 +1,1173 @@
+// Marshall's Carpet Cleaning — shared pricing engine.
+// Used by the frontend (live quote total) and the backend (server-side
+// re-computation when a lead is submitted). Change rates here only.
+
+export type Dirtiness = "light" | "medium" | "heavy";
+export type MattressSize = "single" | "double" | "queen" | "king";
+export type MaintenancePlan = "none" | "two";
+
+export const RATES = {
+  carpet: {
+    // Stepped standard rate — the bigger the house, the cheaper the metre:
+    //   $4.00/m² for the first 40m², $3.80 to 60m², $3.60 to 80m²,
+    //   $3.40 for every metre past 80. Each band prices only the metres in
+    //   it (like tax brackets), so a quote never jumps backwards.
+    // Deep and restoration stay multipliers on the stepped standard figure
+    // (same structure as BFYB's ×1.30 / ×2.11, just gentler), and the
+    // restoration rate undercuts them hardest on the expensive specialised
+    // work (launch pricing, first 6 months).
+    tiers: [
+      { upTo: 40, perM2: 4.0 },
+      { upTo: 60, perM2: 3.8 },
+      { upTo: 80, perM2: 3.6 },
+      { upTo: Infinity, perM2: 3.4 },
+    ] as { upTo: number; perM2: number }[],
+    perM2: { light: 4.0, medium: 4.4, heavy: 7.4 } as Record<Dirtiness, number>, // display only
+    multiplier: { light: 1, medium: 1.1, heavy: 1.85 } as Record<Dirtiness, number>,
+  },
+  minimumCharge: 150, // BFYB's minimum callout is $289
+  lounge: {
+    perSeat: { light: 60, medium: 66, heavy: 75 } as Record<Dirtiness, number>, // BFYB: $97/seat flat
+    reclinerPerSeat: 15,
+  },
+  mattress: {
+    base: { single: 60, double: 80, queen: 90, king: 110 } as Record<
+      MattressSize,
+      number
+    >,
+    dirtinessMultiplier: { light: 1, medium: 1.2, heavy: 1.4 } as Record<
+      Dirtiness,
+      number
+    >,
+  },
+  // Stain treatment, priced from the customer's own stain answers — a
+  // structured scale: pet accidents cost the most (urine soaks to the
+  // backing), food & drink sits in the middle, mud & heavy traffic the
+  // least. Priced for the toughest stain ticked; each extra type half price.
+  // On a Restoration Clean all of this is already included — no charge.
+  stainCauseFee: {
+    "pet-urine": 69,
+    "food-drink": 45,
+    "mud-traffic": 29,
+    "not-sure": 45,
+  } as Record<StainType, number>,
+  extras: {
+    // Kept for the BFYB comparison maths (their calculator still sells these
+    // as add-ons; ours are either included free or priced into the quote).
+    stainPackage: 30, // BFYB extra stain removal product $39/job
+    enzymePreSpray: 37, // BFYB anti-microbial treatment $39/job
+    preVacuumPerRoom: 10, // BFYB pre-vacuum $17/room — ours is FREE on every clean
+  },
+  rug: {
+    // Rug pick-up & clean service — collected Thu/Fri 3–5pm, back Monday.
+    bulkCount: 5, // this many rugs or more…
+    bulkPercentOff: 10, // …gets this % off the rug subtotal
+  },
+  travel: {
+    freeRadiusKm: 15, // free within ~15km road distance of Armidale
+    perKmEachWay: 1.0, // $ per km each way beyond the free radius
+    maxServiceKm: 120, // beyond this: call for a quote
+    // Rug-only pickup runs: a straight $1/km from Armidale for the full
+    // trip, rounded up to the nearest $5 (the town flats don't apply to it).
+    rugPerKm: 1.0,
+    // Flat travel for the towns priced by hand — all under BFYB's flat
+    // surcharges (Uralla $57, Guyra $91, Walcha $143). Everywhere else
+    // stays per-km.
+    flatByTown: { uralla: 30, guyra: 46, walcha: 120 } as Record<string, number>,
+  },
+  // $10 off every full $150 of the clean — stacks with other discounts.
+  volumeDiscount: { every: 150, off: 10 },
+  maintenance: {
+    none: 0,
+    two: 0.10, // 2 cleans a year — 10% off every clean
+  } as Record<MaintenancePlan, number>,
+} as const;
+
+export const BUSINESS = {
+  name: "Marshall's Carpet Cleaning",
+  // Registered business name — used on formal documents (receipts, T&C,
+  // anything showing the ABN). The friendly trading name above stays on the
+  // website and in customer chat.
+  legalName: "Marshall's Carpet Cleaning Co",
+  abn: "ABN 92 101 709 902",
+  owner: "The Marshall's team",
+  phone: "0423 581 223",
+  phoneHref: "tel:+61423581223",
+  email: "Marshallcarpets2350@gmail.com",
+  // Instant bank-transfer option (Hnry account) — shown wherever customers
+  // can pay by transfer instead of card.
+  payId: "bmarshall7@hnry.co",
+  area: "Armidale & the New England",
+  // Home base — 35 Campion Parade, Armidale (North Hill). Every day starts
+  // and ends here; all travel is measured from this point.
+  origin: { lat: -30.5010787, lon: 151.6669493 },
+} as const;
+
+// ---------------------------------------------------------------------------
+// BFYB's live rate card — read off their booking page (booking-config.js,
+// terms effective 11 Oct 2026). Powers the competitor comparison panel and
+// the 17%-under backstop below; the daily price watch (api/priceWatch.ts)
+// re-reads their config and flags any drift.
+
+/** Every quote stays at least this far under BFYB's comparable total.
+ *  Launch strategy (first 6 months): a full 17% under, so the specialised
+ *  and expensive cleans undercut them hardest while we build the name. */
+// Launch strategy (first 6 months): every quote stays at least this far
+// under BFYB's live price for the same job. Re-checked daily by priceWatch.
+export const BFYB_UNDERCUT_PERCENT = 17;
+// ---------------------------------------------------------------------------
+
+export interface BfybModel {
+  base: number; // per-job service fee
+  minimum: number; // minimum callout
+  loungePerSeat: number;
+  extras: { prevacPerRoom: number; antimicro: number; stain: number; fanPerDay: number };
+  roomRates: Record<string, number>;
+  soilingMultiplier: Record<Dirtiness, number>;
+  // Blended $/m² across their room types — only used for raw-m² quotes.
+  approxPerM2: number;
+  // Flat per-town travel surcharge from their config (Armidale free).
+  travelByTown: Record<string, number>;
+}
+
+// This is the FALLBACK model. The daily price watch (api/priceWatch.ts) keeps
+// a live copy in the settings table (key "bfyb_model_live") that every quote
+// and the comparison table actually price from — when BFYB move a number, our
+// site follows automatically and the owner gets an email. These constants are
+// what the site uses until the first successful daily check lands.
+export const BFYB_MODEL: BfybModel = {
+  base: 33, // per-job service fee
+  minimum: 289, // minimum callout
+  loungePerSeat: 97,
+  extras: { prevacPerRoom: 17, antimicro: 39, stain: 39, fanPerDay: 41 },
+  roomRates: {
+    bed: 54, // Bedroom — up to 4×4 m
+    bedLarge: 78, // Large bedroom — up to 5×5 m
+    wir: 20, // Walk-in robe — up to 2×2 m
+    wirLarge: 39, // Large walk-in robe — up to 3×3 m
+    living: 78, // Living room — up to 5×5 m
+    livingLg: 104, // Large living room — up to 6×6 m
+    dining: 54, // Dining room — up to 4×4 m
+    hall: 33, // Hallway — up to 3×1 m
+    hall2: 66, // Double hallway — up to 6×1 m
+    hall3: 99, // Triple hallway — up to 9×1 m
+    hall4: 132, // Long hallway — up to 12×1 m
+    stairs: 78, // 16 steps or fewer
+  } as Record<string, number>,
+  soilingMultiplier: { light: 1.0, medium: 1.3, heavy: 2.11 } as Record<Dirtiness, number>,
+  // Blended $/m² across their room types — only used for raw-m² quotes.
+  approxPerM2: 3.6,
+  // Flat per-town travel surcharge from their config (Armidale free).
+  travelByTown: {
+    armidale: 0,
+    uralla: 57,
+    "black mountain": 65,
+    hillgrove: 78,
+    guyra: 91,
+    walcha: 143,
+  },
+};
+
+/** Their calculator's total for the carpet + lounges + matched extras in a
+ *  quote (cleaning only, their minimum included). Null when nothing on the
+ *  job maps to their rate card. Used by the comparison panel. */
+export function bfybComparableTotal(q: QuoteInput, model: BfybModel = BFYB_MODEL): number | null {
+  let carpet = 0;
+  if (q.carpetAreaM2 > 0) {
+    const roomSum = q.roomCounts
+      ? Object.entries(q.roomCounts).reduce(
+          (s, [k, n]) => s + n * (model.roomRates[k] ?? 0),
+          0,
+        )
+      : 0;
+    // Exact from their room list when rooms were counted; a blended $/m² only
+    // when the customer typed a raw area (their calculator has no m² mode).
+    const roomsTotal = roomSum > 0 ? roomSum : q.carpetAreaM2 * model.approxPerM2;
+
+    // Their CRM rule (read from booking-config/carpet-calc/booking.js on
+    // 19/10/2026): service fee joins the rooms and the SUM is floored at the
+    // minimum; the condition multiplier scales the whole standard-priced job;
+    // travel stays out. Their add-ons — pre-vacuum $17/room, stain product
+    // $39, anti-microbial $39, fans $41 — are NEVER in their displayed price:
+    // booking.js syncRecommended() deliberately ticks nothing, so even "ten or
+    // more stains" or pet urine only RECOMMENDS a product on a later screen.
+    // We therefore add zero extras to their number; the difference is
+    // explained in words next to the comparison instead.
+    const tickedTotal = roomsTotal + model.base;
+    const standardTotal =
+      tickedTotal < model.minimum ? model.minimum : tickedTotal;
+    carpet = Math.round(standardTotal * model.soilingMultiplier[q.carpetDirtiness]);
+  }
+  const seats = q.lounges.reduce((s, l) => s + l.seats + l.reclinerSeats, 0);
+  const total = carpet + seats * model.loungePerSeat;
+  if (total <= 0) return null;
+  return total;
+}
+
+/** Our side of the same comparable scope (used by the comparison panel). */
+export function comparableSubtotal(
+  q: QuoteInput,
+  carpetSubtotal: number,
+  rates: Rates = DEFAULT_RATES,
+): number {
+  let ours = carpetSubtotal;
+  for (const l of q.lounges) {
+    if (l.seats <= 0) continue;
+    ours += Math.round(
+      l.seats * rates.lounge.perSeat[l.dirtiness] +
+        l.reclinerSeats * rates.lounge.reclinerPerSeat,
+    );
+  }
+  ours += stainTreatmentFee(q, rates);
+  if (q.stainPackage) ours += rates.extras.stainPackage; // legacy fabric add-on
+  if (q.enzymePreSpray) ours += rates.extras.enzymePreSpray;
+  // Pre-vacuum is FREE with every clean — nothing to add on our side.
+  return ours;
+}
+
+/** Their flat travel surcharge for a town, matched loosely. */
+export function bfybTravelForTown(town: string | null | undefined, model: BfybModel = BFYB_MODEL): number | null {
+  if (!town) return null;
+  const key = town.trim().toLowerCase();
+  for (const [name, fee] of Object.entries(model.travelByTown)) {
+    if (key.includes(name)) return fee;
+  }
+  return null;
+}
+
+export interface LoungeItem {
+  seats: number; // 1–10
+  dirtiness: Dirtiness;
+  reclinerSeats: number;
+  added?: boolean; // tacked on via the cross-sell card — this item gets the 10%
+}
+
+export interface MattressItem {
+  size: MattressSize;
+  dirtiness: Dirtiness;
+  qty: number;
+  added?: boolean;
+}
+
+// ---------------------------------------------------------------------------
+// Rugs — pick-up & clean service. Prices from the printed flyer.
+// ---------------------------------------------------------------------------
+
+export type RugSize = "xs" | "s" | "m" | "l" | "xl";
+
+export interface RugItem {
+  size: RugSize;
+  qty: number;
+  added?: boolean;
+}
+
+export const RUG_SIZES: {
+  id: RugSize;
+  label: string;
+  area: string;
+  price: number;
+}[] = [
+  { id: "xs", label: "Extra Small", area: "up to 1.5 m²", price: 35 },
+  { id: "s", label: "Small", area: "up to 2.5 m²", price: 45 },
+  { id: "m", label: "Medium", area: "up to 4 m²", price: 65 },
+  { id: "l", label: "Large", area: "up to 6 m²", price: 85 },
+  { id: "xl", label: "Extra Large", area: "over 6 m²", price: 100 },
+];
+
+// ---------------------------------------------------------------------------
+// Adjustable rates — every customer-facing figure can be overridden from
+// Admin → Settings (saved in the database, applied to new quotes only).
+// Anything not overridden falls back to the built-in figures above.
+// ---------------------------------------------------------------------------
+
+/** The full, ready-to-use rate card: RATES plus per-size rug prices. */
+export interface Rates {
+  carpet: {
+    tiers: { upTo: number; perM2: number }[];
+    perM2: Record<Dirtiness, number>;
+    multiplier: Record<Dirtiness, number>;
+  };
+  minimumCharge: number;
+  lounge: { perSeat: Record<Dirtiness, number>; reclinerPerSeat: number };
+  mattress: {
+    base: Record<MattressSize, number>;
+    dirtinessMultiplier: Record<Dirtiness, number>;
+  };
+  stainCauseFee: Record<StainType, number>;
+  extras: { stainPackage: number; enzymePreSpray: number; preVacuumPerRoom: number };
+  rug: { bulkCount: number; bulkPercentOff: number };
+  rugPrices: Record<RugSize, number>;
+  travel: {
+    freeRadiusKm: number;
+    perKmEachWay: number;
+    maxServiceKm: number;
+    rugPerKm: number;
+    flatByTown: Record<string, number>;
+  };
+  volumeDiscount: { every: number; off: number };
+  maintenance: Record<MaintenancePlan, number>;
+}
+
+/** Numbers the owner has changed in Admin → Settings. Everything optional —
+ *  anything missing keeps the built-in figure. Stored as plain JSON, so the
+ *  last carpet tier's upTo is null (meaning "no ceiling"), never Infinity. */
+export interface RateOverrides {
+  minimumCharge?: number;
+  carpetTiers?: { upTo: number | null; perM2: number }[];
+  carpetMultiplier?: Partial<Record<Dirtiness, number>>;
+  loungePerSeat?: Partial<Record<Dirtiness, number>>;
+  reclinerPerSeat?: number;
+  mattressBase?: Partial<Record<MattressSize, number>>;
+  stainCauseFee?: Partial<Record<StainType, number>>;
+  rugPrices?: Partial<Record<RugSize, number>>;
+  rugBulkPercentOff?: number;
+  travelFreeRadiusKm?: number;
+  travelPerKmEachWay?: number;
+  travelFlatByTown?: Record<string, number>;
+  rugPerKm?: number;
+  volumeEvery?: number;
+  volumeOff?: number;
+  maintenanceTwoOff?: number;
+}
+
+export const DEFAULT_RATES: Rates = {
+  carpet: {
+    tiers: RATES.carpet.tiers.map((t) => ({ upTo: t.upTo, perM2: t.perM2 })),
+    perM2: { ...RATES.carpet.perM2 },
+    multiplier: { ...RATES.carpet.multiplier },
+  },
+  minimumCharge: RATES.minimumCharge,
+  lounge: {
+    perSeat: { ...RATES.lounge.perSeat },
+    reclinerPerSeat: RATES.lounge.reclinerPerSeat,
+  },
+  mattress: {
+    base: { ...RATES.mattress.base },
+    dirtinessMultiplier: { ...RATES.mattress.dirtinessMultiplier },
+  },
+  stainCauseFee: { ...RATES.stainCauseFee },
+  extras: { ...RATES.extras },
+  rug: { ...RATES.rug },
+  rugPrices: Object.fromEntries(RUG_SIZES.map((x) => [x.id, x.price])) as Record<RugSize, number>,
+  travel: { ...RATES.travel, flatByTown: { ...RATES.travel.flatByTown } },
+  volumeDiscount: { ...RATES.volumeDiscount },
+  maintenance: { ...RATES.maintenance },
+};
+
+/** Merge the owner's saved overrides over the built-in rate card. */
+export function resolveRates(o?: RateOverrides | null): Rates {
+  if (!o) return DEFAULT_RATES;
+  const d = DEFAULT_RATES;
+  return {
+    carpet: {
+      tiers: o.carpetTiers?.length
+        ? o.carpetTiers.map((t, i, arr) => ({
+            upTo: t.upTo ?? (i === arr.length - 1 ? Infinity : (d.carpet.tiers[i]?.upTo ?? Infinity)),
+            perM2: t.perM2,
+          }))
+        : d.carpet.tiers,
+      perM2: d.carpet.perM2,
+      multiplier: { ...d.carpet.multiplier, ...o.carpetMultiplier },
+    },
+    minimumCharge: o.minimumCharge ?? d.minimumCharge,
+    lounge: {
+      perSeat: { ...d.lounge.perSeat, ...o.loungePerSeat },
+      reclinerPerSeat: o.reclinerPerSeat ?? d.lounge.reclinerPerSeat,
+    },
+    mattress: {
+      base: { ...d.mattress.base, ...o.mattressBase },
+      dirtinessMultiplier: d.mattress.dirtinessMultiplier,
+    },
+    stainCauseFee: { ...d.stainCauseFee, ...o.stainCauseFee },
+    extras: d.extras,
+    rug: { ...d.rug, bulkPercentOff: o.rugBulkPercentOff ?? d.rug.bulkPercentOff },
+    rugPrices: { ...d.rugPrices, ...o.rugPrices },
+    travel: {
+      freeRadiusKm: o.travelFreeRadiusKm ?? d.travel.freeRadiusKm,
+      perKmEachWay: o.travelPerKmEachWay ?? d.travel.perKmEachWay,
+      maxServiceKm: d.travel.maxServiceKm,
+      rugPerKm: o.rugPerKm ?? d.travel.rugPerKm,
+      flatByTown: { ...d.travel.flatByTown, ...o.travelFlatByTown },
+    },
+    volumeDiscount: {
+      every: o.volumeEvery ?? d.volumeDiscount.every,
+      off: o.volumeOff ?? d.volumeDiscount.off,
+    },
+    maintenance: { ...d.maintenance, two: o.maintenanceTwoOff ?? d.maintenance.two },
+  };
+}
+
+export function rugCount(rugs: RugItem[]): number {
+  return rugs.reduce((s, r) => s + r.qty, 0);
+}
+
+/** Pickup days for rug-only bookings: Thursday & Friday afternoons. */
+export const RUG_PICKUP_DAYS = [4, 5]; // getDay(): 4=Thu, 5=Fri
+export const RUG_PICKUP_LABEL = "3:00 – 5:00 PM";
+
+/** All Thu/Fri dates in the booking window that can take a rug pickup. */
+export function rugPickupDays(): string[] {
+  const out: string[] = [];
+  const start = sydneyToday();
+  for (
+    let d = new Date(start);
+    ;
+    d.setDate(d.getDate() + 1)
+  ) {
+    const diff = Math.round((d.getTime() - start.getTime()) / 86400000);
+    if (diff > BOOKING_DAYS_AHEAD) break;
+    if (diff >= BOOKING_NOTICE_DAYS && RUG_PICKUP_DAYS.includes(d.getDay())) {
+      out.push(isoDay(d));
+    }
+  }
+  return out;
+}
+
+export function isRugPickupDay(iso: string): boolean {
+  return rugPickupDays().includes(iso);
+}
+
+/** The Monday after a Thu/Fri pickup — when the rugs come back. */
+export function rugReturnDay(pickupIso: string): string {
+  const d = new Date(pickupIso + "T12:00:00");
+  d.setDate(d.getDate() + ((8 - d.getDay()) % 7 || 7));
+  return isoDay(d);
+}
+
+// Sydney-local date helpers (shared by client + server so pickup days and
+// booking windows line up exactly).
+function sydneyToday(): Date {
+  const s = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
+  return new Date(s + "T12:00:00");
+}
+function isoDay(d: Date): string {
+  return d.toLocaleDateString("en-CA");
+}
+
+export interface QuoteInput {
+  carpetAreaM2: number;
+  carpetDirtiness: Dirtiness;
+  maintenance: MaintenancePlan;
+  lounges: LoungeItem[];
+  mattresses: MattressItem[];
+  rugs: RugItem[];
+  stainPackage: boolean;
+  dirtGum: boolean;
+  enzymePreSpray: boolean;
+  stainTypes: StainType[]; // causes ticked in the condition questions — prices stain treatment
+  stainsBand?: StainsAnswer; // how many stains — gates our own stain fee; BFYB never auto-adds theirs
+  preVacuumRooms: number; // rooms pre-vacuumed FREE with every clean (feeds the time estimate)
+  dryingFans: number; // 0–4 fans, left for the day
+  travelFee: number; // computed from the address module
+  discountPercent: number; // from a validated discount code (0–100)
+  roomCounts?: Record<string, number>; // rooms mode — feeds the BFYB comparison
+  crossSellApplied?: boolean; // customer tacked extra services on at checkout — 10% off those services
+}
+
+export interface QuoteLine {
+  label: string;
+  detail?: string;
+  amount: number;
+}
+
+export interface QuoteBreakdown {
+  lines: QuoteLine[];
+  carpetSubtotal: number;
+  cleaningSubtotal: number;
+  rugCount: number;
+  rugDiscount: number;
+  maintenanceDiscount: number;
+  codeDiscount: number;
+  crossSellDiscount: number; // 10% off services added at checkout
+  volumeDiscount: number; // $10 off every full $150
+  undercutDiscount: number; // the 17%-under-BFYB backstop, when it fires
+  bfybTotal: number | null; // their comparable total, for the check + panel
+  minimumApplied: boolean;
+  onsiteWork: boolean; // false = rug-only pickup (no minimum charge)
+  cleaningTotal: number;
+  travelFee: number;
+  total: number;
+  isEmpty: boolean;
+}
+
+const round = (n: number) => Math.round(n);
+
+/** Travel fee: $1/km each way past the free radius. */
+export function travelFeeForKm(oneWayKm: number, rates: Rates = DEFAULT_RATES): number {
+  const chargeable = Math.max(0, oneWayKm - rates.travel.freeRadiusKm);
+  return round(chargeable * 2 * rates.travel.perKmEachWay);
+}
+
+/**
+ * Travel fee for a known destination: the flat town rate when we've set
+ * one, otherwise per-km.
+ */
+export function travelFeeForTown(
+  town: string | undefined | null,
+  oneWayKm: number,
+  rates: Rates = DEFAULT_RATES,
+): number {
+  if (town) {
+    const flat = rates.travel.flatByTown[town.trim().toLowerCase()];
+    if (flat !== undefined) return flat;
+  }
+  return travelFeeForKm(oneWayKm, rates);
+}
+
+/** Rug-only pickup travel: $1/km from Armidale for the full trip, rounded
+ *  up to the nearest $5 (Uralla ≈ $25, Guyra ≈ $40, Walcha ≈ $100). Free
+ *  within the Armidale radius; the town flats and each-way rate are for
+ *  on-site jobs. */
+export function rugPickupTravelFee(oneWayKm: number, rates: Rates = DEFAULT_RATES): number {
+  if (oneWayKm <= rates.travel.freeRadiusKm) return 0;
+  return Math.ceil((oneWayKm * rates.travel.rugPerKm) / 5) * 5;
+}
+
+/**
+ * Standard-clean carpet figure for an area, before the clean-level
+ * multiplier. Walks the stepped rate ladder: $4.00/m² to 40m², $3.80 to
+ * 60m², $3.60 to 80m², $3.40 beyond — each band prices only its own metres.
+ */
+export function carpetStandardForArea(areaM2: number, rates: Rates = DEFAULT_RATES): number {
+  let remaining = areaM2;
+  let lower = 0;
+  let total = 0;
+  for (const tier of rates.carpet.tiers) {
+    const inBand = Math.min(remaining, tier.upTo - lower);
+    if (inBand <= 0) break;
+    total += inBand * tier.perM2;
+    remaining -= inBand;
+    lower = tier.upTo;
+    if (remaining <= 0) break;
+  }
+  return total;
+}
+
+/** Our stain-treatment charge from the customer's stain answers: toughest
+ *  type full price, each extra type half. Restoration Clean includes it. */
+export function stainTreatmentFee(
+  q: Pick<QuoteInput, "carpetAreaM2" | "carpetDirtiness" | "stainTypes">,
+  rates: Rates = DEFAULT_RATES,
+): number {
+  if (q.carpetAreaM2 <= 0 || q.carpetDirtiness === "heavy" || q.stainTypes.length === 0) {
+    return 0;
+  }
+  const fees = q.stainTypes.map((t) => rates.stainCauseFee[t]).sort((a, b) => b - a);
+  return fees[0] + Math.round(fees.slice(1).reduce((sum, f) => sum + f, 0) / 2);
+}
+
+export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bfybModel: BfybModel = BFYB_MODEL): QuoteBreakdown {
+  const lines: QuoteLine[] = [];
+
+  // Carpet — tiered standard figure × the clean-level multiplier.
+  const mult = rates.carpet.multiplier[input.carpetDirtiness];
+  const carpetSubtotal = round(carpetStandardForArea(input.carpetAreaM2, rates) * mult);
+  if (input.carpetAreaM2 > 0) {
+    const levelWord = (
+      { light: "standard", medium: "deep", heavy: "restoration" } as const
+    )[input.carpetDirtiness];
+    const detail =
+      input.carpetAreaM2 <= rates.carpet.tiers[0].upTo
+        ? `${input.carpetAreaM2} m² @ $${(rates.carpet.tiers[0].perM2 * mult).toFixed(2)}/m² (${levelWord} clean)`
+        : `${input.carpetAreaM2} m² on stepped rates ($${rates.carpet.tiers[0].perM2.toFixed(2)} down to $${rates.carpet.tiers[rates.carpet.tiers.length - 1].perM2.toFixed(2)}/m²)` +
+          (mult !== 1 ? `, ×${mult} ${levelWord}` : ` (${levelWord} clean)`);
+    lines.push({
+      label: "Carpet cleaning",
+      detail,
+      amount: carpetSubtotal,
+    });
+  }
+
+  // Lounges
+  let loungeSubtotal = 0;
+  let crossSellBase = 0; // only items explicitly tacked on via the cross-sell card
+  input.lounges.forEach((l, i) => {
+    if (l.seats <= 0) return;
+    const seatRate = rates.lounge.perSeat[l.dirtiness];
+    const amount = round(
+      l.seats * seatRate + l.reclinerSeats * rates.lounge.reclinerPerSeat,
+    );
+    loungeSubtotal += amount;
+    if (l.added) crossSellBase += amount;
+    lines.push({
+      label: `Lounge ${input.lounges.length > 1 ? `#${i + 1}` : ""}`.trim(),
+      detail: `${l.seats} seat${l.seats > 1 ? "s" : ""} × $${seatRate}/seat (${l.dirtiness})${l.reclinerSeats > 0 ? ` + ${l.reclinerSeats} recliner${l.reclinerSeats > 1 ? "s" : ""} × $${rates.lounge.reclinerPerSeat}` : ""}`,
+      amount,
+    });
+  });
+
+  // Mattresses
+  let mattressSubtotal = 0;
+  input.mattresses.forEach((m) => {
+    if (m.qty <= 0) return;
+    const each = round(
+      rates.mattress.base[m.size] * rates.mattress.dirtinessMultiplier[m.dirtiness],
+    );
+    mattressSubtotal += each * m.qty;
+    if (m.added) crossSellBase += each * m.qty;
+    lines.push({
+      label: `${m.size[0].toUpperCase()}${m.size.slice(1)} mattress`,
+      detail: `${m.qty} × $${each} (${m.dirtiness})`,
+      amount: each * m.qty,
+    });
+  });
+
+  // Rugs — pick-up & clean, priced from the flyer
+  let rugSubtotal = 0;
+  input.rugs.forEach((r) => {
+    if (r.qty <= 0) return;
+    const size = RUG_SIZES.find((x) => x.id === r.size);
+    const price = rates.rugPrices[r.size];
+    if (!size || price === undefined) return;
+    rugSubtotal += price * r.qty;
+    if (r.added) crossSellBase += price * r.qty;
+    lines.push({
+      label: `${size.label} rug${r.qty > 1 ? "s" : ""}`,
+      detail: `${r.qty} × $${price} · pick-up, clean & dry, back Monday`,
+      amount: price * r.qty,
+    });
+  });
+  const rugs = rugCount(input.rugs);
+  const rugDiscount =
+    rugs >= rates.rug.bulkCount
+      ? round(rugSubtotal * (rates.rug.bulkPercentOff / 100))
+      : 0;
+
+  // Stain treatment — priced straight from the stain answers, on a
+  // structured scale (pet accidents dearest, then food & drink, then mud &
+  // traffic). Toughest ticked type at full price, each extra type at half.
+  // Restoration Clean already includes stain treatment — no extra charge.
+  if (
+    input.carpetAreaM2 > 0 &&
+    input.carpetDirtiness !== "heavy" &&
+    input.stainTypes.length > 0
+  ) {
+    const amount = stainTreatmentFee(input, rates);
+    const toughest = input.stainTypes
+      .slice()
+      .sort((a, b) => rates.stainCauseFee[b] - rates.stainCauseFee[a])[0];
+    lines.push({
+      label: `Stain treatment — ${STAIN_TYPE_LABELS[toughest]}`,
+      detail:
+        input.stainTypes.length > 1
+          ? "Priced for the toughest stain, each extra type at half — spot-treated before the main clean"
+          : "Spot-treated with dedicated stain product before the main clean",
+      amount,
+    });
+  }
+  if (input.enzymePreSpray) {
+    lines.push({
+      label: "Enzyme pre-spray",
+      detail: "Treats pet odour & urine in the backing, not just the fibre",
+      amount: rates.extras.enzymePreSpray,
+    });
+  }
+  // Pre-vacuum is FREE with every clean — preVacuumRooms now only feeds the
+  // on-site time estimate. No charge line.
+
+  // Checkout cross-sell: when the customer tacked extra services onto this
+  // booking, the ADDED items (flagged `added` — never the service they came
+  // for) get 10% off. On the carpet quote every soft-furnishing item arrives
+  // via the cross-sell card unflagged in older bookings, so with no flags at
+  // all we fall back to the whole lounge+mattress+rug subtotal. A negative
+  // line keeps it visible on the quote, the receipt and the admin record.
+  const addOnSubtotal = loungeSubtotal + mattressSubtotal + rugSubtotal;
+  const discountableBase = crossSellBase > 0 ? crossSellBase : addOnSubtotal;
+  const crossSellDiscount =
+    input.crossSellApplied && discountableBase > 0 ? round(discountableBase * 0.1) : 0;
+  if (crossSellDiscount > 0) {
+    lines.push({
+      label: "10% off your added service",
+      detail: "For booking the extra service together with this clean",
+      amount: -crossSellDiscount,
+    });
+  }
+
+  // The $150 minimum covers the truck and the trip — it exists for on-site
+  // work. A rug-only pickup runs with the Thursday/Friday pickup run, so it
+  // doesn't carry the minimum.
+  const onsiteWork =
+    input.carpetAreaM2 > 0 ||
+    input.lounges.some((l) => l.seats > 0) ||
+    input.mattresses.some((m) => m.qty > 0);
+
+  const cleaningSubtotal =
+    lines.reduce((s, l) => s + l.amount, 0) - rugDiscount;
+  const isEmpty = cleaningSubtotal === 0;
+
+  // 2-cleans-a-year plan: 10% off the whole clean, every clean
+  const maintenanceDiscount = round(
+    cleaningSubtotal * rates.maintenance[input.maintenance],
+  );
+
+  // Discount code applies to the cleaning subtotal after the plan discount
+  const afterMaintenance = cleaningSubtotal - maintenanceDiscount;
+  const codeDiscount = round(afterMaintenance * (input.discountPercent / 100));
+
+  // $10 off every full $150 — stacks with any discount code.
+  const afterCode = afterMaintenance - codeDiscount;
+  const volumeDiscount =
+    Math.floor(afterCode / rates.volumeDiscount.every) * rates.volumeDiscount.off;
+
+  let cleaningTotal = afterCode - volumeDiscount;
+  let minimumApplied = false;
+  if (!isEmpty && onsiteWork && cleaningTotal < rates.minimumCharge) {
+    cleaningTotal = rates.minimumCharge;
+    minimumApplied = true;
+  }
+
+  // The 17%-under-BFYB check, run live on every quote: if their comparable
+  // total exists and ours isn't at least 17% under it after our own
+  // discounts, the difference comes off automatically.
+  const bfybTotal = isEmpty ? null : bfybComparableTotal(input, bfybModel);
+  let undercutDiscount = 0;
+  if (bfybTotal !== null && cleaningSubtotal > 0) {
+    const discountRatio = cleaningTotal / cleaningSubtotal;
+    const oursComparable = round(
+      comparableSubtotal(input, carpetSubtotal, rates) * discountRatio,
+    );
+    const target = Math.floor(bfybTotal * (1 - BFYB_UNDERCUT_PERCENT / 100));
+    if (oursComparable > target) {
+      undercutDiscount = Math.min(oursComparable - target, cleaningTotal);
+      cleaningTotal -= undercutDiscount;
+    }
+  }
+
+  const travelFee = isEmpty ? 0 : round(input.travelFee);
+  const total = cleaningTotal + travelFee;
+
+  return {
+    lines,
+    carpetSubtotal,
+    cleaningSubtotal,
+    rugCount: rugs,
+    rugDiscount,
+    maintenanceDiscount,
+    codeDiscount,
+    crossSellDiscount,
+    volumeDiscount,
+    undercutDiscount,
+    bfybTotal,
+    minimumApplied,
+    onsiteWork,
+    cleaningTotal,
+    travelFee,
+    total,
+    isEmpty,
+  };
+}
+
+export const money = (n: number) =>
+  `$${n.toLocaleString("en-AU", { maximumFractionDigits: 0 })}`;
+
+// ---------------------------------------------------------------------------
+// Booking wizard — everything below describes the job beyond the price.
+// ---------------------------------------------------------------------------
+
+export type CleanPurpose = "moving-out" | "living" | "selling";
+export type PropertyType = "single" | "double";
+export type PetsAnswer = "none" | "outside" | "inside";
+export type SmellAnswer = "no" | "up-close" | "noticeable";
+export type StainsAnswer = "none" | "under-5" | "over-5" | "ten-plus";
+export type StainType = "pet-urine" | "food-drink" | "mud-traffic" | "not-sure";
+export type VacuumAnswer = "week" | "month" | "longer";
+export type AccessMethod = "be-there" | "agent" | "lockbox" | "someone-else";
+export type ParkingAccess = "close" | "stairs-or-far";
+export type PaymentChoice = "pay-now" | "invoice" | "cash";
+export type ConfirmBy = "either" | "phone" | "email";
+
+export const PURPOSE_LABELS: Record<CleanPurpose, string> = {
+  "moving-out": "End of lease",
+  living: "Freshening up",
+  selling: "Selling or re-letting",
+};
+
+export const ACCESS_LABELS: Record<AccessMethod, string> = {
+  "be-there": "I'll be there to let you in",
+  agent: "The agent has the key",
+  lockbox: "Key in a lockbox or a safe spot",
+  "someone-else": "Someone else will be there",
+};
+
+export const PAYMENT_LABELS: Record<PaymentChoice, string> = {
+  "pay-now": "Pay now — card, online",
+  invoice: "Invoice me after the job",
+  cash: "Cash or PayID on the day",
+};
+
+export const STAIN_TYPE_LABELS: Record<StainType, string> = {
+  "pet-urine": "pet accidents",
+  "food-drink": "food & drink spills",
+  "mud-traffic": "mud & heavy traffic",
+  "not-sure": "stains — cause confirmed on arrival",
+};
+
+export const CONFIRM_LABELS: Record<ConfirmBy, string> = {
+  either: "Either",
+  phone: "Phone",
+  email: "Email",
+};
+
+/** Answers to the four carpet-condition questions. */
+export interface ConditionAnswers {
+  pets: PetsAnswer | null;
+  smell: SmellAnswer | null;
+  stains: StainsAnswer | null;
+  stainTypes: StainType[];
+  vacuumed: VacuumAnswer | null;
+}
+
+export const emptyCondition: ConditionAnswers = {
+  pets: null,
+  smell: null,
+  stains: null,
+  stainTypes: [],
+  vacuumed: null,
+};
+
+export function conditionComplete(c: ConditionAnswers): boolean {
+  return Boolean(
+    c.pets &&
+      c.smell &&
+      c.stains &&
+      c.vacuumed &&
+      (c.stains === "none" || c.stainTypes.length > 0),
+  );
+}
+
+/**
+ * Scores the condition answers into a recommended soiling level.
+ * Individually small things (a slight whiff, a handful of stains) nudge to
+ * medium; pets inside, noticeable odour, pet urine or ten-plus stains stack
+ * up quickly to heavy.
+ */
+export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
+  if (!conditionComplete(c)) return null;
+  let score = 0;
+  if (c.pets === "inside") score += 2;
+  if (c.smell === "up-close") score += 1;
+  if (c.smell === "noticeable") score += 2;
+  if (c.stains === "under-5") score += 1;
+  if (c.stains === "over-5") score += 2;
+  if (c.stains === "ten-plus") score += 3;
+  if (c.stainTypes.includes("pet-urine")) score += 2;
+  if (c.vacuumed === "longer") score += 1;
+  if (score <= 1) return "light";
+  if (score <= 4) return "medium";
+  return "heavy";
+}
+
+/** Why we recommended that level — short, human, shown under the cards. */
+export function recommendationReasons(c: ConditionAnswers): string[] {
+  const r: string[] = [];
+  if (c.pets === "inside") r.push("an indoor pet");
+  if (c.smell === "up-close") r.push("a slight odour up close");
+  if (c.smell === "noticeable") r.push("an odour you notice walking in");
+  if (c.stains === "under-5") r.push("a few stains to treat");
+  if (c.stains === "over-5") r.push("more than five stains");
+  if (c.stains === "ten-plus") r.push("ten or more stains");
+  if (c.stainTypes.includes("pet-urine")) r.push("pet urine in the carpet");
+  if (c.vacuumed === "longer") r.push("a while since the last proper vacuum");
+  return r;
+}
+
+/**
+ * Extras recommendations, mirroring the competitor's logic:
+ * pre-vacuum for pet hair and dry grit, enzyme pre-spray for odour and urine.
+ * Returns a short "why" for the badge, or null when not recommended.
+ */
+export function recommendPreVacuum(c: ConditionAnswers): string | null {
+  if (c.pets === "inside")
+    return "pet hair works down into the pile where a household vacuum can't reach";
+  if (c.vacuumed === "longer")
+    return "dry grit has to come out before any water goes down";
+  if (c.stainTypes.includes("mud-traffic"))
+    return "traffic marks are mostly dry grit — vacuuming first stops it turning to mud";
+  if (c.vacuumed === "month") return "a month of traffic puts real grit down in the pile";
+  if (c.pets === "outside")
+    return "outdoor pets still carry hair and dander inside on the way through";
+  return null;
+}
+
+export function recommendEnzyme(c: ConditionAnswers): string | null {
+  if (c.stainTypes.includes("pet-urine"))
+    return "urine soaks through to the backing — this treats what's underneath";
+  if (c.smell === "noticeable")
+    return "a smell you notice from the door is bacteria in the backing, not the fibre";
+  if (c.smell === "up-close")
+    return "an early smell is far cheaper to treat now than once it sets in";
+  if (c.pets === "inside")
+    return "pet odour lives in what hair and skin leave behind — steam alone shifts it for a week";
+  return null;
+}
+
+export interface AccessDetails {
+  method: AccessMethod | null;
+  agency: string;
+  spot: string;
+  code: string;
+  name: string;
+  mobile: string;
+  parking: ParkingAccess | null;
+}
+
+export const emptyAccess: AccessDetails = {
+  method: null,
+  agency: "",
+  spot: "",
+  code: "",
+  name: "",
+  mobile: "",
+  parking: null,
+};
+
+/** Everything the wizard collects beyond the priced quote. */
+export interface BookingDetails {
+  purpose: CleanPurpose | null;
+  propertyType: PropertyType | null;
+  condition: ConditionAnswers;
+  recommended: Dirtiness | null;
+  access: AccessDetails;
+  payment: PaymentChoice | null;
+  preferredDate: string | null; // yyyy-mm-dd, null = "call me to arrange"
+  preferredSlot: number | null; // index into TIME_SLOTS; null for rug pickups
+  confirmBy: ConfirmBy;
+  notes: string;
+  town: string; // suburb/town from the address — drives travel-time spacing
+  jobMinutes: number; // estimated minutes on site (server recomputes)
+  rugPickup: boolean; // rug-only booking: Thu/Fri 3–5pm pickup, back Monday
+  /** 2-cleans-a-year plan — the second visit, picked on the calendar and
+   *  booked into the schedule at the same time as the first. */
+  secondVisit: { date: string; slot: number } | null;
+}
+
+// Day/time picker — 90-minute windows, Monday to Saturday, from two days out.
+export const TIME_SLOTS = [
+  "7:00 – 8:30 AM",
+  "8:30 – 10:00 AM",
+  "10:00 – 11:30 AM",
+  "12:00 – 1:30 PM",
+  "1:30 – 3:00 PM",
+  "3:00 – 4:30 PM",
+] as const;
+
+export const SLOT_MINUTES = 90;
+export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
+export const BOOKING_NOTICE_DAYS = 2; // today and tomorrow are never offered
+
+/** Minutes after midnight each slot starts at (7:00, 8:30, 10:00, 12:00, 1:30, 3:00). */
+export const SLOT_START_MINUTES = [420, 510, 600, 720, 810, 900] as const;
+
+/** "7:00 AM" style label for a minutes-after-midnight time. */
+export function clockLabel(mins: number): string {
+  const h24 = Math.floor(mins / 60) % 24;
+  const m = mins % 60;
+  const h12 = ((h24 + 11) % 12) + 1;
+  const ampm = h24 < 12 ? "AM" : "PM";
+  return `${h12}:${String(m).padStart(2, "0")} ${ampm}`;
+}
+
+/** "Wednesday 21 October 2026" from a yyyy-mm-dd day. */
+export function longDateLabel(iso: string): string {
+  const [y, mo, d] = iso.split("-").map(Number);
+  const weekdays = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+  const months = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December",
+  ];
+  const wd = new Date(Date.UTC(y, mo - 1, d)).getUTCDay();
+  return `${weekdays[wd]} ${d} ${months[mo - 1]} ${y}`;
+}
+
+// ---------------------------------------------------------------------------
+// Job duration + travel — how long a job ties up the day, and how far it is.
+// Used to space bookings so there's always enough time before the next one.
+//
+// Times are the operator's own measured workflow (19/10/2026): 25 min to set
+// up (machine out, hoses run, pre-spray bottles filled), pre-spray each room
+// 5 min (7 for large rooms), ~10 min a room to clean (scaled for size),
+// +10 min per stained room (CRB brush + steam treat), 20 min to pack up.
+// Cross-checked against published production rates: portable/box-unit hot
+// water extraction runs 600–1,200 sq ft/hour (CMM/ISSA), i.e. ~15–20 min per
+// standard room with pre-spray — these numbers sit right in that band, and
+// heavy soil slowing production ~2× matches ISSA's 400 sq ft/hr heavy-soil
+// floor. Tighter, honest times = more bookings fit the day.
+// ---------------------------------------------------------------------------
+
+export const TIME_MODEL = {
+  arriveSetupMinutes: 25, // machine out, hoses run, pre-spray bottles filled
+  packUpMinutes: 20, // pack down and load up
+  // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
+  // Deep/Restoration multiply the clean pass only (pre-spray time is constant).
+  roomMinutes: {
+    bed: { pre: 5, clean: 10 }, // up to 4×4 m
+    bedLarge: { pre: 7, clean: 14 }, // up to 5×5 m
+    wir: { pre: 3, clean: 5 },
+    wirLarge: { pre: 4, clean: 7 },
+    living: { pre: 7, clean: 14 },
+    livingLg: { pre: 7, clean: 20 }, // up to 6×6 m
+    dining: { pre: 5, clean: 10 },
+    hall: { pre: 2, clean: 4 },
+    hall2: { pre: 3, clean: 6 },
+    hall3: { pre: 4, clean: 7 },
+    hall4: { pre: 4, clean: 8 },
+    stairs: { pre: 3, clean: 7 }, // fiddly per step
+  } as Record<string, { pre: number; clean: number }>,
+  conditionCleanFactor: { light: 1, medium: 1.4, heavy: 1.9 } as Record<Dirtiness, number>,
+  // Stain work per stained room: counter-rotating brush then steam treat.
+  stainRoomMinutes: 10,
+  // How many rooms we assume need stain work from the customer's answer.
+  stainedRoomsByBand: { "under-5": 2, "over-5": 4, "ten-plus": 6 } as Record<string, number>,
+  // Fallback when the customer types an exact m² instead of counting rooms —
+  // bundles pre-spray + clean into one rate per m².
+  perM2: { light: 0.9, medium: 1.3, heavy: 1.7 } as Record<Dirtiness, number>,
+  loungePerSeat: { light: 15, medium: 19, heavy: 24 } as Record<Dirtiness, number>,
+  reclinerSeatExtra: 6, // mechanisms + extra panels per recliner seat
+  mattressEach: 20,
+  preVacuumPerRoom: 5, // commercial pre-vacuum pass (free with every clean)
+  perSpecialExtra: 12, // stain pack / enzyme / dirt-gum setup each
+  dryingFanSetup: 10, // place fans, quick walkthrough
+  rugLoad: 10, // rugs coming along with an on-site job
+  rugPickupStop: 30, // rug-only pickup stop
+} as const;
+
+/** Estimated minutes on site for a quote (rounded up to 15). */
+export function estimateJobMinutes(q: QuoteInput): number {
+  let m = 0;
+  const roomCounts = q.roomCounts ?? {};
+  const totalRooms = Object.values(roomCounts).reduce((s, n) => s + n, 0);
+  // Counted rooms mean carpet work even if the area wasn't sent through.
+  const hasCarpet = q.carpetAreaM2 > 0 || totalRooms > 0;
+  const onsite =
+    hasCarpet ||
+    q.lounges.some((l) => l.seats > 0) ||
+    q.mattresses.some((x) => x.qty > 0);
+  if (onsite) {
+    m += TIME_MODEL.arriveSetupMinutes + TIME_MODEL.packUpMinutes;
+    const factor = TIME_MODEL.conditionCleanFactor[q.carpetDirtiness];
+    if (hasCarpet) {
+      if (totalRooms > 0) {
+        // Counted rooms — the operator's per-room times, clean pass scaled
+        // by condition.
+        for (const [key, n] of Object.entries(roomCounts)) {
+          const t = TIME_MODEL.roomMinutes[key] ?? TIME_MODEL.roomMinutes.bed;
+          m += n * (t.pre + t.clean * factor);
+        }
+      } else {
+        m += q.carpetAreaM2 * TIME_MODEL.perM2[q.carpetDirtiness];
+      }
+      // Stain rooms take brush + steam time on top, whatever the clean level.
+      const stained = TIME_MODEL.stainedRoomsByBand[q.stainsBand ?? "none"] ?? 0;
+      if (stained > 0) {
+        const rooms = totalRooms > 0 ? totalRooms : Math.max(1, Math.round(q.carpetAreaM2 / 16));
+        m += Math.min(stained, rooms) * TIME_MODEL.stainRoomMinutes;
+      }
+    }
+    m += q.lounges.reduce(
+      (s, l) =>
+        s +
+        l.seats * TIME_MODEL.loungePerSeat[l.dirtiness] +
+        l.reclinerSeats * (TIME_MODEL.loungePerSeat[l.dirtiness] + TIME_MODEL.reclinerSeatExtra),
+      0,
+    );
+    m += q.mattresses.reduce((s, x) => s + x.qty * TIME_MODEL.mattressEach, 0);
+    m += q.preVacuumRooms * TIME_MODEL.preVacuumPerRoom;
+    if (q.stainPackage) m += TIME_MODEL.perSpecialExtra;
+    if (q.enzymePreSpray) m += TIME_MODEL.perSpecialExtra;
+    if (q.dirtGum) m += TIME_MODEL.perSpecialExtra;
+    if (q.dryingFans > 0) m += TIME_MODEL.dryingFanSetup;
+  }
+  const rugs = rugCount(q.rugs);
+  if (rugs > 0) m += onsite ? TIME_MODEL.rugLoad : TIME_MODEL.rugPickupStop;
+  return Math.max(30, Math.ceil(m / 15) * 15);
+}
+
+/** How many consecutive 90-minute slots a job of this length occupies. */
+export function slotsNeededFor(jobMinutes: number): number {
+  return Math.max(1, Math.ceil(jobMinutes / SLOT_MINUTES));
+}
+
+// Base of operations — every day starts and ends here. Drive times below are
+// from Armidale; the base sits inside town so town figures apply as-is.
+export const HOME_BASE = {
+  address: "35 Campion Parade, Armidale NSW 2350",
+  town: "Armidale",
+} as const;
+
+// One-way drive minutes from Armidale (home base) by town — road time, not
+// straight-line.
+const TOWN_DRIVE_MINUTES: Record<string, number> = {
+  armidale: 0,
+  uralla: 25,
+  "black mountain": 25,
+  hillgrove: 30,
+  guyra: 35,
+  walcha: 75,
+};
+
+/** One-way drive minutes to a town; falls back to road km when unknown. */
+export function driveMinutesFor(
+  town: string | null | undefined,
+  km?: number | null,
+): number {
+  const key = (town ?? "")
+    .toLowerCase()
+    .replace(/\b(nsw|2350|2354|2358|2359|2365)\b/g, "")
+    .replace(/[^a-z ]/g, "")
+    .trim()
+    .replace(/\s+/g, " ");
+  if (key in TOWN_DRIVE_MINUTES) return TOWN_DRIVE_MINUTES[key];
+  for (const [name, mins] of Object.entries(TOWN_DRIVE_MINUTES)) {
+    if (key.includes(name)) return mins;
+  }
+  if (km && km > 0) return Math.round(km * 0.8); // rural roads ~75 km/h
+  return 0;
+}
+
+/** Drive minutes between two towns — routed via Armidale, the realistic run. */
+export function driveBetween(
+  townA: string,
+  townB: string,
+  kmA?: number | null,
+  kmB?: number | null,
+): number {
+  const norm = (t: string) =>
+    t.toLowerCase().replace(/[^a-z ]/g, "").replace(/\s+/g, " ").trim();
+  if (norm(townA) === norm(townB)) return 0;
+  return driveMinutesFor(townA, kmA) + driveMinutesFor(townB, kmB);
+}
+
+/** Towns this far out are morning-only — the afternoon stays free for the
+ *  drive back and any second job in town. (Walcha, and anything further.) */
+export const FAR_DRIVE_MINUTES = 60;
+export function isMorningOnlyTown(driveMinutes: number): boolean {
+  return driveMinutes >= FAR_DRIVE_MINUTES;
+}
+
+/** Slots a far-town job may start in — the morning windows only. */
+export function morningOnlySlotAllowed(slotIndex: number): boolean {
+  return slotIndex <= 2; // 7:00, 8:30, 10:00 starts
+}
+
+// ---------------------------------------------------------------------------
+// The 2-cleans-a-year plan — both visits are picked on the calendar up front
+// and booked straight into the schedule.
+// ---------------------------------------------------------------------------
+
+export const PLAN_LABELS: Record<MaintenancePlan, string> = {
+  none: "Just this clean",
+  two: "2 cleans a year — 10% off",
+};
+
+// Fallback road distances (km, one way from Armidale) when the live
+// geocoding/routing services can't be reached.
+export const FALLBACK_TOWNS: { name: string; km: number }[] = [
+  { name: "Armidale", km: 0 },
+  { name: "Uralla", km: 23 },
+  { name: "Guyra", km: 38 },
+  { name: "Walcha", km: 96 },
+  { name: "Glen Innes", km: 100 },
+  { name: "Dorrigo", km: 128 },
+  { name: "Inverell", km: 140 },
+  { name: "Tamworth", km: 110 },
+];

@@ -1,0 +1,25 @@
+{
+ "note": "Snapshot of the live calendar's booked jobs \u2014 the downloadable demo computes availability from this when there's no internet connection to the booking server. Regenerated each demo build.",
+ "takenAt": "2026-10-19",
+ "blocked": [],
+ "spans": [
+  {
+   "date": "2026-10-21",
+   "slot": 1,
+   "span": 3,
+   "town": ""
+  },
+  {
+   "date": "2026-10-22",
+   "slot": 2,
+   "span": 2,
+   "town": ""
+  },
+  {
+   "date": "2026-10-23",
+   "slot": 0,
+   "span": 3,
+   "town": ""
+  }
+ ]
+}
