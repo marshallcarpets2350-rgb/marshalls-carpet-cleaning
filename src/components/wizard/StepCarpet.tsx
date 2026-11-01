@@ -12,6 +12,7 @@ const LEVELS: { value: Dirtiness; name: string; sub: string; goodFor: string }[]
 
 export function StepCarpet({
   condition, setCondition, dirtiness, setDirtiness, areaM2, rugsOnly = false,
+  levelTotals = null,
 }: {
   condition: ConditionAnswers;
   setCondition: (c: ConditionAnswers) => void;
@@ -19,6 +20,9 @@ export function StepCarpet({
   setDirtiness: (d: Dirtiness) => void;
   areaM2: number;
   rugsOnly?: boolean;
+  // Discounted all-in total per clean level, from the quote engine — when
+  // provided, the cards show these so no pre-discount price appears anywhere.
+  levelTotals?: Record<Dirtiness, number> | null;
 }) {
   const [overridden, setOverridden] = useState(false);
   const recommended = useMemo(() => recommendDirtiness(condition), [condition]);
@@ -137,7 +141,10 @@ export function StepCarpet({
                 <p className="mt-2 text-sm text-charcoal/60">{l.goodFor}</p>
                 {areaM2 > 0 && (
                   <p className="mt-3 font-display text-xl font-black text-forest">
-                    {money(priceFor(l.value))} <span className="text-xs font-semibold text-charcoal/50">for your carpet</span>
+                    {money(levelTotals ? levelTotals[l.value] : priceFor(l.value))}{" "}
+                    <span className="text-xs font-semibold text-charcoal/50">
+                      {levelTotals ? "all in with this clean" : "for your carpet"}
+                    </span>
                   </p>
                 )}
               </button>

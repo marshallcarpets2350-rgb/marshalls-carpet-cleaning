@@ -226,7 +226,7 @@ export default function AddressField({ value, onChange }: Props) {
                   {value.fee === 0 ? "Free" : money(value.fee)}
                 </strong>
                 {value.fee === 0 && (
-                  <span className="text-charcoal/70"> (inside the free {rates.travel.freeRadiusKm}km radius)</span>
+                  <span className="text-charcoal/70"> (free in Armidale)</span>
                 )}
               </>
             ) : (

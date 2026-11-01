@@ -15,9 +15,9 @@ export default function Areas() {
             </h2>
             <p className="mt-5 text-lg leading-relaxed text-charcoal/80">
               Travel is priced by road distance, not by town name and not by mood —
-              free within {RATES.travel.freeRadiusKm}km of Armidale, then{" "}
-              {money(RATES.travel.perKmEachWay)} per kilometre each way. Enter your
-              address in the quote builder and it works itself out.
+              free in Armidale, then {money(RATES.travel.perKmEachWay)} per kilometre
+              each way outside town. Enter your address in the quote builder and it
+              works itself out.
             </p>
           </div>
 

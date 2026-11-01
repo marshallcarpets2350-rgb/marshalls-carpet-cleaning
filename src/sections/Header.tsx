@@ -6,7 +6,6 @@ import iconCarpet from "@/assets/icons/carpet-cleaning.png";
 import iconLounge from "@/assets/icons/lounge.png";
 import iconRug from "@/assets/icons/rug-pickup.png";
 import iconPrices from "@/assets/icons/prices.png";
-import iconCompare from "@/assets/icons/compare.png";
 import iconAreas from "@/assets/icons/areas.png";
 
 type NavItem = { icon?: string; emoji?: string; label: string; sub?: string; to: string };
@@ -19,7 +18,6 @@ const MAIN_NAV: NavItem[] = [
 
 const MORE_NAV: NavItem[] = [
   { icon: iconPrices, label: "Prices", to: "/prices" },
-  { icon: iconCompare, label: "Compare us", to: "/compare" },
   { emoji: "📸", label: "Our work", to: "/work" },
   { icon: iconAreas, label: "Areas we cover", to: "/areas" },
   { emoji: "❔", label: "FAQ", to: "/faq" },

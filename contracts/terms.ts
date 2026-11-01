@@ -62,7 +62,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
     title: "4. Pricing, travel and discounts",
     body: [
       "4.1 All prices are in Australian dollars and are shown before you book — the price you accept is the price on your confirmation.",
-      "4.2 Travel is free within the local radius shown on the website. Beyond that, a per-kilometre or flat town travel fee applies and is included in your Quote before you book — never added later.",
+      "4.2 Travel is free within Armidale. Beyond that, a per-kilometre or flat town travel fee applies and is included in your Quote before you book — never added later.",
       "4.3 Website volume discounts apply automatically to larger jobs, and maintenance-plan discounts apply to clients on a regular cleaning plan, as described on the website.",
       "4.4 Quotes already sent or bookings already confirmed keep the price they were accepted at, even if website prices change later.",
     ],

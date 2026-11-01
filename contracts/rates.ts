@@ -64,16 +64,16 @@ export const RATES = {
     bulkPercentOff: 10, // …gets this % off the rug subtotal
   },
   travel: {
-    freeRadiusKm: 15, // free within ~15km road distance of Armidale
-    perKmEachWay: 1.0, // $ per km each way beyond the free radius
+    freeRadiusKm: 0, // no free radius — travel is charged from Armidale itself outward
+    perKmEachWay: 1.0, // $ per km each way outside Armidale
     maxServiceKm: 120, // beyond this: call for a quote
     // Rug-only pickup runs: a straight $1/km from Armidale for the full
     // trip, rounded up to the nearest $5 (the town flats don't apply to it).
     rugPerKm: 1.0,
     // Flat travel for the towns priced by hand — all under BFYB's flat
-    // surcharges (Uralla $57, Guyra $91, Walcha $143). Everywhere else
-    // stays per-km.
-    flatByTown: { uralla: 30, guyra: 46, walcha: 120 } as Record<string, number>,
+    // surcharges (Uralla $57, Guyra $91, Walcha $143). Armidale itself is
+    // free; everywhere else stays per-km.
+    flatByTown: { armidale: 0, uralla: 30, guyra: 46, walcha: 120 } as Record<string, number>,
   },
   // $10 off every full $150 of the clean — stacks with other discounts.
   volumeDiscount: { every: 150, off: 10 },
@@ -492,7 +492,8 @@ export interface QuoteBreakdown {
 
 const round = (n: number) => Math.round(n);
 
-/** Travel fee: $1/km each way past the free radius. */
+/** Travel fee: $1/km each way, charged from the first kilometre outside
+ *  Armidale (no free allowance). */
 export function travelFeeForKm(oneWayKm: number, rates: Rates = DEFAULT_RATES): number {
   const chargeable = Math.max(0, oneWayKm - rates.travel.freeRadiusKm);
   return round(chargeable * 2 * rates.travel.perKmEachWay);
@@ -516,9 +517,14 @@ export function travelFeeForTown(
 
 /** Rug-only pickup travel: $1/km from Armidale for the full trip, rounded
  *  up to the nearest $5 (Uralla ≈ $25, Guyra ≈ $40, Walcha ≈ $100). Free
- *  within the Armidale radius; the town flats and each-way rate are for
- *  on-site jobs. */
-export function rugPickupTravelFee(oneWayKm: number, rates: Rates = DEFAULT_RATES): number {
+ *  in Armidale itself; the town flats and each-way rate are for on-site
+ *  jobs. */
+export function rugPickupTravelFee(
+  oneWayKm: number,
+  rates: Rates = DEFAULT_RATES,
+  town?: string | null,
+): number {
+  if (town && town.trim().toLowerCase() === "armidale") return 0;
   if (oneWayKm <= rates.travel.freeRadiusKm) return 0;
   return Math.ceil((oneWayKm * rates.travel.rugPerKm) / 5) * 5;
 }

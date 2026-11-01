@@ -1334,9 +1334,9 @@ export default function Admin() {
           ["Not sure what it is", money(r.stainCauseFee["not-sure"])],
         ]},
         { title: "Travel", rows: [
-          ["Free within", `${r.travel.freeRadiusKm} km`],
-          ["Per km each way beyond that", f2(r.travel.perKmEachWay)],
-          ...townRows,
+          ["Armidale", "Free"],
+          ["Per km each way outside Armidale", f2(r.travel.perKmEachWay)],
+          ...townRows.filter(([label]) => !label.toLowerCase().endsWith("armidale")),
         ]},
         { title: "Rugs — pick-up & clean", rows: [
           ...RUG_SIZES.map((s) => [`${s.label} (${s.area})`, money(r.rugPrices[s.id])] as [string, string]),
@@ -1532,15 +1532,11 @@ export default function Admin() {
           <div className={card}>
             <h3 className={h3}>Travel</h3>
             <p className={sub}>
-              Free close to home, per-kilometre past that — with flat fees for the towns you
-              service most.
+              Free in Armidale, per-kilometre outside town — with flat fees for the towns
+              you service most.
             </p>
             <div className={grid}>
-              <PriceField label="Free within this many km" step="1" prefix=""
-                value={r.travel.freeRadiusKm}
-                hint={was(DEFAULT_RATES.travel.freeRadiusKm, r.travel.freeRadiusKm, (n) => `${n} km`)}
-                onChange={(v) => set((d) => { d.travel.freeRadiusKm = v; })} />
-              <PriceField label="Per km each way beyond that" step="0.10"
+              <PriceField label="Per km each way outside Armidale" step="0.10"
                 value={r.travel.perKmEachWay}
                 hint={was(DEFAULT_RATES.travel.perKmEachWay, r.travel.perKmEachWay, (n) => `$${n.toFixed(2)}`)}
                 onChange={(v) => set((d) => { d.travel.perKmEachWay = v; })} />

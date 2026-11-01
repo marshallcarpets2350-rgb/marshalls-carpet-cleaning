@@ -390,7 +390,7 @@ export const publicRouter = createRouter({
           ? input.distanceKm > rates.travel.maxServiceKm
             ? 0
             : input.booking?.rugPickup
-              ? rugPickupTravelFee(input.distanceKm, rates)
+              ? rugPickupTravelFee(input.distanceKm, rates, town || input.suburb)
               : travelFeeForTown(town || input.suburb, input.distanceKm, rates)
           : input.quote.travelFee;
       const quote: QuoteInput = {

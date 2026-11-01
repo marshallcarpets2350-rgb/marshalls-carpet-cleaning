@@ -37,7 +37,6 @@ import { StepCarpet } from "@/components/wizard/StepCarpet";
 import { StepExtras } from "@/components/wizard/StepExtras";
 import { StepWhen } from "@/components/wizard/StepWhen";
 import { StepPayment } from "@/components/wizard/StepPayment";
-import { CrossSell } from "@/components/wizard/CrossSell";
 import { StepReview } from "@/components/wizard/StepReview";
 
 const SECTION_IDS = [
@@ -218,6 +217,17 @@ export default function Quote() {
   );
 
   const breakdown = useMemo(() => computeQuote(quoteInput, rates, bfybModel), [quoteInput, rates, bfybModel]);
+  // Price for each clean-level card: the full discounted total if that level
+  // were picked — every price on the page is the pay-this number, never a
+  // pre-discount figure.
+  const levelTotals = useMemo(() => {
+    if (carpetAreaM2 === 0) return null;
+    const t = {} as Record<Dirtiness, number>;
+    for (const d of ["light", "medium", "heavy"] as Dirtiness[]) {
+      t[d] = computeQuote({ ...quoteInput, carpetDirtiness: d }, rates, bfybModel).total;
+    }
+    return t;
+  }, [carpetAreaM2, quoteInput, rates, bfybModel]);
   const jobMinutes = useMemo(() => estimateJobMinutes(quoteInput), [quoteInput]);
   const competitors = useMemo(
     () =>
@@ -495,6 +505,7 @@ export default function Quote() {
                         condition={condition} setCondition={setCondition}
                         dirtiness={carpetDirtiness} setDirtiness={setCarpetDirtiness}
                         areaM2={carpetAreaM2}
+                        levelTotals={levelTotals}
                       />
                     </section>
                     <section id="q-extras">
@@ -517,19 +528,6 @@ export default function Quote() {
                       />
                     </section>
                     <section id="q-payment">
-                      {!breakdown.isEmpty && (
-                        <div className="mb-6">
-                          <CrossSell
-                            rates={rates}
-                            lounges={csLounges}
-                            mattresses={csMattresses}
-                            rugs={csRugs}
-                            setLounges={setCsLounges}
-                            setMattresses={setCsMattresses}
-                            setRugs={setCsRugs}
-                          />
-                        </div>
-                      )}
                       <StepPayment payment={payment} setPayment={setPayment} />
                     </section>
                   </div>
@@ -607,6 +605,51 @@ export default function Quote() {
                           </li>
                         ))}
                       </ul>
+
+                      {/* Discounts shown as their own rows, so the lines above
+                          plus these always add up to the total below. */}
+                      {(breakdown.rugDiscount > 0 ||
+                        breakdown.maintenanceDiscount > 0 ||
+                        breakdown.codeDiscount > 0 ||
+                        breakdown.volumeDiscount > 0 ||
+                        breakdown.undercutDiscount > 0) && (
+                        <ul className="mt-3 space-y-2 border-t-[1.5px] border-charcoal/20 pt-3 text-sm">
+                          {breakdown.rugDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>{rates.rug.bulkPercentOff}% off — {rates.rug.bulkCount}+ rugs</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.rugDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.maintenanceDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>2-cleans-a-year plan</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.maintenanceDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.codeDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>
+                                {appliedCode
+                                  ? `Code ${appliedCode.code} — ${appliedCode.percentOff}% off`
+                                  : "Discount code"}
+                              </span>
+                              <span className="whitespace-nowrap">−{money(breakdown.codeDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.volumeDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>{money(rates.volumeDiscount.off)} off every {money(rates.volumeDiscount.every)}</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.volumeDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.undercutDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>Price-beat discount</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.undercutDiscount)}</span>
+                            </li>
+                          )}
+                        </ul>
+                      )}
 
                       <div className="mt-4 space-y-2 border-t-[1.5px] border-charcoal/20 pt-4 text-sm">
                         {breakdown.minimumApplied && (
@@ -700,7 +743,7 @@ export default function Quote() {
                   <a href={BUSINESS.phoneHref} className="font-bold text-forest">
                     Call {BUSINESS.phone}
                   </a>{" "}
-                  — we'll beat it. Commercial or 300m²+, call us too.
+                  — we'll beat it. Residential or commercial.
                 </p>
               </div>
             </aside>
@@ -735,7 +778,7 @@ export default function Quote() {
               disabled={submitLead.isPending || !allValid}
               className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {submitLead.isPending ? "Sending…" : "Send"}
+              {submitLead.isPending ? "Sending…" : "Send booking"}
             </button>
           )}
         </div>

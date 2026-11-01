@@ -37,7 +37,6 @@ import {
 import StepWhereWho, { contactValid, type Contact } from "@/components/wizard/StepWhereWho";
 import StepItems from "@/components/wizard/StepItems";
 import { StepExtras } from "@/components/wizard/StepExtras";
-import { SoftCrossSell } from "@/components/wizard/CrossSell";
 import { StepWhen } from "@/components/wizard/StepWhen";
 import { StepPayment } from "@/components/wizard/StepPayment";
 import { StepReview } from "@/components/wizard/StepReview";
@@ -204,7 +203,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       travelFee: travel?.outOfRange
         ? 0
         : isRugs && travel
-          ? rugPickupTravelFee(travel.km, rates)
+          ? rugPickupTravelFee(travel.km, rates, travel.suburb)
           : (travel?.fee ?? 0),
       discountPercent: appliedCode?.percentOff ?? 0,
     }),
@@ -488,9 +487,6 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                         rugs={rugs} setRugs={setRugs}
                       />
                     </section>
-                    {hasItems && (
-                      <SoftCrossSell kind={kind} rates={rates} rugs={csRugs} setRugs={setCsRugs} />
-                    )}
                     {!isRugs && (
                       <section id={`s-${kind}-extras`}>
                         <StepExtras
@@ -595,6 +591,51 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                         ))}
                       </ul>
 
+                      {/* Discounts shown as their own rows, so the lines above
+                          plus these always add up to the total below. */}
+                      {(breakdown.rugDiscount > 0 ||
+                        breakdown.maintenanceDiscount > 0 ||
+                        breakdown.codeDiscount > 0 ||
+                        breakdown.volumeDiscount > 0 ||
+                        breakdown.undercutDiscount > 0) && (
+                        <ul className="mt-3 space-y-2 border-t-[1.5px] border-charcoal/20 pt-3 text-sm">
+                          {breakdown.rugDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>{rates.rug.bulkPercentOff}% off — {rates.rug.bulkCount}+ rugs</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.rugDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.maintenanceDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>2-cleans-a-year plan</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.maintenanceDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.codeDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>
+                                {appliedCode
+                                  ? `Code ${appliedCode.code} — ${appliedCode.percentOff}% off`
+                                  : "Discount code"}
+                              </span>
+                              <span className="whitespace-nowrap">−{money(breakdown.codeDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.volumeDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>{money(rates.volumeDiscount.off)} off every {money(rates.volumeDiscount.every)}</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.volumeDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.undercutDiscount > 0 && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>Price-beat discount</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.undercutDiscount)}</span>
+                            </li>
+                          )}
+                        </ul>
+                      )}
+
                       <div className="mt-4 space-y-2 border-t-[1.5px] border-charcoal/20 pt-4 text-sm">
                         {breakdown.minimumApplied && (
                           <p className="text-charcoal/70">
@@ -696,7 +737,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                   <a href={BUSINESS.phoneHref} className="font-bold text-forest">
                     Call {BUSINESS.phone}
                   </a>{" "}
-                  — we'll beat it.
+                  — we'll beat it. Residential or commercial.
                 </p>
               </div>
             </aside>
@@ -731,7 +772,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
               disabled={submitLead.isPending || !allValid}
               className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {submitLead.isPending ? "Sending…" : "Send"}
+              {submitLead.isPending ? "Sending…" : "Send booking"}
             </button>
           )}
         </div>

@@ -9,7 +9,6 @@ import Terms from './pages/Terms'
 import { SectionPage, ContactPage } from './pages/sections'
 import Services from './sections/Services'
 import Pricing from './sections/Pricing'
-import Compare from './sections/Compare'
 import Areas from './sections/Areas'
 import Faq from './sections/Faq'
 import Gallery from './sections/Gallery'
@@ -34,7 +33,6 @@ export default function App() {
       <Route path="/furnishings" element={<FurnishingsRedirect />} />
       <Route path="/services" element={<SectionPage><Services /></SectionPage>} />
       <Route path="/prices" element={<SectionPage><Pricing /></SectionPage>} />
-      <Route path="/compare" element={<SectionPage><Compare /></SectionPage>} />
       <Route path="/work" element={<SectionPage><Gallery /></SectionPage>} />
       <Route path="/areas" element={<SectionPage><Areas /></SectionPage>} />
       <Route path="/faq" element={<SectionPage><Faq /></SectionPage>} />

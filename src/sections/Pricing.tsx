@@ -81,9 +81,9 @@ export default function Pricing() {
 
         <p className="mt-8 max-w-2xl text-background/75">
           Every quote also takes $10 off each full $150, automatically. Travel is
-          calculated by road distance from Armidale — free within 15km, flat
-          rates for Uralla, Guyra and Walcha, then a per-kilometre rate shown in
-          your quote before you book.
+          calculated by road distance — free in Armidale, flat rates for Uralla,
+          Guyra and Walcha, and $1 per kilometre each way everywhere else, shown
+          in your quote before you book.
         </p>
 
         <div className="mt-8">

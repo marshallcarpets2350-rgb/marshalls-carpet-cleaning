@@ -24,7 +24,7 @@ const FAQS = [
   },
   {
     q: "How does the travel fee work?",
-    a: "It's calculated by road distance from Armidale: free within 15km, then a flat per-kilometre rate each way. Enter your address in the quote builder and the fee appears in your total before you book — it never changes on the day.",
+    a: "It's calculated by road distance: free in Armidale, then $1 per kilometre each way outside town (flat rates for Uralla, Guyra and Walcha). Enter your address in the quote builder and the fee appears in your total before you book — it never changes on the day.",
   },
   {
     q: "Do you do commercial work?",
