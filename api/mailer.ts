@@ -61,7 +61,9 @@ export async function sendMail(
   attachments?: MailAttachment[],
   html?: string,
 ): Promise<void> {
-  const message = { from: config.from, to, subject, text, attachments, html };
+  // Replies always route to the real inbox — the sending address may be a
+  // send-only one (e.g. bookings@ when sending via a transactional provider).
+  const message = { from: config.from, replyTo: BUSINESS.email, to, subject, text, attachments, html };
   try {
     await makeTransport(config, config.port).sendMail(message);
   } catch (err) {
