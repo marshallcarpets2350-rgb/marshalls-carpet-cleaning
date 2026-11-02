@@ -64,7 +64,7 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
   if (!resp.ok) {
     const body = await resp.text().catch(() => "");
     const reason = body.match(/"message":\s*"([^"]{10,300})"/)?.[1];
-    throw new Error(`Google place search failed (${resp.status})${reason ? ` — ${reason}` : ""}`);
+    throw new Error(`Google place search failed (${resp.status})${reason ? ` — ${reason}` : body ? ` ${body.slice(0, 200)}` : ""}`);
   }
   const data = (await resp.json()) as {
     places?: { id: string; displayName?: { text?: string } }[];
