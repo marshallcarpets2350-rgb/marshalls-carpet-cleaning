@@ -268,6 +268,13 @@ export const publicRouter = createRouter({
     return { checkedAt: r?.fetchOk ? r.checkedAt : null, model };
   }),
 
+  // Live Google rating + reviews for the homepage — cached server-side and
+  // refreshed weekly. Null until the Google key is saved in Admin → Settings.
+  googleReviews: publicQuery.query(async () => {
+    const { getGoogleReviews } = await import("./googleReviews");
+    return getGoogleReviews();
+  }),
+
   // Before/after job photos for the /work gallery.
   gallery: publicQuery.query(async () => {
     const { listGallery } = await import("./gallery");

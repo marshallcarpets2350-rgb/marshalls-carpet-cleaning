@@ -2168,6 +2168,28 @@ export default function Admin() {
       onError: (e) => setMsg(e.message),
     });
     const messaging = trpc.admin.getMessagingSettings.useQuery();
+    const google = trpc.admin.getGoogleSettings.useQuery();
+    const [googleKey, setGoogleKey] = useState("");
+    const [googleMsg, setGoogleMsg] = useState("");
+    const saveGoogle = trpc.admin.saveGoogleSettings.useMutation({
+      onSuccess: async (r) => {
+        await utils.admin.getGoogleSettings.invalidate();
+        setGoogleKey("");
+        setGoogleMsg(
+          r.rating !== null && r.rating !== undefined
+            ? `Saved ✓ — found the business on Google: ${r.rating.toFixed(1)} stars from ${r.count} review${r.count === 1 ? "" : "s"}. The homepage section is live and refreshes itself weekly.`
+            : "Saved ✓ — key's in. No reviews found yet, but the section appears automatically the moment there are some.",
+        );
+      },
+      onError: (e) => setGoogleMsg(e.message),
+    });
+    const refreshGoogle = trpc.admin.refreshGoogleReviews.useMutation({
+      onSuccess: async (r) => {
+        await utils.admin.getGoogleSettings.invalidate();
+        setGoogleMsg(`Refreshed ✓ — ${r.rating.toFixed(1)} stars from ${r.count} review${r.count === 1 ? "" : "s"}, straight from Google.`);
+      },
+      onError: (e) => setGoogleMsg(e.message),
+    });
     const gallery = trpc.public.gallery.useQuery();
     const [gCaption, setGCaption] = useState("");
     const [gSuburb, setGSuburb] = useState("");
@@ -2303,6 +2325,91 @@ export default function Admin() {
           {stripeMsg && (
             <p className={`mt-3 border-[1.5px] p-3 text-sm font-semibold ${stripe.data?.configured || stripeMsg.startsWith("Saved ✓") ? "border-forest bg-mintlight text-forest" : "border-destructive text-destructive"}`} role="status">
               {stripeMsg}
+            </p>
+          )}
+        </section>
+
+        <section>
+          <h2 className="font-display text-2xl font-black text-charcoal">
+            Google reviews
+          </h2>
+          {google.data?.configured ? (
+            <div className="mt-4 border-[1.5px] border-forest bg-mintlight p-5">
+              <p className="font-bold text-forest">
+                Connected {google.data.keyHint && <span className="text-forest/70">(key {google.data.keyHint})</span>}
+              </p>
+              <p className="mt-1 text-sm text-charcoal/80">
+                {google.data.cached
+                  ? <>Live on the homepage: <strong>{google.data.cached.rating.toFixed(1)} stars from {google.data.cached.userRatingCount} review{google.data.cached.userRatingCount === 1 ? "" : "s"}</strong>. It re-checks Google by itself every week.</>
+                  : "Key saved — the first fetch hasn't landed yet. Hit refresh below."}
+              </p>
+              <div className="mt-4 flex flex-wrap items-end gap-3">
+                <button
+                  type="button"
+                  className="btn-pill !px-5 !py-2.5 text-sm"
+                  disabled={refreshGoogle.isPending}
+                  onClick={() => { setGoogleMsg(""); refreshGoogle.mutate(); }}
+                >
+                  {refreshGoogle.isPending ? "Asking Google…" : "Refresh from Google now"}
+                </button>
+                <form
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    setGoogleMsg("");
+                    if (googleKey.trim()) saveGoogle.mutate({ google_api_key: googleKey.trim() });
+                  }}
+                >
+                  <label className="flex flex-wrap items-center gap-2">
+                    <input className="input-sharp !w-56" type="password" value={googleKey}
+                      placeholder="New API key…" onChange={(e) => setGoogleKey(e.target.value)}
+                      autoComplete="off" />
+                    <button type="submit" className="btn-pill-dark !px-4 !py-2 text-sm" disabled={saveGoogle.isPending || !googleKey.trim()}>
+                      Replace key
+                    </button>
+                  </label>
+                </form>
+              </div>
+            </div>
+          ) : (
+            <div className="mt-4 border-[1.5px] border-charcoal bg-cream p-5">
+              <p className="font-bold text-charcoal">Not connected yet — about 10 minutes, once.</p>
+              <p className="mt-1 text-sm text-charcoal/75">
+                This is what puts your live Google star rating and reviews on the homepage, and
+                keeps them updated every week.
+              </p>
+              <ol className="mt-2 list-decimal space-y-1.5 pl-5 text-sm text-charcoal/80">
+                <li>Go to <strong>console.cloud.google.com</strong> and sign in with the same Google account as your Business Profile.</li>
+                <li>Create a project (any name), then enable the <strong>"Places API (New)"</strong>.</li>
+                <li>Under <strong>APIs &amp; Services → Credentials</strong>, click <strong>Create credentials → API key</strong> and copy it.</li>
+                <li>Paste it below — we'll find your business on Google automatically and pull the reviews in.</li>
+              </ol>
+              <form
+                className="mt-4"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  setGoogleMsg("");
+                  if (googleKey.trim()) saveGoogle.mutate({ google_api_key: googleKey.trim() });
+                }}
+              >
+                <label className="block">
+                  <span className="mb-1 block text-sm font-bold">Google API key</span>
+                  <input className="input-sharp" type="password" value={googleKey}
+                    placeholder="AIza…" onChange={(e) => setGoogleKey(e.target.value)}
+                    autoComplete="off" />
+                </label>
+                <button type="submit" className="btn-pill mt-3 !px-5 !py-2.5 text-sm" disabled={saveGoogle.isPending || !googleKey.trim()}>
+                  {saveGoogle.isPending ? "Checking with Google…" : "Save & connect Google reviews"}
+                </button>
+              </form>
+              <p className="mt-3 text-sm text-charcoal/70">
+                Google asks for a card on file when enabling APIs, but checking reviews once a week
+                costs a few cents a <em>year</em> — effectively free at this size.
+              </p>
+            </div>
+          )}
+          {googleMsg && (
+            <p className={`mt-3 border-[1.5px] p-3 text-sm font-semibold ${googleMsg.startsWith("Saved ✓") || googleMsg.startsWith("Refreshed ✓") ? "border-forest bg-mintlight text-forest" : "border-destructive text-destructive"}`} role="status">
+              {googleMsg}
             </p>
           )}
         </section>

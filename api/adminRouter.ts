@@ -459,6 +459,46 @@ export const adminRouter = createRouter({
       return { ok: true as const };
     }),
 
+  getGoogleSettings: adminProcedure.query(async () => {
+    const { googleReviewsStatus } = await import("./googleReviews");
+    return googleReviewsStatus();
+  }),
+
+  saveGoogleSettings: adminProcedure
+    .input(z.object({ google_api_key: z.string().trim().max(255) }))
+    .mutation(async ({ input }) => {
+      if (!input.google_api_key) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Paste the Google API key first." });
+      }
+      const { saveGoogleApiKey } = await import("./googleReviews");
+      try {
+        const data = await saveGoogleApiKey(input.google_api_key);
+        return { ok: true as const, rating: data?.rating ?? null, count: data?.userRatingCount ?? null };
+      } catch (err) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: err instanceof Error ? err.message : "Google rejected that key — check it and try again.",
+        });
+      }
+    }),
+
+  refreshGoogleReviews: adminProcedure.mutation(async () => {
+    const { refreshGoogleReviews } = await import("./googleReviews");
+    try {
+      const data = await refreshGoogleReviews();
+      if (!data) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save a Google API key first." });
+      }
+      return { ok: true as const, rating: data.rating, count: data.userRatingCount, fetchedAt: data.fetchedAt };
+    } catch (err) {
+      if (err instanceof TRPCError) throw err;
+      throw new TRPCError({
+        code: "BAD_REQUEST",
+        message: err instanceof Error ? err.message : "Refresh failed — try again in a minute.",
+      });
+    }
+  }),
+
   getSmtpSettings: adminProcedure.query(async () => {
     const s = await getSettings(SMTP_KEYS);
     return {

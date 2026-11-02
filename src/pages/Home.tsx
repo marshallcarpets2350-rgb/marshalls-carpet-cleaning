@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import Header from "@/sections/Header";
+import Reviews from "@/sections/Reviews";
 import { BUSINESS } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
 
@@ -106,6 +107,8 @@ export default function Home() {
           </p>
         </div>
       </main>
+
+      <Reviews />
 
       <footer className="border-t-[1.5px] border-charcoal bg-charcoal py-4 text-center text-sm text-background/80">
         <p>
