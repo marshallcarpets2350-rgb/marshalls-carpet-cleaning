@@ -108,9 +108,11 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
       await setSetting("google_place_id", hit.id);
       return hit.id;
     }
+    throw new Error(
+      `Nearby search saw: [${(data.places ?? []).map((p) => p.displayName?.text).join(", ") || "nothing"}]`,
+    );
   }
-  return null;
-}
+  throw new Error(`Nearby search failed (${nearby.status}) ${(await nearby.text().catch(() => "")).slice(0, 160)}`);
 
 /** Fresh copy from Google. Throws on failure — callers fall back to cache. */
 export async function refreshGoogleReviews(): Promise<GoogleReviewsData | null> {
