@@ -5,7 +5,7 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween } from "@contracts/rates";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceKinds, type ServiceKind } from "@contracts/rates";
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
@@ -18,7 +18,6 @@ import {
 import {
   parseBooking,
   bookingReference,
-  serviceSummary,
   confirmationEmail,
   confirmationSms,
   followUpEmail,
@@ -547,6 +546,7 @@ export const adminRouter = createRouter({
         where: string;
         town: string;
         service: string;
+        kinds: ServiceKind[];
         total: number;
         paidOnline: boolean;
         payment: string | null;
@@ -556,21 +556,26 @@ export const adminRouter = createRouter({
         status: string;
       };
       const jobs: Job[] = [];
-      const pickups: { id: number; ref: string; name: string; phone: string; where: string; rugs: string }[] = [];
+      const pickups: { id: number; ref: string; name: string; phone: string; where: string; rugs: string; collection: string; note: string }[] = [];
       for (const row of rows) {
         const b = parseBooking(row as never) ;
         if (!b || b.preferredDate !== input.date) continue;
         const where = [row.address, row.suburb].filter(Boolean).join(", ");
         if (b.rugPickup) {
-          const q = JSON.parse(row.quoteJson) as { input: { rugs: { qty: number }[] } };
-          const n = q.input.rugs.reduce((s, r) => s + r.qty, 0);
+          const q = JSON.parse(row.quoteJson) as { input: Parameters<typeof serviceSummary>[0] };
+          const collection =
+            b.access?.method === "leave-out"
+              ? `left out — ${b.access.spot || "spot on the notes"}`
+              : "someone home to hand them over";
           pickups.push({
             id: row.id,
             ref: bookingReference(row as never),
             name: row.name,
             phone: row.phone,
             where,
-            rugs: `${n} rug${n > 1 ? "s" : ""} — 3:00 – 5:00 PM run`,
+            rugs: serviceSummary(q.input, true),
+            collection,
+            note: b.notes ?? "",
           });
           continue;
         }
@@ -585,6 +590,7 @@ export const adminRouter = createRouter({
           where,
           town: b.town || row.suburb || "Armidale",
           service: serviceSummary(q.input, false),
+          kinds: serviceKinds(q.input),
           total: row.total,
           paidOnline: row.paidOnline,
           paidOfflineAt: row.paidOfflineAt,

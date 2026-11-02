@@ -13,6 +13,7 @@ import {
   longDateLabel,
   money,
   slotsNeededFor,
+  serviceSummary,
   type QuoteInput,
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
@@ -46,27 +47,6 @@ interface BookingDetails {
   rugPickup: boolean;
 }
 
-const ROOM_LABELS: Record<string, [string, string]> = {
-  bed: ["bedroom", "bedrooms"],
-  bedLarge: ["large bedroom", "large bedrooms"],
-  wir: ["walk-in robe", "walk-in robes"],
-  wirLarge: ["large walk-in robe", "large walk-in robes"],
-  living: ["living room", "living rooms"],
-  livingLg: ["large living room", "large living rooms"],
-  dining: ["dining room", "dining rooms"],
-  hall: ["hallway", "hallways"],
-  hall2: ["double hallway", "double hallways"],
-  hall3: ["triple hallway", "triple hallways"],
-  hall4: ["long hallway", "long hallways"],
-  stairs: ["set of stairs", "sets of stairs"],
-};
-
-const CLEAN_LABEL: Record<string, string> = {
-  light: "Standard Clean",
-  medium: "Deep Clean",
-  heavy: "Restoration Clean",
-};
-
 function parseQuote(lead: LeadRow): QuoteInput | null {
   try {
     return (JSON.parse(lead.quoteJson) as { input: QuoteInput }).input;
@@ -86,37 +66,6 @@ export function parseBooking(lead: LeadRow): BookingDetails | null {
 
 function firstName(name: string): string {
   return name.trim().split(/\s+/)[0] || name;
-}
-
-/** Human list of what's being done — "3 bedrooms + living room (Restoration Clean)". */
-export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): string {
-  if (!input) return "Cleaning";
-  const parts: string[] = [];
-  const counts = input.roomCounts ?? {};
-  const rooms = Object.entries(counts)
-    .filter(([, n]) => n > 0)
-    .map(([key, n]) => {
-      const [one, many] = ROOM_LABELS[key] ?? ["room", "rooms"];
-      return n === 1 ? `1 ${one}` : `${n} ${many}`;
-    });
-  if (input.carpetAreaM2 > 0 || rooms.length > 0) {
-    const what =
-      rooms.length > 0
-        ? rooms.join(", ").replace(/, ([^,]*)$/, " and $1")
-        : `carpet (~${input.carpetAreaM2} m²)`;
-    parts.push(`Carpet — ${what} (${CLEAN_LABEL[input.carpetDirtiness]})`);
-  }
-  for (const l of input.lounges) {
-    if (l.seats > 0)
-      parts.push(
-        `Lounge — ${l.seats}-seat${l.reclinerSeats > 0 ? ` incl. ${l.reclinerSeats} recliner${l.reclinerSeats > 1 ? "s" : ""}` : ""}`,
-      );
-  }
-  const mattresses = input.mattresses.reduce((s, x) => s + x.qty, 0);
-  if (mattresses > 0) parts.push(`${mattresses} mattress${mattresses > 1 ? "es" : ""}`);
-  const rugs = input.rugs.reduce((s, r) => s + r.qty, 0);
-  if (rugs > 0) parts.push(`${rugs} rug${rugs > 1 ? "s" : ""}${rugPickup ? " (pick-up & return)" : ""}`);
-  return parts.length ? parts.join("; ") : "Cleaning";
 }
 
 function whenLine(b: BookingDetails): string {

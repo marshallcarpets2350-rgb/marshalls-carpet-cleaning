@@ -19,10 +19,55 @@ import {
   resolveRates,
   DEFAULT_RATES,
   RUG_SIZES,
+  serviceSummary,
+  serviceKinds,
   type BookingDetails,
+  type QuoteInput,
   type Rates,
   type RateOverrides,
+  type ServiceKind,
 } from "@contracts/rates";
+
+/** Job-list colour dots — yellow = rugs, blue = carpets, orange = lounges. */
+const DOT_COLORS: Record<ServiceKind, string> = {
+  rug: "#EAB308",
+  carpet: "#1A6FD1",
+  lounge: "#E8710A",
+};
+const DOT_LABELS: Record<ServiceKind, string> = {
+  rug: "Rugs",
+  carpet: "Carpets",
+  lounge: "Lounges",
+};
+
+function ServiceDots({ kinds }: { kinds: ServiceKind[] }) {
+  if (!kinds.length) return null;
+  return (
+    <span className="inline-flex translate-y-[1px] items-center gap-1" aria-label={kinds.map((k) => DOT_LABELS[k]).join(", ")}>
+      {kinds.map((k) => (
+        <span
+          key={k}
+          title={DOT_LABELS[k]}
+          className="inline-block h-2.5 w-2.5 rounded-full ring-1 ring-charcoal/20"
+          style={{ background: DOT_COLORS[k] }}
+        />
+      ))}
+    </span>
+  );
+}
+
+function DotLegend() {
+  return (
+    <span className="inline-flex flex-wrap items-center gap-3 text-xs font-semibold text-charcoal/60">
+      {(["rug", "carpet", "lounge"] as ServiceKind[]).map((k) => (
+        <span key={k} className="inline-flex items-center gap-1">
+          <span className="inline-block h-2.5 w-2.5 rounded-full" style={{ background: DOT_COLORS[k] }} />
+          {DOT_LABELS[k]}
+        </span>
+      ))}
+    </span>
+  );
+}
 
 const TOKEN_KEY = "mcc_admin_token";
 
@@ -445,7 +490,7 @@ export default function Admin() {
                       </p>
                     </div>
                     <p className="mt-1 font-bold text-charcoal">
-                      {j.name} <span className="text-charcoal/50">({j.ref})</span>
+                      <ServiceDots kinds={j.kinds ?? []} /> {j.name} <span className="text-charcoal/50">({j.ref})</span>
                     </p>
                     <p className="text-sm text-charcoal/80">{j.service}</p>
                     <p className="mt-1 text-sm text-charcoal/80">
@@ -470,11 +515,14 @@ export default function Admin() {
         {d && d.pickups.length > 0 && (
           <div className="mt-6 border-[1.5px] border-charcoal bg-creamlight p-4">
             <p className="font-bold text-charcoal">🧺 Rug pick-up run — 3:00 – 5:00 PM</p>
-            <ul className="mt-2 space-y-1 text-sm text-charcoal/80">
+            <ul className="mt-2 space-y-2 text-sm text-charcoal/80">
               {d.pickups.map((p) => (
                 <li key={p.id}>
-                  <strong>{p.name}</strong> ({p.ref}) — {p.rugs} · {p.where} ·{" "}
+                  <ServiceDots kinds={["rug"]} /> <strong>{p.name}</strong> ({p.ref}) — {p.rugs} · {p.where} ·{" "}
                   <a href={`tel:${p.phone}`} className="font-semibold text-forest">{p.phone}</a>
+                  <span className="block pl-4 text-charcoal/60">
+                    Collection: {p.collection}{p.note ? ` · Note: ${p.note}` : ""}
+                  </span>
                 </li>
               ))}
             </ul>
@@ -577,6 +625,7 @@ export default function Admin() {
           <h2 className="font-display text-2xl font-black text-charcoal">
             Jobs ({rows.length})
           </h2>
+          <DotLegend />
           <button
             type="button"
             className="btn-pill-dark !px-5 !py-2 text-sm"
@@ -635,6 +684,7 @@ export default function Admin() {
                   >
                     <span>
                       <span className="font-bold text-charcoal">
+                        <ServiceDots kinds={serviceKinds(quote?.input ?? null)} />{" "}
                         MCC-{String(r.id).padStart(4, "0")} · {r.name}
                       </span>
                       <span className="block text-sm text-charcoal/60">
@@ -647,6 +697,9 @@ export default function Admin() {
                                   : "time to arrange"
                             } · ${booking.town || r.suburb || ""}`
                           : `${r.suburb || "Suburb n/a"} · sent ${new Date(r.createdAt).toLocaleDateString("en-AU")}`}
+                      </span>
+                      <span className="mt-0.5 block text-sm font-semibold text-charcoal/80">
+                        {serviceSummary(quote?.input ?? null, booking?.rugPickup ?? false)}
                       </span>
                     </span>
                     <span className="flex items-center gap-4">
@@ -1835,7 +1888,7 @@ export default function Admin() {
                   >
                     <span>
                       <span className="font-bold text-charcoal">
-                        {dateLabel(jobDateOf(r))} — {r.name}
+                        <ServiceDots kinds={serviceKinds(quote?.input ?? null)} /> {dateLabel(jobDateOf(r))} — {r.name}
                       </span>
                       <span className="block text-sm text-charcoal/60">
                         {booking?.town || r.suburb || "Location n/a"}
@@ -2554,7 +2607,11 @@ function resizeImage(file: File): Promise<string> {
   });
 }
 
-function safeParse(json: string): { breakdown?: { lines: { label: string; amount: number }[]; travelFee: number } } | null {  try {
+function safeParse(json: string): {
+  input?: QuoteInput;
+  breakdown?: { lines: { label: string; amount: number }[]; travelFee: number };
+} | null {
+  try {
     return JSON.parse(json);
   } catch {
     return null;

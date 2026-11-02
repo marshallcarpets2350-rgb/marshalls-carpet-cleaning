@@ -815,6 +815,94 @@ export const STAIN_TYPE_LABELS: Record<StainType, string> = {
   "not-sure": "stains — cause confirmed on arrival",
 };
 
+// ---------------------------------------------------------------------------
+// "What's being done" — one human sentence shared by the run sheet, the jobs
+// list, confirmation emails and receipts, plus the colour-dot kinds.
+// ---------------------------------------------------------------------------
+const ROOM_LABELS: Record<string, [string, string]> = {
+  bed: ["bedroom", "bedrooms"],
+  bedLarge: ["large bedroom", "large bedrooms"],
+  wir: ["walk-in robe", "walk-in robes"],
+  wirLarge: ["large walk-in robe", "large walk-in robes"],
+  living: ["living room", "living rooms"],
+  livingLg: ["large living room", "large living rooms"],
+  dining: ["dining room", "dining rooms"],
+  hall: ["hallway", "hallways"],
+  hall2: ["double hallway", "double hallways"],
+  hall3: ["triple hallway", "triple hallways"],
+  hall4: ["long hallway", "long hallways"],
+  stairs: ["set of stairs", "sets of stairs"],
+};
+
+const CLEAN_LABEL: Record<string, string> = {
+  light: "Standard Clean",
+  medium: "Deep Clean",
+  heavy: "Restoration Clean",
+};
+
+/** Human list of what's being done — "2 bedrooms (Restoration Clean); 5-seat lounge; Extras — pet accidents, enzyme pre-spray". */
+export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): string {
+  if (!input) return "Cleaning";
+  const parts: string[] = [];
+  const counts = input.roomCounts ?? {};
+  const rooms = Object.entries(counts)
+    .filter(([, n]) => n > 0)
+    .map(([key, n]) => {
+      const [one, many] = ROOM_LABELS[key] ?? ["room", "rooms"];
+      return n === 1 ? `1 ${one}` : `${n} ${many}`;
+    });
+  if (input.carpetAreaM2 > 0 || rooms.length > 0) {
+    const what =
+      rooms.length > 0
+        ? rooms.join(", ").replace(/, ([^,]*)$/, " and $1")
+        : `carpet (~${input.carpetAreaM2} m²)`;
+    parts.push(`Carpet — ${what} (${CLEAN_LABEL[input.carpetDirtiness]})`);
+  }
+  for (const l of input.lounges) {
+    if (l.seats > 0)
+      parts.push(
+        `Lounge — ${l.seats}-seat${l.reclinerSeats > 0 ? ` incl. ${l.reclinerSeats} recliner${l.reclinerSeats > 1 ? "s" : ""}` : ""} (${CLEAN_LABEL[l.dirtiness]})`,
+      );
+  }
+  for (const m of input.mattresses) {
+    if (m.qty > 0)
+      parts.push(`${m.qty}× ${m.size} mattress${m.qty > 1 ? "es" : ""} (${CLEAN_LABEL[m.dirtiness]})`);
+  }
+  const rugs = input.rugs.reduce((s, r) => s + r.qty, 0);
+  if (rugs > 0) {
+    const bySize = input.rugs
+      .filter((r) => r.qty > 0)
+      .map((r) => `${r.qty}× ${r.size}`)
+      .join(", ");
+    parts.push(`${rugs} rug${rugs > 1 ? "s" : ""} (${bySize})${rugPickup ? " — pick-up & return" : ""}`);
+  }
+  const extras: string[] = [];
+  if (input.stainTypes.length)
+    extras.push(input.stainTypes.map((t) => STAIN_TYPE_LABELS[t]).join(", "));
+  if (input.stainPackage) extras.push("stain package");
+  if (input.enzymePreSpray) extras.push("enzyme pre-spray");
+  if (input.dirtGum) extras.push("dirt & gum treatment");
+  if (input.preVacuumRooms > 0)
+    extras.push(`pre-vacuum ${input.preVacuumRooms} room${input.preVacuumRooms > 1 ? "s" : ""}`);
+  if (input.dryingFans > 0)
+    extras.push(`${input.dryingFans} drying fan${input.dryingFans > 1 ? "s" : ""}`);
+  if (extras.length) parts.push(`Extras — ${extras.join(", ")}`);
+  return parts.length ? parts.join("; ") : "Cleaning";
+}
+
+/** Colour-dot categories for the admin job list / run sheet. */
+export type ServiceKind = "rug" | "carpet" | "lounge";
+
+export function serviceKinds(input: QuoteInput | null): ServiceKind[] {
+  if (!input) return [];
+  const kinds: ServiceKind[] = [];
+  const counts = input.roomCounts ?? {};
+  if (input.rugs.reduce((s, r) => s + r.qty, 0) > 0) kinds.push("rug");
+  if (input.carpetAreaM2 > 0 || Object.values(counts).some((n) => n > 0)) kinds.push("carpet");
+  if (input.lounges.some((l) => l.seats > 0)) kinds.push("lounge");
+  return kinds;
+}
+
 export const CONFIRM_LABELS: Record<ConfirmBy, string> = {
   either: "Either",
   phone: "Phone",
