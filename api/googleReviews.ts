@@ -80,6 +80,35 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
       return place.id;
     }
   }
+
+  // Final fallback: nearby search around the listing's map pin (Text Search
+  // sometimes misses service-area businesses that hide their street address).
+  const nearby = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id,places.displayName",
+    },
+    body: JSON.stringify({
+      locationRestriction: {
+        circle: { center: { latitude: -30.827906, longitude: 151.79948 }, radius: 5000 },
+      },
+      maxResultCount: 20,
+      languageCode: "en",
+    }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (nearby.ok) {
+    const data = (await nearby.json()) as {
+      places?: { id: string; displayName?: { text?: string } }[];
+    };
+    const hit = (data.places ?? []).find((p) => /marshall/i.test(p.displayName?.text ?? ""));
+    if (hit?.id) {
+      await setSetting("google_place_id", hit.id);
+      return hit.id;
+    }
+  }
   return null;
 }
 
