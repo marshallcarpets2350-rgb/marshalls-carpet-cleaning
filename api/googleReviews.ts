@@ -118,7 +118,12 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
 /** Temporary diagnostic: what does Google return for control queries? */
 export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
   const out: Record<string, unknown> = {};
-  for (const q of ["Armidale", "carpet cleaning Armidale", "Marshall's Carpet cleaning Armidale", "Bunnings Armidale"]) {
+  for (const q of [
+    "Marshall's Carpet Cleaning",
+    "Marshall\u2019s Carpet cleaning",
+    "Marshall carpet cleaning",
+    "Marshall Armidale",
+  ]) {
     const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
       method: "POST",
       headers: {
@@ -126,7 +131,12 @@ export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "places.id,places.displayName",
       },
-      body: JSON.stringify({ textQuery: q, languageCode: "en", regionCode: "AU" }),
+      body: JSON.stringify({
+        textQuery: q,
+        languageCode: "en",
+        regionCode: "AU",
+        locationBias: { circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 50000 } },
+      }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!resp.ok) {
@@ -135,6 +145,29 @@ export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
       const data = (await resp.json()) as { places?: { displayName?: { text?: string } }[] };
       out[q] = (data.places ?? []).map((p) => p.displayName?.text);
     }
+  }
+  // Nearby at the listing's exact pin, widest radius.
+  const nearby = await fetch("https://places.googleapis.com/v1/places:searchNearby", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id,places.displayName",
+    },
+    body: JSON.stringify({
+      locationRestriction: {
+        circle: { center: { latitude: -30.827906, longitude: 151.79948 }, radius: 50000 },
+      },
+      maxResultCount: 20,
+      languageCode: "en",
+    }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (nearby.ok) {
+    const data = (await nearby.json()) as { places?: { displayName?: { text?: string } }[] };
+    out["__nearby_50km"] = (data.places ?? []).map((p) => p.displayName?.text);
+  } else {
+    out["__nearby_50km"] = `HTTP ${nearby.status}: ${(await nearby.text().catch(() => "")).slice(0, 200)}`;
   }
   return out;
 }
