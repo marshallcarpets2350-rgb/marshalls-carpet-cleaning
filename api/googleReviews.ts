@@ -62,7 +62,9 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
   if (!resp.ok) {
-    throw new Error(`Google place search failed (${resp.status})`);
+    const body = await resp.text().catch(() => "");
+    const reason = body.match(/"message":\s*"([^"]{10,300})"/)?.[1];
+    throw new Error(`Google place search failed (${resp.status})${reason ? ` — ${reason}` : ""}`);
   }
   const data = (await resp.json()) as {
     places?: { id: string; displayName?: { text?: string } }[];
