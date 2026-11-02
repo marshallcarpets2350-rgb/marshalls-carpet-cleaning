@@ -947,22 +947,27 @@ export interface BookingDetails {
   secondVisit: { date: string; slot: number } | null;
 }
 
-// Day/time picker — 90-minute windows, Monday to Saturday, from two days out.
+// Day/time picker — hourly windows 7:00 AM–5:00 PM, Monday to Saturday, from
+// two days out.
 export const TIME_SLOTS = [
-  "7:00 – 8:30 AM",
-  "8:30 – 10:00 AM",
-  "10:00 – 11:30 AM",
-  "12:00 – 1:30 PM",
-  "1:30 – 3:00 PM",
-  "3:00 – 4:30 PM",
+  "7:00 – 8:00 AM",
+  "8:00 – 9:00 AM",
+  "9:00 – 10:00 AM",
+  "10:00 – 11:00 AM",
+  "11:00 AM – 12:00 PM",
+  "12:00 – 1:00 PM",
+  "1:00 – 2:00 PM",
+  "2:00 – 3:00 PM",
+  "3:00 – 4:00 PM",
+  "4:00 – 5:00 PM",
 ] as const;
 
-export const SLOT_MINUTES = 90;
+export const SLOT_MINUTES = 60;
 export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
 export const BOOKING_NOTICE_DAYS = 2; // today and tomorrow are never offered
 
-/** Minutes after midnight each slot starts at (7:00, 8:30, 10:00, 12:00, 1:30, 3:00). */
-export const SLOT_START_MINUTES = [420, 510, 600, 720, 810, 900] as const;
+/** Minutes after midnight each slot starts at (7:00 AM through 4:00 PM). */
+export const SLOT_START_MINUTES = [420, 480, 540, 600, 660, 720, 780, 840, 900, 960] as const;
 
 /** "7:00 AM" style label for a minutes-after-midnight time. */
 export function clockLabel(mins: number): string {
@@ -989,35 +994,34 @@ export function longDateLabel(iso: string): string {
 // Job duration + travel — how long a job ties up the day, and how far it is.
 // Used to space bookings so there's always enough time before the next one.
 //
-// Times are the operator's own measured workflow (19/10/2026): 25 min to set
-// up (machine out, hoses run, pre-spray bottles filled), pre-spray each room
-// 5 min (7 for large rooms), ~10 min a room to clean (scaled for size),
-// +10 min per stained room (CRB brush + steam treat), 20 min to pack up.
-// Cross-checked against published production rates: portable/box-unit hot
-// water extraction runs 600–1,200 sq ft/hour (CMM/ISSA), i.e. ~15–20 min per
-// standard room with pre-spray — these numbers sit right in that band, and
-// heavy soil slowing production ~2× matches ISSA's 400 sq ft/hr heavy-soil
-// floor. Tighter, honest times = more bookings fit the day.
+// Times tuned so a standard 3-bed house lands at about 2 hours on site and a
+// deep clean around 2½ — four normal jobs fit a 7:00 AM–5:00 PM day with
+// travel room between them. Still cross-checked against published production
+// rates: portable/box-unit hot water extraction runs 600–1,200 sq ft/hour
+// (CMM/ISSA), i.e. ~15–20 min per standard room with pre-spray — a 2-hour
+// standard house sits right in that band, and heavy soil slowing production
+// ~2× matches ISSA's 400 sq ft/hr heavy-soil floor. Tighter, honest times =
+// more bookings fit the day.
 // ---------------------------------------------------------------------------
 
 export const TIME_MODEL = {
-  arriveSetupMinutes: 25, // machine out, hoses run, pre-spray bottles filled
-  packUpMinutes: 20, // pack down and load up
+  arriveSetupMinutes: 20, // machine out, hoses run, pre-spray bottles filled
+  packUpMinutes: 15, // pack down and load up
   // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
   // Deep/Restoration multiply the clean pass only (pre-spray time is constant).
   roomMinutes: {
-    bed: { pre: 5, clean: 10 }, // up to 4×4 m
-    bedLarge: { pre: 7, clean: 14 }, // up to 5×5 m
-    wir: { pre: 3, clean: 5 },
-    wirLarge: { pre: 4, clean: 7 },
-    living: { pre: 7, clean: 14 },
-    livingLg: { pre: 7, clean: 20 }, // up to 6×6 m
-    dining: { pre: 5, clean: 10 },
-    hall: { pre: 2, clean: 4 },
-    hall2: { pre: 3, clean: 6 },
-    hall3: { pre: 4, clean: 7 },
-    hall4: { pre: 4, clean: 8 },
-    stairs: { pre: 3, clean: 7 }, // fiddly per step
+    bed: { pre: 4, clean: 8 }, // up to 4×4 m
+    bedLarge: { pre: 6, clean: 11 }, // up to 5×5 m
+    wir: { pre: 2, clean: 4 },
+    wirLarge: { pre: 3, clean: 6 },
+    living: { pre: 6, clean: 11 },
+    livingLg: { pre: 6, clean: 16 }, // up to 6×6 m
+    dining: { pre: 4, clean: 8 },
+    hall: { pre: 2, clean: 3 },
+    hall2: { pre: 2, clean: 5 },
+    hall3: { pre: 3, clean: 6 },
+    hall4: { pre: 3, clean: 6 },
+    stairs: { pre: 3, clean: 6 }, // fiddly per step
   } as Record<string, { pre: number; clean: number }>,
   conditionCleanFactor: { light: 1, medium: 1.4, heavy: 1.9 } as Record<Dirtiness, number>,
   // Stain work per stained room: counter-rotating brush then steam treat.
@@ -1026,18 +1030,19 @@ export const TIME_MODEL = {
   stainedRoomsByBand: { "under-5": 2, "over-5": 4, "ten-plus": 6 } as Record<string, number>,
   // Fallback when the customer types an exact m² instead of counting rooms —
   // bundles pre-spray + clean into one rate per m².
-  perM2: { light: 0.9, medium: 1.3, heavy: 1.7 } as Record<Dirtiness, number>,
-  loungePerSeat: { light: 15, medium: 19, heavy: 24 } as Record<Dirtiness, number>,
+  perM2: { light: 0.65, medium: 0.95, heavy: 1.3 } as Record<Dirtiness, number>,
+  loungePerSeat: { light: 12, medium: 15, heavy: 19 } as Record<Dirtiness, number>,
   reclinerSeatExtra: 6, // mechanisms + extra panels per recliner seat
-  mattressEach: 20,
-  preVacuumPerRoom: 5, // commercial pre-vacuum pass (free with every clean)
+  mattressEach: 15,
+  preVacuumPerRoom: 4, // commercial pre-vacuum pass (free with every clean)
   perSpecialExtra: 12, // stain pack / enzyme / dirt-gum setup each
   dryingFanSetup: 10, // place fans, quick walkthrough
   rugLoad: 10, // rugs coming along with an on-site job
   rugPickupStop: 30, // rug-only pickup stop
 } as const;
 
-/** Estimated minutes on site for a quote (rounded up to 15). */
+/** Estimated minutes on site for a quote (rounded up to 15, capped at one
+ *  full working day — every job is done in a single day, never split). */
 export function estimateJobMinutes(q: QuoteInput): number {
   let m = 0;
   const roomCounts = q.roomCounts ?? {};
@@ -1085,10 +1090,13 @@ export function estimateJobMinutes(q: QuoteInput): number {
   }
   const rugs = rugCount(q.rugs);
   if (rugs > 0) m += onsite ? TIME_MODEL.rugLoad : TIME_MODEL.rugPickupStop;
-  return Math.max(30, Math.ceil(m / 15) * 15);
+  const rounded = Math.max(30, Math.ceil(m / 15) * 15);
+  // Never longer than one working day — jobs are done in a single day, so a
+  // monster quote simply takes the whole day instead of spilling into the next.
+  return Math.min(rounded, SLOT_MINUTES * TIME_SLOTS.length);
 }
 
-/** How many consecutive 90-minute slots a job of this length occupies. */
+/** How many consecutive hourly slots a job of this length occupies. */
 export function slotsNeededFor(jobMinutes: number): number {
   return Math.max(1, Math.ceil(jobMinutes / SLOT_MINUTES));
 }
@@ -1152,7 +1160,7 @@ export function isMorningOnlyTown(driveMinutes: number): boolean {
 
 /** Slots a far-town job may start in — the morning windows only. */
 export function morningOnlySlotAllowed(slotIndex: number): boolean {
-  return slotIndex <= 2; // 7:00, 8:30, 10:00 starts
+  return slotIndex <= 3; // 7:00, 8:00, 9:00, 10:00 starts
 }
 
 // ---------------------------------------------------------------------------

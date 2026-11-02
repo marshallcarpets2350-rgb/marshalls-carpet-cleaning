@@ -259,6 +259,53 @@ export const adminRouter = createRouter({
       return { ok: true as const };
     }),
 
+  // Holiday / time off — block every slot on each day in a date range, or
+  // clear a whole day back open. Customers stop seeing the day immediately.
+  blockRange: adminProcedure
+    .input(
+      z.object({
+        from: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        to: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const start = new Date(`${input.from}T00:00:00`);
+      const end = new Date(`${input.to}T00:00:00`);
+      if (end < start) return { ok: true as const, days: 0 };
+      let days = 0;
+      for (const d = new Date(start); d <= end; d.setDate(d.getDate() + 1)) {
+        if (d.getDay() === 0) continue; // Sundays are never offered anyway
+        const date = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+        for (let slot = 0; slot < TIME_SLOTS.length; slot++) {
+          await db
+            .insert(availabilityBlocks)
+            .values({ date, slot })
+            .onDuplicateKeyUpdate({ set: { date } });
+        }
+        days++;
+      }
+      return { ok: true as const, days };
+    }),
+
+  unblockDay: adminProcedure
+    .input(z.object({ date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/) }))
+    .mutation(async ({ input }) => {
+      await getDb()
+        .delete(availabilityBlocks)
+        .where(eq(availabilityBlocks.date, input.date));
+      return { ok: true as const };
+    }),
+
+  // Remove a booking/enquiry entirely — for accidental double-ups and test
+  // bookings. The calendar frees the time straight away.
+  deleteLead: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await getDb().delete(leads).where(eq(leads.id, input.id));
+      return { ok: true as const };
+    }),
+
   listCampaigns: adminProcedure.query(async () => {
     return getDb()
       .select()

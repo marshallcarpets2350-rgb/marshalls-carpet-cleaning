@@ -63,9 +63,8 @@ export function nextWorkdays(fromIso: string, count: number): string[] {
 }
 
 /**
- * Split a booking into day-sized spans. A job longer than one day continues
- * at 7:00 AM on the following workdays — each continuation day comes off the
- * board in full so nothing else can be booked into it.
+ * A booked job's footprint on a day. Every job is done in a single day —
+ * nothing ever spills into the next — so the span is clamped to the day.
  */
 export function spansForBooking(
   date: string,
@@ -74,25 +73,17 @@ export function spansForBooking(
   town: string,
 ): BookedSpan[] {
   const daySlots = TIME_SLOTS.length;
-  const firstTake = Math.min(span, daySlots - slot);
-  const out: BookedSpan[] = [{ date, slot, span: firstTake, town }];
-  let remaining = span - firstTake;
-  for (const d of nextWorkdays(date, 8)) {
-    if (remaining <= 0) break;
-    const take = Math.min(remaining, daySlots);
-    out.push({ date: d, slot: 0, span: take, town });
-    remaining -= take;
-  }
-  return out;
+  const take = Math.min(span, daySlots - slot);
+  if (take <= 0) return [];
+  return [{ date, slot, span: take, town }];
 }
 
 /**
  * Can a job of `span` slots in `town` start at `slot` on `date`?
- * The job has to fit the day (or, for multi-day jobs, take the whole start
- * day from 7:00 AM with every continuation workday fully clear), clear manual
- * blocks, and leave enough drive time around any other booking that day — so
- * a Walcha morning and an Armidale afternoon never collide, and far towns
- * start in the morning only.
+ * The job has to fit inside the day (jobs never run into the next day),
+ * clear manual blocks, and leave enough drive time around any other booking
+ * that day — so a Walcha morning and an Armidale afternoon never collide,
+ * and far towns start in the morning only.
  */
 export function canStart(
   date: string,
@@ -103,32 +94,18 @@ export function canStart(
   spans: BookedSpan[],
 ): boolean {
   const daySlots = TIME_SLOTS.length;
-  const multiDay = span > daySlots;
-  if (multiDay && slot !== 0) return false; // big jobs take the whole first day
-  const daySpan = Math.min(span, daySlots - slot);
-  if (daySpan <= 0) return false;
+  if (span > daySlots) return false; // too big for one day — phone job
+  if (slot + span > daySlots) return false; // must finish by close of day
   if (isMorningOnlyTown(driveMinutesFor(town)) && !morningOnlySlotAllowed(slot))
     return false;
-  for (let i = slot; i < slot + daySpan; i++)
+  for (let i = slot; i < slot + span; i++)
     if (blocked.has(`${date}:${i}`)) return false;
   for (const b of spans) {
     if (b.date !== date) continue;
     const buffer = Math.ceil(driveBetween(town, b.town) / SLOT_MINUTES);
     const bStart = b.slot - buffer;
     const bEnd = b.slot + b.span - 1 + buffer;
-    if (slot <= bEnd && slot + daySpan - 1 >= bStart) return false;
-  }
-  if (multiDay) {
-    // Every continuation workday must be completely free — the crew is on
-    // this job from 7:00 AM, so nothing else can share those days.
-    let remaining = span - daySlots;
-    for (const d of nextWorkdays(date, 8)) {
-      if (remaining <= 0) break;
-      for (let i = 0; i < daySlots; i++) if (blocked.has(`${d}:${i}`)) return false;
-      if (spans.some((b) => b.date === d)) return false;
-      remaining -= daySlots;
-    }
-    if (remaining > 0) return false; // beyond the lookahead — don't offer it
+    if (slot <= bEnd && slot + span - 1 >= bStart) return false;
   }
   return true;
 }

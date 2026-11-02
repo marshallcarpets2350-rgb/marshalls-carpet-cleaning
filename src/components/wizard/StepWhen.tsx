@@ -242,7 +242,7 @@ export function StepWhen({
   );
 
   const span = slotsNeededFor(jobMinutes);
-  const multiDay = span > TIME_SLOTS.length;
+  const fullDayJob = span >= TIME_SLOTS.length; // takes the whole day — 7:00 AM start
   const driveMin = driveMinutesFor(town);
   const morningOnly = isMorningOnlyTown(driveMin);
 
@@ -319,11 +319,11 @@ export function StepWhen({
           {" "}— the calendar only offers starts where the whole job fits.
         </p>
       )}
-      {!rugsOnly && multiDay && (
+      {!rugsOnly && fullDayJob && (
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/80">
-          That's a big job — it runs over more than one day, starting at 7:00 AM
-          on the day you pick. The continuation days come off the calendar too,
-          and we map the day-by-day plan with you when we call.
+          That's a full-day job — it starts at 7:00 AM and the whole day is
+          yours. Every job is finished in one day, so nothing carries over to
+          the next.
         </p>
       )}
       {!rugsOnly && morningOnly && (
@@ -338,7 +338,7 @@ export function StepWhen({
           enabled={cal.enabled}
           monthKeys={cal.monthKeys}
           selected={date}
-          onSelect={(iso) => onPick(iso, multiDay ? 0 : null)}
+          onSelect={(iso) => onPick(iso, fullDayJob ? 0 : null)}
         />
 
         {rugsOnly && date && (

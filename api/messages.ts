@@ -150,8 +150,8 @@ export function confirmationEmail(lead: LeadRow): { subject: string; text: strin
   const ref = bookingReference(lead);
   const where = [lead.address, lead.suburb].filter(Boolean).join(", ") || "your place";
   const big =
-    b && b.jobMinutes > SLOT_MINUTES * 6
-      ? `\nThis is a big one — it runs over ${slotsNeededFor(b.jobMinutes) > 6 ? Math.ceil(b.jobMinutes / (SLOT_MINUTES * 6)) : 2} workdays, starting 7:00 AM on the day above. We'll map the day-by-day plan with you when we call.\n`
+    b && slotsNeededFor(b.jobMinutes) >= TIME_SLOTS.length
+      ? `\nThis is a big one — a full day on the tools, starting at 7:00 AM sharp. The whole day is yours.\n`
       : "";
   return {
     subject: `Booking confirmed — ${BUSINESS.name} (${ref})`,

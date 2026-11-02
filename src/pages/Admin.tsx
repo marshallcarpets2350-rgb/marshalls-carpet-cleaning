@@ -14,6 +14,7 @@ import {
   HOME_BASE,
   SLOT_START_MINUTES,
   driveMinutesFor,
+  slotsNeededFor,
   resolveRates,
   DEFAULT_RATES,
   RUG_SIZES,
@@ -521,9 +522,18 @@ export default function Admin() {
       },
       onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
     });
+    const deleteLead = trpc.admin.deleteLead.useMutation({
+      onSuccess: () => {
+        setConfirmDeleteId(null);
+        setOpenId(null);
+        utils.admin.listLeads.invalidate();
+        utils.public.listAvailability.invalidate();
+      },
+    });
     const [msgNote, setMsgNote] = useState<Record<number, string>>({});
     const [openId, setOpenId] = useState<number | null>(null);
     const [mapId, setMapId] = useState<number | null>(null);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
     if (leads.isPending) return <p>Loading…</p>;
     const rows = leads.data ?? [];
@@ -741,7 +751,7 @@ export default function Admin() {
                             {!!booking.jobMinutes && !booking.rugPickup && (
                               <li>
                                 <strong>Time on site:</strong> ~{(Math.round((booking.jobMinutes / 60) * 2) / 2).toString().replace(/\.5$/, "½")} hours
-                                {" — "}blocks {(booking.jobMinutes / 90) > 1 ? Math.ceil(booking.jobMinutes / 90) : 1} slot{Math.ceil(booking.jobMinutes / 90) > 1 ? "s" : ""}
+                                {" — "}blocks {slotsNeededFor(booking.jobMinutes)} slot{slotsNeededFor(booking.jobMinutes) > 1 ? "s" : ""}
                                 {booking.town ? ` · ${booking.town}` : ""}
                               </li>
                             )}
@@ -853,6 +863,39 @@ export default function Admin() {
                           <option value="completed">Completed</option>
                         </select>
                       </label>
+                      <div className="mt-4 border-t-[1.5px] border-charcoal/15 pt-4">
+                        {confirmDeleteId === r.id ? (
+                          <div className="flex flex-wrap items-center gap-3">
+                            <p className="text-sm font-bold text-destructive">
+                              Delete MCC-{String(r.id).padStart(4, "0")} for good? This can't be undone
+                              {r.paidOnline || r.paidOfflineAt ? " — it's marked PAID, so refund them in Stripe/bank first if money moved" : ""}.
+                            </p>
+                            <button
+                              type="button"
+                              className="btn-pill-dark !px-5 !py-2 text-sm"
+                              disabled={deleteLead.isPending}
+                              onClick={() => deleteLead.mutate({ id: r.id })}
+                            >
+                              {deleteLead.isPending ? "Deleting…" : "Yes, delete it"}
+                            </button>
+                            <button
+                              type="button"
+                              className="btn-pill !px-5 !py-2 text-sm"
+                              onClick={() => setConfirmDeleteId(null)}
+                            >
+                              Keep it
+                            </button>
+                          </div>
+                        ) : (
+                          <button
+                            type="button"
+                            className="text-sm font-bold text-destructive underline-offset-4 hover:underline"
+                            onClick={() => setConfirmDeleteId(r.id)}
+                          >
+                            Delete this booking (double-up, test, cancelled…)
+                          </button>
+                        )}
+                      </div>
                     </div>
                   )}
                 </li>
@@ -869,12 +912,19 @@ export default function Admin() {
     };
     const block = trpc.admin.blockSlot.useMutation({ onSuccess: invalidate });
     const unblock = trpc.admin.unblockSlot.useMutation({ onSuccess: invalidate });
+    const blockRange = trpc.admin.blockRange.useMutation({ onSuccess: invalidate });
+    const unblockDay = trpc.admin.unblockDay.useMutation({ onSuccess: invalidate });
+    const [holFrom, setHolFrom] = useState("");
+    const [holTo, setHolTo] = useState("");
 
     if (avail.isPending || blocks.isPending) return <p>Loading…</p>;
     if (avail.isError) return <p className="text-destructive">Couldn't load the calendar.</p>;
 
     const blockMap = new Map((blocks.data ?? []).map((b) => [`${b.date}:${b.slot}`, b.id]));
-    const busy = block.isPending || unblock.isPending;
+    const busy = block.isPending || unblock.isPending || blockRange.isPending || unblockDay.isPending;
+
+    // Days with at least one manual block, for the holiday list.
+    const blockedDays = [...new Set((blocks.data ?? []).map((b) => b.date))].sort();
 
     return (
       <div>
@@ -886,6 +936,70 @@ export default function Admin() {
           start a job that wouldn't leave enough room for the drive around the day's
           other bookings — that spacing happens automatically.
         </p>
+
+        {/* Holiday / time off — close whole days at once */}
+        <div className="mt-6 border-[1.5px] border-charcoal bg-mintlight p-5">
+          <h3 className="font-display text-lg font-black text-charcoal">Holiday or time off?</h3>
+          <p className="mt-1 text-sm text-charcoal/75">
+            Pick the days you're away and bookings close for the whole stretch — nothing
+            can be booked until you open the days again.
+          </p>
+          <div className="mt-3 flex flex-wrap items-end gap-3">
+            <label className="text-sm font-bold text-charcoal">
+              First day away
+                              <input
+                  type="date"
+                  className="input-sharp mt-1 block !py-1.5"
+                  value={holFrom}
+                  onChange={(e) => setHolFrom(e.target.value)}
+                />
+            </label>
+            <label className="text-sm font-bold text-charcoal">
+              Last day away
+              <input
+                type="date"
+                className="input-sharp mt-1 block !py-1.5"
+                value={holTo}
+                min={holFrom || undefined}
+                onChange={(e) => setHolTo(e.target.value)}
+              />
+            </label>
+            <button
+              type="button"
+              className="btn-pill !px-5 !py-2 text-sm"
+              disabled={busy || !holFrom || !holTo}
+              onClick={() => blockRange.mutate({ from: holFrom, to: holTo || holFrom })}
+            >
+              {blockRange.isPending ? "Closing…" : "Close those days"}
+            </button>
+          </div>
+          {blockRange.isSuccess && blockRange.data.days > 0 && (
+            <p className="mt-2 text-sm font-semibold text-forest">
+              Closed {blockRange.data.days} day{blockRange.data.days > 1 ? "s" : ""} — customers can't book them.
+            </p>
+          )}
+          {blockedDays.length > 0 && (
+            <div className="mt-4 border-t-[1.5px] border-charcoal/20 pt-3">
+              <p className="text-sm font-bold text-charcoal">Days with time blocked off:</p>
+                              <ul className="mt-2 flex flex-wrap gap-2">
+                  {blockedDays.map((date) => (
+                    <li key={date} className="flex items-center gap-2 border-[1.5px] border-charcoal bg-background px-3 py-1.5 text-sm font-semibold text-charcoal">
+                      {new Date(date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+                      <button
+                        type="button"
+                        className="font-bold text-destructive underline-offset-2 hover:underline"
+                        disabled={busy}
+                        onClick={() => unblockDay.mutate({ date })}
+                        title="Open this day back up"
+                      >
+                        Open
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+            </div>
+          )}
+        </div>
 
         <div className="mt-6 space-y-3">
           {(avail.data ?? []).map((d, di, all) => {
