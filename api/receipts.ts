@@ -10,7 +10,7 @@ import { loadSmtpConfig, isSmtpConfigured, sendMail } from "./mailer";
 import { bookingReference, receiptEmail, type LeadRow } from "./messages";
 import { receiptPdfBuffer } from "./receiptPdf";
 import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
-import { brandLogo, brandVan } from "./brand";
+import { brandLogo } from "./brand";
 
 export interface ReceiptResult {
   sent: boolean;
@@ -36,7 +36,6 @@ export async function sendReceiptFor(leadId: number): Promise<ReceiptResult> {
     await sendMail(smtp, lead.email, em.subject, em.text, [
       { filename: `Receipt-${ref}.pdf`, content: pdf, contentType: "application/pdf" },
       { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
-      { filename: "van.jpg", content: brandVan(), contentType: "image/jpeg", cid: EMAIL_CID.van },
     ], brandedEmailHtml(em.text));
     await db.update(leads).set({ receiptSentAt: new Date() }).where(eq(leads.id, leadId));
     return { sent: true, detail: `Receipt emailed to ${lead.email}` };

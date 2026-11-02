@@ -7,6 +7,7 @@ import {
   TIME_SLOTS,
   PURPOSE_LABELS,
   ACCESS_LABELS,
+  RUG_PICKUP_LABELS,
   PAYMENT_LABELS,
   CONFIRM_LABELS,
   clockLabel,
@@ -767,10 +768,14 @@ export default function Admin() {
                             {booking.recommended && <li><strong>Recommended level:</strong> {booking.recommended}{booking.condition?.stainTypes?.length ? ` · stains: ${booking.condition.stainTypes.join(", ")}` : ""}</li>}
                             {booking.access?.method && (
                               <li>
-                                <strong>Access:</strong> {ACCESS_LABELS[booking.access.method]}
+                                <strong>{booking.rugPickup ? "Collection:" : "Access:"}</strong>{" "}
+                                {booking.rugPickup
+                                  ? (RUG_PICKUP_LABELS[booking.access.method] ?? ACCESS_LABELS[booking.access.method])
+                                  : ACCESS_LABELS[booking.access.method]}
                                 {booking.access.method === "agent" && booking.access.agency ? ` — ${booking.access.agency}` : ""}
                                 {booking.access.method === "lockbox" && booking.access.spot ? ` — ${booking.access.spot}${booking.access.code ? ` (code ${booking.access.code})` : ""}` : ""}
                                 {booking.access.method === "someone-else" && booking.access.name ? ` — ${booking.access.name} (${booking.access.mobile})` : ""}
+                                {booking.access.method === "leave-out" && booking.access.spot ? ` — ${booking.access.spot}` : ""}
                                 {booking.access.parking ? ` · parking: ${booking.access.parking === "close" ? "close" : "stairs/long carry"}` : ""}
                               </li>
                             )}

@@ -40,6 +40,7 @@ import { StepExtras } from "@/components/wizard/StepExtras";
 import { StepWhen } from "@/components/wizard/StepWhen";
 import { StepPayment } from "@/components/wizard/StepPayment";
 import { StepReview } from "@/components/wizard/StepReview";
+import { OptionCard } from "@/components/wizard/ui";
 
 const COPY = {
   lounge: {
@@ -115,6 +116,10 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const [whenDate, setWhenDate] = useState<string | null>(null);
   const [whenSlot, setWhenSlot] = useState<number | null>(null);
   const [whenFlexible, setWhenFlexible] = useState(false);
+
+  // --- rug pickup: where do we grab them from? ---
+  const [pickupPlan, setPickupPlan] = useState<"leave-out" | "be-there" | null>(null);
+  const [pickupSpot, setPickupSpot] = useState("");
 
   // --- payment ---
   const [payment, setPayment] = useState<PaymentChoice | null>(null);
@@ -244,7 +249,9 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     where: contactValid(contact),
     items: hasItems && !breakdown.isEmpty,
     ...(isRugs ? {} : { extras: true }),
-    when: whenFlexible || (isRugs ? whenDate !== null : whenDate !== null && whenSlot !== null),
+    when:
+      (whenFlexible || (isRugs ? whenDate !== null : whenDate !== null && whenSlot !== null)) &&
+      (!isRugs || (pickupPlan !== null && (pickupPlan === "be-there" || pickupSpot.trim().length > 0))),
     payment: payment !== null,
   } as Record<(typeof sectionKeys)[number], boolean>;
 
@@ -252,7 +259,9 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     where: "your name, phone and email",
     items: copy.missingItems,
     ...(isRugs ? {} : { extras: "" }),
-    when: isRugs ? "a pickup day (or 'call me to arrange')" : "a day and time (or 'call me to arrange')",
+    when: isRugs
+      ? "a pickup day (or 'call me to arrange') and where we'll collect the rugs"
+      : "a day and time (or 'call me to arrange')",
     payment: "how you'd like to pay",
   } as Record<(typeof sectionKeys)[number], string>;
 
@@ -300,7 +309,14 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       propertyType: null,
       condition: emptyCondition,
       recommended: null,
-      access: emptyAccess,
+      access:
+        isRugs && pickupPlan
+          ? {
+              ...emptyAccess,
+              method: pickupPlan,
+              spot: pickupPlan === "leave-out" ? pickupSpot.trim() : "",
+            }
+          : emptyAccess,
       payment,
       preferredDate: whenFlexible ? null : whenDate,
       preferredSlot: whenFlexible || isRugs ? null : whenSlot,
@@ -509,6 +525,42 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                           else { setWhenFlexible(false); setWhenDate(d); setWhenSlot(s); }
                         }}
                       />
+                      {isRugs && (
+                        <div className="mt-8 space-y-4">
+                          <h3 className="font-display text-2xl font-black text-charcoal">
+                            Where do we grab the rugs?
+                          </h3>
+                          <p className="max-w-lg text-charcoal/75">
+                            No need to wait around for us — most people just leave them out.
+                          </p>
+                          <div className="grid gap-4" role="radiogroup" aria-label="Rug collection">
+                            <OptionCard
+                              selected={pickupPlan === "leave-out"}
+                              onClick={() => setPickupPlan("leave-out")}
+                              title="We'll leave them out for you"
+                              hint="Rolled up somewhere dry and easy to reach — we collect between 3 and 5pm, no one needs to be home."
+                            >
+                              <label className="block text-sm font-bold text-charcoal">
+                                Where exactly?
+                                <input
+                                  type="text"
+                                  className="input-sharp mt-2 w-full"
+                                  placeholder="e.g. front porch, under the carport, by the side gate"
+                                  value={pickupSpot}
+                                  maxLength={200}
+                                  onChange={(e) => setPickupSpot(e.target.value)}
+                                />
+                              </label>
+                            </OptionCard>
+                            <OptionCard
+                              selected={pickupPlan === "be-there"}
+                              onClick={() => setPickupPlan("be-there")}
+                              title="Someone will be home"
+                              hint="We'll knock between 3 and 5pm and take them off your hands."
+                            />
+                          </div>
+                        </div>
+                      )}
                     </section>
                     <section id={`s-${kind}-payment`}>
                       <StepPayment payment={payment} setPayment={setPayment} kicker={isRugs ? "Step 4 · Payment" : "Step 5 · Payment"} />
@@ -551,6 +603,13 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                     payment={payment}
                     date={whenFlexible ? null : whenDate} slot={whenFlexible ? null : whenSlot}
                     rugsOnly={isRugs} hasCarpet={false} jobMinutes={jobMinutes}
+                    pickupNote={
+                      isRugs && pickupPlan
+                        ? pickupPlan === "leave-out"
+                          ? `rugs left out (${pickupSpot.trim()})`
+                          : "someone home 3–5pm"
+                        : undefined
+                    }
                     kicker="Nearly done · review & send"
                     stepOf={
                       isRugs

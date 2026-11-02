@@ -55,7 +55,7 @@ function conditionSummary(c: ConditionAnswers): string {
 export function StepReview({
   contact, confirmBy, travel, purpose, condition, dirtiness, breakdown,
   stainPackage, enzymePreSpray, preVacuum, roomCount, jobSummary,
-  payment, date, slot, rugsOnly, hasCarpet, jobMinutes,
+  payment, date, slot, rugsOnly, hasCarpet, jobMinutes, pickupNote,
   kicker, stepOf,
   notes, setNotes,
   codeInput, setCodeInput, appliedCode, codeError, applyCode,
@@ -78,6 +78,8 @@ export function StepReview({
   rugsOnly: boolean;
   hasCarpet: boolean;
   jobMinutes: number;
+  /** Rug pickups only — where the rugs are collected from. */
+  pickupNote?: string;
   kicker: string;
   stepOf: ReviewSteps;
   notes: string;
@@ -97,10 +99,10 @@ export function StepReview({
   const fmtDay = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
   const whenLabel = date && rugsOnly
-    ? `Rug pickup ${fmtDay(date)}, 3:00 – 5:00 PM — returned Monday ${new Date(rugReturnDay(date) + "T12:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "long" })}`
+    ? `Rug pickup ${fmtDay(date)}, 3:00 – 5:00 PM${pickupNote ? ` — ${pickupNote}` : ""} — returned Monday ${new Date(rugReturnDay(date) + "T12:00:00").toLocaleDateString("en-AU", { day: "numeric", month: "long" })}`
     : date && slot !== null
       ? `${fmtDay(date)}, ${TIME_SLOTS[slot]}${jobMinutes > SLOT_MINUTES ? ` — about ${(Math.round((jobMinutes / 60) * 2) / 2).toString().replace(/\.5$/, "½")} hours on site` : ""}`
-      : "Call me to arrange";
+      : `Call me to arrange${rugsOnly && pickupNote ? ` — ${pickupNote}` : ""}`;
 
   const extras: string[] = [];
   if (enzymePreSpray) extras.push(`enzyme pre-spray (${money(RATES.extras.enzymePreSpray)})`);

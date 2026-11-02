@@ -91,7 +91,7 @@ const bookingSchema = z.object({
   }),
   recommended: z.enum(["light", "medium", "heavy"]).nullable(),
   access: z.object({
-    method: z.enum(["be-there", "agent", "lockbox", "someone-else"]).nullable(),
+    method: z.enum(["be-there", "agent", "lockbox", "someone-else", "leave-out"]).nullable(),
     agency: z.string().trim().max(255),
     spot: z.string().trim().max(500),
     code: z.string().trim().max(100),

@@ -1,8 +1,10 @@
 /**
- * Branded HTML wrapper for customer emails — logo header, blue palette,
- * van banner and a formal footer with the registered name and ABN.
- * Images ride along as CID inline attachments (see deliver/sendReceiptFor),
- * so nothing depends on hosted files.
+ * Branded HTML wrapper for customer emails — logo header, blue palette
+ * and a formal footer with the registered name and ABN. The logo rides
+ * along as a CID inline attachment, so nothing depends on hosted files.
+ * Deliberately image-light: heavy HTML emails with big banners trip
+ * content filters (Bigpond's IB703 bounce), so the van photo stays in
+ * the PDFs and on the site, not in the email body.
  */
 import { BUSINESS } from "@contracts/rates";
 import { BRAND } from "./brand";
@@ -39,7 +41,7 @@ function bodyToHtml(text: string): string {
 }
 
 /** CID references used by the inline attachments. */
-export const EMAIL_CID = { logo: "brand-logo@marshalls", van: "brand-van@marshalls" } as const;
+export const EMAIL_CID = { logo: "brand-logo@marshalls" } as const;
 
 export function brandedEmailHtml(text: string): string {
   return `<!DOCTYPE html>
@@ -49,10 +51,9 @@ export function brandedEmailHtml(text: string): string {
     <img src="cid:${EMAIL_CID.logo}" width="54" alt="" style="vertical-align:middle">
     <span style="display:inline-block;vertical-align:middle;margin-left:12px;font-size:17px;font-weight:bold;color:${BRAND.blue}">${esc(BUSINESS.name)}</span>
   </div>
-  <div style="padding:20px 28px 8px">
+  <div style="padding:20px 28px 16px">
     ${bodyToHtml(text)}
   </div>
-  <img src="cid:${EMAIL_CID.van}" width="600" alt="The Marshall's Carpet Cleaning van" style="width:100%;display:block;margin-top:14px">
   <div style="background:${BRAND.blue};color:#ffffff;padding:14px 24px;font-size:12px;line-height:1.6;text-align:center">
     <strong>${esc(BUSINESS.legalName)}</strong> — Armidale NSW · ${esc(BUSINESS.abn)}<br>
     ${esc(BUSINESS.phone)} · ${esc(BUSINESS.email)}

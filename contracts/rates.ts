@@ -777,7 +777,7 @@ export type SmellAnswer = "no" | "up-close" | "noticeable";
 export type StainsAnswer = "none" | "under-5" | "over-5" | "ten-plus";
 export type StainType = "pet-urine" | "food-drink" | "mud-traffic" | "not-sure";
 export type VacuumAnswer = "week" | "month" | "longer";
-export type AccessMethod = "be-there" | "agent" | "lockbox" | "someone-else";
+export type AccessMethod = "be-there" | "agent" | "lockbox" | "someone-else" | "leave-out";
 export type ParkingAccess = "close" | "stairs-or-far";
 export type PaymentChoice = "pay-now" | "invoice" | "cash";
 export type ConfirmBy = "either" | "phone" | "email";
@@ -793,6 +793,13 @@ export const ACCESS_LABELS: Record<AccessMethod, string> = {
   agent: "The agent has the key",
   lockbox: "Key in a lockbox or a safe spot",
   "someone-else": "Someone else will be there",
+  "leave-out": "Left out for collection",
+};
+
+/** Rug-pickup wording — "be there" reads differently when there's no house to enter. */
+export const RUG_PICKUP_LABELS: Record<string, string> = {
+  "be-there": "Someone will be home, 3–5 PM",
+  "leave-out": "Rugs left out for collection",
 };
 
 export const PAYMENT_LABELS: Record<PaymentChoice, string> = {

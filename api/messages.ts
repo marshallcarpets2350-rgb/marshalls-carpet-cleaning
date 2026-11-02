@@ -18,7 +18,7 @@ import {
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
 import { termsPdfBuffer } from "./termsPdf";
 import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
-import { brandLogo, brandVan } from "./brand";
+import { brandLogo } from "./brand";
 import { getSettings } from "./queries/settings";
 
 export interface LeadRow {
@@ -153,6 +153,13 @@ export function confirmationEmail(lead: LeadRow): { subject: string; text: strin
     b && slotsNeededFor(b.jobMinutes) >= TIME_SLOTS.length
       ? `\nThis is a big one — a full day on the tools, starting at 7:00 AM sharp. The whole day is yours.\n`
       : "";
+  const collection = b?.rugPickup
+    ? `\n• Collection: ${
+        b.access?.method === "leave-out"
+          ? `rugs left out — ${b.access.spot || "where we discussed"}. We'll grab them between 3:00 and 5:00 PM`
+          : "someone will be home between 3:00 and 5:00 PM to hand them over"
+      }`
+    : "";
   return {
     subject: `Booking confirmed — ${BUSINESS.name} (${ref})`,
     text: `Hi ${firstName(lead.name)},
@@ -162,11 +169,11 @@ Beauty — you're booked in with ${BUSINESS.name}.
 YOUR BOOKING
 • ${serviceSummary(input, b?.rugPickup ?? false)}
 • When: ${b ? whenLine(b) : "Time to be confirmed — we'll call you"}
-• Where: ${where}
+• Where: ${where}${collection}
 • Total: ${money(lead.total)} — ${b ? paymentLine(b, lead) : "pay on the day"}
 • Reference: ${ref}
 ${big}
-Every clean includes a commercial pre-vacuum and pre-spray at no charge. We'll call or text the day before to confirm the exact arrival time. Anything change? Call or text ${BUSINESS.phone} and we'll sort it.
+Every clean includes a commercial pre-vacuum and pre-spray. We'll call or text the day before to confirm the exact arrival time. Anything change? Call or text ${BUSINESS.phone} and we'll sort it.
 
 A copy of our Terms & Conditions is attached as a PDF — plain-English, two pages, yours to keep. They're also on our website any time under "Terms & conditions" in the footer.
 
@@ -182,7 +189,13 @@ export function confirmationSms(lead: LeadRow): string {
   const when = b?.preferredDate
     ? `${longDateLabel(b.preferredDate)} ${b.rugPickup ? "3–5 PM" : b.preferredSlot !== null ? TIME_SLOTS[b.preferredSlot] : ""}`
     : "time TBC";
-  return `${BUSINESS.name}: you're booked in — ${when}. Total ${money(lead.total)}. Ref ${ref}. We'll confirm the exact arrival time the day before. Questions? Call ${BUSINESS.phone}.`;
+  const collection =
+    b?.rugPickup && b.access?.method
+      ? b.access.method === "leave-out"
+        ? ` Rugs left out: ${b.access.spot || "as arranged"}.`
+        : " Someone home 3–5 PM."
+      : "";
+  return `${BUSINESS.name}: you're booked in — ${when}. Total ${money(lead.total)}. Ref ${ref}.${collection} We'll confirm the exact arrival time the day before. Questions? Call ${BUSINESS.phone}.`;
 }
 
 // ---------------------------------------------------------------------------
@@ -403,11 +416,11 @@ export async function deliver(
   const wantEmail = pref !== "phone";
   const wantSms = pref !== "email";
 
-  // Every customer email carries the brand inline (logo header, van banner)
-  // plus the Terms PDF on booking confirmations.
+  // Every customer email carries the logo inline, plus the Terms PDF on
+  // booking confirmations. No van banner in the body — image-heavy email
+  // is what content filters (Bigpond IB703) bounce.
   const attachments: MailAttachment[] = [
     { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
-    { filename: "van.jpg", content: brandVan(), contentType: "image/jpeg", cid: EMAIL_CID.van },
   ];
   if (opts?.attachTerms) {
     attachments.push({ filename: "Marshalls-Carpet-Cleaning-Terms-and-Conditions.pdf", content: await termsPdfBuffer(), contentType: "application/pdf" });
