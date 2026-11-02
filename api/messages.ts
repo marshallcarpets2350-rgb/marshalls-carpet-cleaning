@@ -14,6 +14,7 @@ import {
   money,
   slotsNeededFor,
   serviceSummary,
+  serviceKinds,
   type QuoteInput,
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
@@ -45,6 +46,16 @@ interface BookingDetails {
   town: string;
   jobMinutes: number;
   rugPickup: boolean;
+  notes?: string;
+  access?: {
+    method: "be-there" | "agent" | "lockbox" | "someone-else" | "leave-out" | null;
+    agency?: string;
+    spot?: string;
+    code?: string;
+    name?: string;
+    mobile?: string;
+    parking?: "close" | "stairs-or-far" | null;
+  };
 }
 
 function parseQuote(lead: LeadRow): QuoteInput | null {
@@ -145,6 +156,78 @@ export function confirmationSms(lead: LeadRow): string {
         : " Someone home 3–5 PM."
       : "";
   return `${BUSINESS.name}: you're booked in — ${when}. Total ${money(lead.total)}. Ref ${ref}.${collection} We'll confirm the exact arrival time the day before. Questions? Call ${BUSINESS.phone}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Owner alert — every new booking pings the business inbox. Loud subject
+// (type + price), full job details in the body. Best-effort, never throws.
+// ---------------------------------------------------------------------------
+
+export function ownerNotification(lead: LeadRow): { subject: string; text: string } {
+  const input = parseQuote(lead);
+  const b = parseBooking(lead);
+  const ref = bookingReference(lead);
+  const kinds = serviceKinds(input);
+  const typeWord = b?.rugPickup
+    ? "RUG PICKUP"
+    : kinds.length
+      ? kinds.map((k) => (k === "rug" ? "RUG" : k === "carpet" ? "CARPET" : "LOUNGE")).join(" + ")
+      : "NEW";
+  const where = [lead.address, lead.suburb].filter(Boolean).join(", ") || "—";
+  const when = b
+    ? b.preferredDate
+      ? b.rugPickup
+        ? `${longDateLabel(b.preferredDate)} — 3–5 PM rug run`
+        : b.preferredSlot !== null && b.preferredSlot !== undefined
+          ? `${longDateLabel(b.preferredDate)}, ${TIME_SLOTS[b.preferredSlot]} (~${Math.round(((b.jobMinutes ?? 60) / 60) * 2) / 2}h on site)`
+          : `${longDateLabel(b.preferredDate)} — arrival TBC`
+      : "Time to be confirmed"
+    : "No date booked (quote only)";
+  let lines: string[] = [];
+  let travel: number | null = null;
+  try {
+    const bd = (JSON.parse(lead.quoteJson) as { breakdown?: { lines?: { label: string; amount: number }[]; travelFee?: number } }).breakdown;
+    lines = bd?.lines ?? [];
+    travel = bd?.travelFee ?? null;
+  } catch {
+    // no breakdown — details below still stand
+  }
+  return {
+    subject: `NEW ${typeWord} BOOKING!!! 🎉 ${money(lead.total)}`,
+    text: `NEW BOOKING — ${ref}
+
+${lead.name}
+${lead.phone} · ${lead.email}
+
+WHAT
+• ${serviceSummary(input, b?.rugPickup ?? false)}
+
+WHEN
+• ${when}
+
+WHERE
+• ${where}
+
+PRICE
+${lines.map((l) => `• ${l.label} — ${money(l.amount)}`).join("\n")}${travel !== null ? `\n• Travel — ${money(travel)}` : ""}
+• TOTAL: ${money(lead.total)}${lead.paidOnline ? " — PAID ONLINE ✓" : ""}
+
+DETAILS
+• Payment: ${b?.payment ?? "on the day"}${b?.access?.method ? `\n• Access: ${b.access.method}${b.access.spot ? ` — ${b.access.spot}` : ""}` : ""}${b?.notes ? `\n• Notes: ${b.notes}` : ""}
+
+It's in the admin Jobs list — ${ref}.`,
+  };
+}
+
+export async function notifyOwner(lead: LeadRow): Promise<void> {
+  try {
+    const smtp = await loadSmtpConfig();
+    if (!isSmtpConfigured(smtp)) return;
+    const n = ownerNotification(lead);
+    await sendMail(smtp, BUSINESS.email, n.subject, n.text, undefined, brandedEmailHtml(n.text));
+  } catch {
+    // never let an owner alert break a customer's booking
+  }
 }
 
 // ---------------------------------------------------------------------------

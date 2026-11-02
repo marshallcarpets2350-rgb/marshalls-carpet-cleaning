@@ -501,7 +501,7 @@ export const publicRouter = createRouter({
       // so this is best-effort and the outcome lands on the lead for the admin.
       if (input.booking) {
         try {
-          const { confirmationEmail, confirmationSms, deliver } = await import("./messages");
+          const { confirmationEmail, confirmationSms, deliver, notifyOwner } = await import("./messages");
           const leadRow = {
             id: leadId,
             name: input.name,
@@ -527,6 +527,9 @@ export const publicRouter = createRouter({
                 : sent.detail || "Not sent",
             })
             .where(eq(leads.id, leadId));
+          // Loud heads-up to the business inbox — type + price in the subject,
+          // full job details in the body. Best-effort; never breaks a booking.
+          await notifyOwner(leadRow);
         } catch (err) {
           console.error("Confirmation message failed:", err);
         }
