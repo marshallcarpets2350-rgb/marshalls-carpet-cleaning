@@ -60,7 +60,7 @@ export const RATES = {
   },
   rug: {
     // Rug pick-up & clean service — collected Thu/Fri 3–5pm, back Monday.
-    bulkCount: 5, // this many rugs or more…
+    bulkCount: 3, // this many rugs or more…
     bulkPercentOff: 10, // …gets this % off the rug subtotal
   },
   travel: {

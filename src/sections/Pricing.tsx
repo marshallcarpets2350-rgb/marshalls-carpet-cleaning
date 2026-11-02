@@ -47,11 +47,11 @@ export default function Pricing() {
 
           <div className="bg-foreground p-7">
             <h3 className="font-display text-xl font-black text-mint">Volume saves</h3>
-            <p className="mt-4 font-display text-4xl font-black">−$5<span className="text-lg font-bold text-background/60"> / $150</span></p>
+            <p className="mt-4 font-display text-4xl font-black">−{money(RATES.volumeDiscount.off)}<span className="text-lg font-bold text-background/60"> / ${RATES.volumeDiscount.every}</span></p>
             <ul className="mt-4 space-y-2 text-sm text-background/80">
-              <li>Every $150 on the quote takes another $10 off</li>
+              <li>Every ${RATES.volumeDiscount.every} on the quote takes another {money(RATES.volumeDiscount.off)} off</li>
               <li>Steps down to {money(RATES.carpet.tiers[2].perM2)}/m² by 80m², {money(RATES.carpet.tiers[3].perM2)}/m² beyond</li>
-              <li>Five or more rugs — {RATES.rug.bulkPercentOff}% off the rug total</li>
+              <li>Three or more rugs — {RATES.rug.bulkPercentOff}% off the rug total</li>
             </ul>
           </div>
         </div>
