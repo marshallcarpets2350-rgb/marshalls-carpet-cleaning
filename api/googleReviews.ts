@@ -80,6 +80,38 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
       return place.id;
     }
   }
+
+  // Category search around Armidale: service-area businesses sometimes only
+  // surface when you filter by their business type, not their name.
+  const typed = await fetch("https://places.googleapis.com/v1/places:searchText", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "X-Goog-Api-Key": apiKey,
+      "X-Goog-FieldMask": "places.id,places.displayName",
+    },
+    body: JSON.stringify({
+      textQuery: "carpet cleaning",
+      languageCode: "en",
+      regionCode: "AU",
+      includedType: "carpet_cleaning_service",
+      strictTypeFiltering: true,
+      locationRestriction: {
+        circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 40000 },
+      },
+    }),
+    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+  });
+  if (typed.ok) {
+    const data = (await typed.json()) as {
+      places?: { id: string; displayName?: { text?: string } }[];
+    };
+    const hit = (data.places ?? []).find((p) => /marshall/i.test(p.displayName?.text ?? ""));
+    if (hit?.id) {
+      await setSetting("google_place_id", hit.id);
+      return hit.id;
+    }
+  }
   return null;
 }
 
