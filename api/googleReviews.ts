@@ -115,6 +115,30 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
   throw new Error(`Nearby search failed (${nearby.status}) ${(await nearby.text().catch(() => "")).slice(0, 160)}`);
 }
 
+/** Temporary diagnostic: what does Google return for control queries? */
+export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
+  const out: Record<string, unknown> = {};
+  for (const q of ["Armidale", "carpet cleaning Armidale", "Marshall's Carpet cleaning Armidale", "Bunnings Armidale"]) {
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName",
+      },
+      body: JSON.stringify({ textQuery: q, languageCode: "en", regionCode: "AU" }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!resp.ok) {
+      out[q] = `HTTP ${resp.status}: ${(await resp.text().catch(() => "")).slice(0, 200)}`;
+    } else {
+      const data = (await resp.json()) as { places?: { displayName?: { text?: string } }[] };
+      out[q] = (data.places ?? []).map((p) => p.displayName?.text);
+    }
+  }
+  return out;
+}
+
 /** Fresh copy from Google. Throws on failure — callers fall back to cache. */
 export async function refreshGoogleReviews(): Promise<GoogleReviewsData | null> {
   const s = await getSettings(["google_places_api_key", "google_place_id", "google_review_url"]);

@@ -483,8 +483,7 @@ export const adminRouter = createRouter({
     }),
 
   refreshGoogleReviews: adminProcedure.mutation(async () => {
-    const { refreshGoogleReviews } = await import("./googleReviews");
-    try {
+    const { refreshGoogleReviews } = await import("./googleReviews");    try {
       const data = await refreshGoogleReviews();
       if (!data) {
         throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save a Google API key first." });
@@ -499,9 +498,16 @@ export const adminRouter = createRouter({
     }
   }),
 
+  // Temporary diagnostic for the Google Places connection.
+  debugGoogle: adminProcedure.query(async () => {
+    const { debugGoogleSearch } = await import("./googleReviews");
+    const key = (await getSetting("google_places_api_key"))?.trim() ?? "";
+    if (!key) return { error: "no key saved" };
+    return debugGoogleSearch(key);
+  }),
+
   getSmtpSettings: adminProcedure.query(async () => {
-    const s = await getSettings(SMTP_KEYS);
-    return {
+    const s = await getSettings(SMTP_KEYS);    return {
       smtp_host: s.smtp_host ?? "",
       smtp_port: s.smtp_port ?? "587",
       smtp_user: s.smtp_user ?? "",
