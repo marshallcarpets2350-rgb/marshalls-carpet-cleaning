@@ -12,7 +12,7 @@
 
 import { BUSINESS } from "./rates";
 
-export const TERMS_LAST_UPDATED = "October 2026";
+export const TERMS_LAST_UPDATED = "November 2026";
 
 export interface TermsSection {
   title: string;
@@ -104,7 +104,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
   {
     title: "8. Stains, wear and results — the honest bit",
     body: [
-      "8.1 We treat every stain with professional products and techniques, but we can't guarantee complete removal of every stain. Some things permanently alter carpet fibres — bleach, some dyes, pet urine that has reached the underlay, and worn traffic areas can look different even after a thorough clean.",
+      "8.1 We treat every stain with professional products and techniques, but we can't guarantee complete removal of every stain — some stains may be permanent. Some things permanently alter carpet fibres — bleach, some dyes, pet urine that has reached the underlay, and worn traffic areas can look different even after a thorough clean. Where a stain is permanent, we'll still treat it to lighten it as much as the fibres allow.",
       "8.2 Where we think a stain or area may not come out completely, we'll tell you honestly before we start.",
       "8.3 Drying typically takes 4 to 24 hours depending on weather, airflow and clean level. We'll leave you with simple drying tips on the day.",
     ],

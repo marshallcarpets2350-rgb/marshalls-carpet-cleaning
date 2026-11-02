@@ -28,11 +28,11 @@ import {
   type ServiceKind,
 } from "@contracts/rates";
 
-/** Job-list colour dots — yellow = rugs, blue = carpets, orange = lounges. */
+/** Job-list colour dots — yellow = rugs, blue = carpets, purple = lounges. */
 const DOT_COLORS: Record<ServiceKind, string> = {
   rug: "#EAB308",
   carpet: "#1A6FD1",
-  lounge: "#E8710A",
+  lounge: "#7C3AED",
 };
 const DOT_LABELS: Record<ServiceKind, string> = {
   rug: "Rugs",
