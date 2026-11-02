@@ -213,7 +213,7 @@ ${lines.map((l) => `• ${l.label} — ${money(l.amount)}`).join("\n")}${travel 
 • TOTAL: ${money(lead.total)}${lead.paidOnline ? " — PAID ONLINE ✓" : ""}
 
 DETAILS
-• Payment: ${b?.payment ?? "on the day"}${b?.access?.method ? `\n• Access: ${b.access.method}${b.access.spot ? ` — ${b.access.spot}` : ""}` : ""}${b?.notes ? `\n• Notes: ${b.notes}` : ""}
+• Payment: ${b?.payment === "pay-now" ? "paying online" : b?.payment === "invoice" ? "invoice after the job" : "on the day"}${b?.access?.method ? `\n• Access: ${{ "be-there": "customer home", agent: "real-estate agent", lockbox: "lockbox", "someone-else": "someone else letting us in", "leave-out": "rugs left out" }[b.access.method]}${b.access.spot ? ` — ${b.access.spot}` : ""}` : ""}${b?.notes ? `\n• Notes: ${b.notes}` : ""}
 
 It's in the admin Jobs list — ${ref}.`,
   };
