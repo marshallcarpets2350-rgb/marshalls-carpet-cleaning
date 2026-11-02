@@ -55,8 +55,8 @@ export default function Gallery() {
           See the difference.
         </h1>
         <p className="mt-4 max-w-xl text-lg text-charcoal/80">
-          Real jobs from around Armidale &amp; the New England — drag the slider
-          on any photo to compare before and after.
+          Real jobs from around Armidale &amp; the New England — where there's a
+          before shot, drag the slider to compare.
         </p>
 
         {photos.length === 0 ? (
@@ -74,13 +74,27 @@ export default function Gallery() {
           <div className="mt-10 grid gap-6 md:grid-cols-2">
             {photos.map((p) => (
               <figure key={p.id}>
-                <CompareSlider
-                  before={`/gallery/${p.before}`}
-                  after={`/gallery/${p.after}`}
-                  alt={p.caption || "Carpet cleaning result"}
-                />
+                {p.after ? (
+                  <CompareSlider
+                    before={`/gallery/${p.before}`}
+                    after={`/gallery/${p.after}`}
+                    alt={p.caption || "Carpet cleaning result"}
+                  />
+                ) : (
+                  <div className="relative aspect-[4/3] w-full overflow-hidden border-[1.5px] border-charcoal bg-background">
+                    <img
+                      src={`/gallery/${p.before}`}
+                      alt={p.caption || "Finished cleaning job"}
+                      className="absolute inset-0 h-full w-full object-cover"
+                      loading="lazy"
+                    />
+                    <span className="pointer-events-none absolute right-2 top-2 border-[1.5px] border-charcoal bg-forest px-2 py-0.5 text-xs font-bold uppercase tracking-widest text-background">
+                      After
+                    </span>
+                  </div>
+                )}
                 <figcaption className="mt-2 flex items-baseline justify-between gap-3">
-                  <span className="font-bold text-charcoal">{p.caption || "Before & after"}</span>
+                  <span className="font-bold text-charcoal">{p.caption || (p.after ? "Before & after" : "Finished job")}</span>
                   {p.suburb && (
                     <span className="shrink-0 text-sm font-semibold text-charcoal/60">{p.suburb}</span>
                   )}

@@ -407,7 +407,7 @@ export const adminRouter = createRouter({
         caption: z.string().trim().max(120).default(""),
         suburb: z.string().trim().max(60).default(""),
         beforeDataUrl: z.string().max(7_500_000),
-        afterDataUrl: z.string().max(7_500_000),
+        afterDataUrl: z.string().max(7_500_000).optional(),
       }),
     )
     .mutation(async ({ input }) => {

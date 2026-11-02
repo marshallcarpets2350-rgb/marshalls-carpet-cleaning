@@ -2481,17 +2481,18 @@ export default function Admin() {
           <p className="mt-2 text-sm text-charcoal/70">
             These power the <a href="/work" className="font-bold text-forest">Our work</a> page.
             Snap a "before" when you arrive and an "after" when you're done, then add the pair here —
-            photos are resized automatically on upload, newest pair shows first.
+            or add the after shot on its own for a single-photo card.
+            Photos are resized automatically on upload, newest shows first.
           </p>
           <div className="mt-5 space-y-4">
             <div className="grid gap-4 md:grid-cols-2">
               <label className="block">
-                <span className="mb-1 block text-sm font-bold">Before photo</span>
+                <span className="mb-1 block text-sm font-bold">Photo (before — or the finished job on its own)</span>
                 <input type="file" accept="image/*" className="input-sharp" onChange={pickPhoto(setGBefore)} />
                 {gBefore && <img src={gBefore} alt="Before preview" className="mt-2 aspect-[4/3] w-full border-[1.5px] border-charcoal object-cover" />}
               </label>
               <label className="block">
-                <span className="mb-1 block text-sm font-bold">After photo</span>
+                <span className="mb-1 block text-sm font-bold">After photo (optional — leave empty for a single photo)</span>
                 <input type="file" accept="image/*" className="input-sharp" onChange={pickPhoto(setGAfter)} />
                 {gAfter && <img src={gAfter} alt="After preview" className="mt-2 aspect-[4/3] w-full border-[1.5px] border-charcoal object-cover" />}
               </label>
@@ -2511,14 +2512,19 @@ export default function Admin() {
             <button
               type="button"
               className="btn-pill !px-5 !py-2.5 text-sm"
-              disabled={addPhoto.isPending || !gBefore || !gAfter}
+              disabled={addPhoto.isPending || !gBefore}
               onClick={() => {
                 setGMsg("");
-                if (gBefore && gAfter)
-                  addPhoto.mutate({ caption: gCaption, suburb: gSuburb, beforeDataUrl: gBefore, afterDataUrl: gAfter });
+                if (gBefore)
+                  addPhoto.mutate({
+                    caption: gCaption,
+                    suburb: gSuburb,
+                    beforeDataUrl: gBefore,
+                    ...(gAfter ? { afterDataUrl: gAfter } : {}),
+                  });
               }}
             >
-              {addPhoto.isPending ? "Uploading…" : "Add this pair to the gallery"}
+              {addPhoto.isPending ? "Uploading…" : gAfter ? "Add this pair to the gallery" : "Add this photo to the gallery"}
             </button>
             {gMsg && (
               <p className={`border-[1.5px] p-3 text-sm font-bold ${gMsg.startsWith("Saved ✓") ? "border-forest bg-mintlight text-forest" : "border-destructive text-destructive"}`} role="status">
@@ -2529,11 +2535,11 @@ export default function Admin() {
               <ul className="grid gap-4 md:grid-cols-3">
                 {(gallery.data ?? []).map((p) => (
                   <li key={p.id} className="border-[1.5px] border-charcoal bg-background p-2">
-                    <div className="grid grid-cols-2 gap-1">
-                      <img src={`/gallery/${p.before}`} alt="Before" className="aspect-square w-full object-cover" />
-                      <img src={`/gallery/${p.after}`} alt="After" className="aspect-square w-full object-cover" />
+                    <div className={p.after ? "grid grid-cols-2 gap-1" : ""}>
+                      <img src={`/gallery/${p.before}`} alt={p.after ? "Before" : "Job photo"} className="aspect-square w-full object-cover" />
+                      {p.after && <img src={`/gallery/${p.after}`} alt="After" className="aspect-square w-full object-cover" />}
                     </div>
-                    <p className="mt-2 text-sm font-semibold text-charcoal">{p.caption || "Before & after"}{p.suburb ? ` — ${p.suburb}` : ""}</p>
+                    <p className="mt-2 text-sm font-semibold text-charcoal">{p.caption || (p.after ? "Before & after" : "Finished job")}{p.suburb ? ` — ${p.suburb}` : ""}</p>
                     <button
                       type="button"
                       className="mt-1 text-sm font-bold text-destructive underline"

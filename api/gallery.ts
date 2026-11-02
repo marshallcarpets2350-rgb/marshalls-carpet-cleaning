@@ -14,7 +14,7 @@ export interface GalleryItem {
   caption: string;
   suburb: string;
   before: string; // served filename: <id>-before.jpg
-  after: string;
+  after: string; // "" = single "finished job" photo (no compare slider)
   createdAt: string; // ISO
 }
 
@@ -42,21 +42,21 @@ export async function addGalleryItem(input: {
   caption: string;
   suburb: string;
   beforeDataUrl: string;
-  afterDataUrl: string;
+  afterDataUrl?: string; // omit for a single "finished job" photo
 }): Promise<GalleryItem> {
   decodeDataUrl(input.beforeDataUrl);
-  decodeDataUrl(input.afterDataUrl);
+  if (input.afterDataUrl) decodeDataUrl(input.afterDataUrl);
   const id = `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 8)}`;
   const item: GalleryItem = {
     id,
     caption: input.caption.trim().slice(0, 120),
     suburb: input.suburb.trim().slice(0, 60),
     before: `${id}-before.jpg`,
-    after: `${id}-after.jpg`,
+    after: input.afterDataUrl ? `${id}-after.jpg` : "",
     createdAt: new Date().toISOString(),
   };
   await setSetting(`${IMG_PREFIX}${id}:before`, input.beforeDataUrl.trim());
-  await setSetting(`${IMG_PREFIX}${id}:after`, input.afterDataUrl.trim());
+  if (input.afterDataUrl) await setSetting(`${IMG_PREFIX}${id}:after`, input.afterDataUrl.trim());
   const items = await listGallery();
   items.unshift(item); // newest first
   await setSetting(GALLERY_KEY, JSON.stringify(items));

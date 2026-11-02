@@ -4,6 +4,7 @@ import {
   serial,
   varchar,
   text,
+  mediumtext,
   timestamp,
   int,
   double,
@@ -84,7 +85,8 @@ export const discountCodes = mysqlTable("discount_codes", {
 
 export const settings = mysqlTable("settings", {
   key: varchar("key", { length: 100 }).primaryKey(),
-  value: text("value"),
+  // MEDIUMTEXT — gallery photos live here as data URLs (up to 5 MB a side).
+  value: mediumtext("value"),
 });
 
 export type Subscriber = typeof subscribers.$inferSelect;
