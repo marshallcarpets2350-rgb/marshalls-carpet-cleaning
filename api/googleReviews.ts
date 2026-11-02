@@ -169,10 +169,27 @@ export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
   } else {
     out["__nearby_50km"] = `HTTP ${nearby.status}: ${(await nearby.text().catch(() => "")).slice(0, 200)}`;
   }
+  // Legacy Places index (different, often finds listings the New index misses)
+  const leg = await fetch(
+    `https://maps.googleapis.com/maps/api/place/textsearch/json?query=${encodeURIComponent("Marshall's Carpet cleaning Armidale")}&region=au&key=${apiKey}`,
+    { signal: AbortSignal.timeout(FETCH_TIMEOUT_MS) },
+  );
+  if (leg.ok) {
+    const data = (await leg.json()) as {
+      status?: string;
+      error_message?: string;
+      results?: { place_id: string; name: string; rating?: number; user_ratings_total?: number }[];
+    };
+    out["__legacy"] = {
+      status: data.status,
+      error: data.error_message,
+      results: (data.results ?? []).map((r) => `${r.name} (${r.rating ?? "?"}★, ${r.user_ratings_total ?? 0} ratings) [${r.place_id}]`),
+    };
+  } else {
+    out["__legacy"] = `HTTP ${leg.status}`;
+  }
   return out;
 }
-
-/** Fresh copy from Google. Throws on failure — callers fall back to cache. */
 export async function refreshGoogleReviews(): Promise<GoogleReviewsData | null> {
   const s = await getSettings(["google_places_api_key", "google_place_id", "google_review_url"]);
   const apiKey = s.google_places_api_key?.trim();
