@@ -47,32 +47,40 @@ async function loadCache(): Promise<GoogleReviewsData | null> {
 /** Find our own Place ID by name — runs once, then it's stored. */
 async function ensurePlaceId(apiKey: string, saved: string | null): Promise<string | null> {
   if (saved) return saved;
-  const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Goog-Api-Key": apiKey,
-      "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
-    },
-    body: JSON.stringify({
-      textQuery: "Marshall's Carpet Cleaning, Armidale NSW",
-      languageCode: "en",
-      regionCode: "AU",
-    }),
-    signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
-  });
-  if (!resp.ok) {
-    const body = await resp.text().catch(() => "");
-    const reason = body.match(/"message":\s*"([^"]{10,300})"/)?.[1];
-    throw new Error(`Google place search failed (${resp.status})${reason ? ` — ${reason}` : body ? ` ${body.slice(0, 200)}` : ""}`);
+  // The Google listing uses a curly apostrophe and lowercase "cleaning", so
+  // try a few spellings until one lands.
+  const queries = [
+    "Marshall\u2019s Carpet cleaning Armidale",
+    "Marshall's Carpet Cleaning, Armidale NSW",
+    "Marshalls Carpet Cleaning Armidale",
+    "Marshall Carpet Cleaning Armidale NSW",
+  ];
+  for (const textQuery of queries) {
+    const resp = await fetch("https://places.googleapis.com/v1/places:searchText", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "X-Goog-Api-Key": apiKey,
+        "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
+      },
+      body: JSON.stringify({ textQuery, languageCode: "en", regionCode: "AU" }),
+      signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
+    });
+    if (!resp.ok) {
+      const body = await resp.text().catch(() => "");
+      const reason = body.match(/"message":\s*"([^"]{10,300})"/)?.[1];
+      throw new Error(`Google place search failed (${resp.status})${reason ? ` — ${reason}` : body ? ` ${body.slice(0, 200)}` : ""}`);
+    }
+    const data = (await resp.json()) as {
+      places?: { id: string; displayName?: { text?: string } }[];
+    };
+    const place = data.places?.[0];
+    if (place?.id) {
+      await setSetting("google_place_id", place.id);
+      return place.id;
+    }
   }
-  const data = (await resp.json()) as {
-    places?: { id: string; displayName?: { text?: string } }[];
-  };
-  const place = data.places?.[0];
-  if (!place?.id) return null;
-  await setSetting("google_place_id", place.id);
-  return place.id;
+  return null;
 }
 
 /** Fresh copy from Google. Throws on failure — callers fall back to cache. */
