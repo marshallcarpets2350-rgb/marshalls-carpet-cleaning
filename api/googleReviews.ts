@@ -119,6 +119,8 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
 export async function debugGoogleSearch(apiKey: string): Promise<unknown> {
   const out: Record<string, unknown> = {};
   for (const q of [
+    "0423 581 223",
+    "+61423581223",
     "Marshall's Carpet Cleaning",
     "Marshall\u2019s Carpet cleaning",
     "Marshall carpet cleaning",
