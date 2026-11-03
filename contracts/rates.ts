@@ -121,7 +121,7 @@ export interface BfybModel {
   base: number; // per-job service fee
   minimum: number; // minimum callout
   loungePerSeat: number;
-  extras: { prevacPerRoom: number; antimicro: number; stain: number; fanPerDay: number };
+  extras: { prevacPerRoom: number; antimicro: number; stain: number; fanPerDay: number; fleaEol: number };
   roomRates: Record<string, number>;
   soilingMultiplier: Record<Dirtiness, number>;
   // Blended $/m² across their room types — only used for raw-m² quotes.
@@ -141,7 +141,7 @@ export const BFYB_MODEL: BfybModel = {
   base: 33, // per-job service fee
   minimum: 289, // minimum callout
   loungePerSeat: 97,
-  extras: { prevacPerRoom: 17, antimicro: 39, stain: 39, fanPerDay: 41 },
+  extras: { prevacPerRoom: 17, antimicro: 39, stain: 39, fanPerDay: 41, fleaEol: 182 },
   roomRates: {
     bed: 54, // Bedroom — up to 4×4 m
     bedLarge: 78, // Large bedroom — up to 5×5 m
@@ -273,20 +273,21 @@ export const FLOOD_UNDERCUT_PERCENT = 20;
 
 export const FLOOD_RATES = {
   inspection: 145, // floor(182 × 0.8) — thermal imaging, moisture readings, insurer-ready scope
-  extractionOne: 231, // floor(289 × 0.8) — one technician
-  extractionTwo: 327, // floor(409 × 0.8) — two technicians
+  labourPerHour: 80, // standard hours, per technician — 2 techs × 2h = $320 vs their $409 (78%)
+  labourAfterHours: 120, // 7 PM – 7 AM, per technician (1.5× standard loading)
+  fanPerDay: 32, // floor(41 × 0.8) — drying fans, per fan per day
 };
 
-/** Our flood prices: always 20% under BFYB's CURRENT published rates when the
- *  daily watch has a live model, else the verified fallbacks. */
-export function floodPrices(model?: Pick<BfybModel, "flood"> | null): typeof FLOOD_RATES {
-  const f = model?.flood;
-  if (!f) return FLOOD_RATES;
+/** Our flood prices: inspection and fan hire always 20% under BFYB's CURRENT
+ *  published rates when the daily watch has a live model (they publish no
+ *  hourly labour rate, so ours are set flat); else the verified fallbacks. */
+export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) {
   const under = (n: number) => Math.floor(n * (1 - FLOOD_UNDERCUT_PERCENT / 100));
   return {
-    inspection: under(f.inspection),
-    extractionOne: under(f.extractionOne),
-    extractionTwo: under(f.extractionTwo),
+    inspection: model?.flood ? under(model.flood.inspection) : FLOOD_RATES.inspection,
+    labourPerHour: FLOOD_RATES.labourPerHour,
+    labourAfterHours: FLOOD_RATES.labourAfterHours,
+    fanPerDay: model?.extras?.fanPerDay ? under(model.extras.fanPerDay) : FLOOD_RATES.fanPerDay,
   };
 }
 

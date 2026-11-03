@@ -167,6 +167,7 @@ export function buildLiveModel(cfg: any): { model: BfybModel; problems: string[]
       antimicro: extraOf("antimicro"),
       stain: extraOf("stain"),
       fanPerDay: extraOf("fanHire"),
+      fleaEol: extraOf("fleaEol"),
     };
   }
   if (!upholstery) {
@@ -224,6 +225,7 @@ export function validateLiveModel(m: BfybModel): string[] {
   inRange("extras.antimicro", m.extras.antimicro, 0, 300);
   inRange("extras.stain", m.extras.stain, 0, 300);
   inRange("extras.fanHire", m.extras.fanPerDay, 0, 300);
+  inRange("extras.fleaEol", m.extras.fleaEol, 0, 600);
   for (const [town, fee] of Object.entries(m.travelByTown)) {
     inRange(`travel ${town}`, fee, 0, 600);
   }
@@ -356,6 +358,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     expect("Anti-microbial", extraOf("antimicro"), currentModel.extras.antimicro);
     expect("Pre-vacuum per room", extraOf("prevac"), currentModel.extras.prevacPerRoom);
     expect("Fan hire", extraOf("fanHire"), currentModel.extras.fanPerDay);
+    expect("Flea treatment (end of lease)", extraOf("fleaEol"), currentModel.extras.fleaEol);
   } else {
     drifts.push("Carpet service not found in their config at all");
   }
@@ -520,7 +523,9 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         pctOfTheirs: Math.round(((3 * RATES.lounge.perSeat.light) / (3 * upholstery.from)) * 100),
       });
     }
-    // Flood: ours is set 20% under their published rates — verify it held.
+    // Flood: our inspection and fan hire run 20% under their published rates,
+    // and our hourly labour must land under their "starts at" extraction
+    // callouts on a typical 2-hour extraction — verify all of it held.
     if (effectiveModel.flood) {
       const ours = floodPrices(effectiveModel);
       const row = (label: string, our: number, their: number): PriceWatchMargin => ({
@@ -531,8 +536,21 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         pctOfTheirs: Math.round((our / their) * 100),
       });
       margins.push(row("Flood inspection", ours.inspection, effectiveModel.flood.inspection));
-      margins.push(row("Flood extraction (one tech)", ours.extractionOne, effectiveModel.flood.extractionOne));
-      margins.push(row("Flood extraction (two techs)", ours.extractionTwo, effectiveModel.flood.extractionTwo));
+      margins.push(
+        row(
+          "Flood extraction, typical 2h (one tech)",
+          2 * ours.labourPerHour,
+          effectiveModel.flood.extractionOne,
+        ),
+      );
+      margins.push(
+        row(
+          "Flood extraction, typical 2h (two techs)",
+          2 * 2 * ours.labourPerHour,
+          effectiveModel.flood.extractionTwo,
+        ),
+      );
+      margins.push(row("Drying fan per day", ours.fanPerDay, effectiveModel.extras.fanPerDay));
     }
   }
 

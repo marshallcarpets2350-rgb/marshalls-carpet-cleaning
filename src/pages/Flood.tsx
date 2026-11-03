@@ -180,27 +180,27 @@ export default function Flood() {
                 </ul>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
-                <p className="font-bold text-charcoal">Water extraction</p>
+                <p className="font-bold text-charcoal">Extraction &amp; drying labour</p>
                 <p className="mt-2 font-display text-4xl font-black text-forest">
-                  from {money(prices.extractionOne)}
+                  {money(prices.labourPerHour)}<span className="text-xl">/hour</span>
                 </p>
                 <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
-                  <li>• {money(prices.extractionOne)} — one technician</li>
-                  <li>• {money(prices.extractionTwo)} — two technicians</li>
-                  <li>• Truck-mounted extraction, not a shop-vac</li>
+                  <li>• Per technician, standard hours</li>
+                  <li>• After-hours (7 PM – 7 AM): {money(prices.labourAfterHours)}/hour</li>
+                  <li>• Most extractions run 1–3 hours</li>
+                  <li>• High-powered portable extraction — units &amp; tight access are fine</li>
                 </ul>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
-                <p className="font-bold text-charcoal">Structural drying</p>
-                <p className="mt-2 font-display text-4xl font-black text-forest">From the scope</p>
-                <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
-                  <li>• Drying equipment, monitored until readings clear</li>
-                  <li>• Quoted from the inspection, in writing</li>
-                  <li>• We beat any written quote for the same job</li>
-                </ul>
-                <p className="mt-3 text-xs text-charcoal/50">
-                  Nobody publishes drying rates — it depends on the readings.
+                <p className="font-bold text-charcoal">Drying equipment</p>
+                <p className="mt-2 font-display text-4xl font-black text-forest">
+                  {money(prices.fanPerDay)}<span className="text-xl">/day per fan</span>
                 </p>
+                <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
+                  <li>• Most jobs need 2–4 fans for 1–3 days</li>
+                  <li>• Quoted from the scope, in writing</li>
+                  <li>• Monitored until moisture readings clear</li>
+                </ul>
               </div>
             </div>
             <p className="mt-4 max-w-2xl text-sm text-charcoal/60">
