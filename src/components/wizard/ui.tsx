@@ -145,8 +145,8 @@ export function PillGroup({
 export function StepHeading({ kicker, title, sub }: { kicker: string; title: string; sub?: string }) {
   return (
     <div>
-      <p className="text-sm font-bold uppercase tracking-widest text-forest">{kicker}</p>
-      <h2 className="mt-1 font-display text-3xl font-black text-charcoal md:text-4xl">
+      <p className="text-base font-bold uppercase tracking-widest text-forest">{kicker}</p>
+      <h2 className="mt-1 font-display text-4xl font-black text-charcoal md:text-5xl">
         {title}
       </h2>
       {sub && <p className="mt-2 max-w-xl leading-relaxed text-charcoal/70">{sub}</p>}

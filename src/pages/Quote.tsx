@@ -610,10 +610,10 @@ export default function Quote() {
             </div>
 
             {/* ============ RIGHT: live summary ============ */}
-            <aside className="lg:sticky lg:top-24 lg:self-start" aria-label="Quote summary">
+            <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto" aria-label="Quote summary">
               <div className="offset-shadow-sm border-[1.5px] border-charcoal bg-background">
                 <div className="border-b-[1.5px] border-charcoal bg-charcoal px-6 py-4">
-                  <p className="text-sm font-bold uppercase tracking-widest text-mint">Your price</p>
+                  <p className="text-center font-display text-2xl font-black uppercase tracking-widest text-mint">Your price</p>
                 </div>
                 <div className="px-6 py-5">
                   {breakdown.isEmpty ? (
@@ -749,8 +749,8 @@ export default function Quote() {
                                 </p>
                               ))}
                             {saves !== null && (
-                              <p className="mt-0.5 font-bold text-[#15803D]">
-                                Marshall's saves you {money(saves)}
+                              <p className="mt-1 font-display text-xl font-black text-[#15803D]">
+                                🎉 Marshall's saves you {money(saves)}
                                 {c.partial ? " or more" : ""}
                               </p>
                             )}
@@ -787,10 +787,10 @@ export default function Quote() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-charcoal bg-background lg:hidden">
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-charcoal/50">
+            <p className="text-sm font-bold uppercase tracking-widest text-charcoal/50">
               Your price
             </p>
-            <p className="font-display text-2xl font-black text-forest" aria-live="polite">
+            <p className="font-display text-3xl font-black text-forest" aria-live="polite">
               {breakdown.isEmpty ? "—" : money(breakdown.total)}
             </p>
           </div>
