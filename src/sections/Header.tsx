@@ -8,12 +8,13 @@ import iconRug from "@/assets/icons/rug-pickup.png";
 import iconPrices from "@/assets/icons/prices.png";
 import iconAreas from "@/assets/icons/areas.png";
 
-type NavItem = { icon?: string; emoji?: string; label: string; sub?: string; to: string };
+type NavItem = { icon?: string; emoji?: string; label: string; sub?: string; to: string; urgent?: boolean };
 
 const MAIN_NAV: NavItem[] = [
   { icon: iconCarpet, label: "Carpet cleaning", sub: "quote", to: "/quote" },
   { icon: iconRug, label: "Rug pick-up", sub: "& clean", to: "/rugs" },
   { icon: iconLounge, label: "Lounge & mattress", sub: "& upholstery", to: "/lounge" },
+  { emoji: "🚨", label: "Emergency flood", sub: "24/7 help", to: "/flood", urgent: true },
 ];
 
 const MORE_NAV: NavItem[] = [
@@ -56,14 +57,16 @@ export default function Header() {
             <Link
               key={item.to + item.label}
               to={item.to}
-              className="whitespace-nowrap text-center text-lg font-bold leading-tight text-charcoal no-underline hover:text-forest"
+              className={`whitespace-nowrap text-center text-lg font-bold leading-tight no-underline hover:text-forest ${
+                item.urgent ? "text-[#B91C1C]" : "text-charcoal"
+              }`}
             >
               <span className="mb-1 block">
                 <NavIcon item={item} size="h-9 w-9" />
               </span>
               {item.label}
               {item.sub && (
-                <span className="block text-sm font-bold text-charcoal">{item.sub}</span>
+                <span className={`block text-sm font-bold ${item.urgent ? "text-[#B91C1C]" : "text-charcoal"}`}>{item.sub}</span>
               )}
             </Link>
           ))}
@@ -149,12 +152,14 @@ export default function Header() {
               <li key={item.to + item.label}>
                 <Link
                   to={item.to}
-                  className="flex items-center gap-3 py-1 text-lg font-semibold text-charcoal no-underline"
+                  className={`flex items-center gap-3 py-1 text-lg font-semibold no-underline ${
+                    item.urgent ? "text-[#B91C1C]" : "text-charcoal"
+                  }`}
                   onClick={() => setOpen(false)}
                 >
                   <NavIcon item={item} size="h-8 w-8" />
                   {item.label}
-                  {item.sub && <span className="text-charcoal"> {item.sub}</span>}
+                  {item.sub && <span className={item.urgent ? "text-[#B91C1C]" : "text-charcoal"}> {item.sub}</span>}
                 </Link>
               </li>
             ))}
