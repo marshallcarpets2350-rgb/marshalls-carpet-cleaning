@@ -1185,7 +1185,10 @@ export function estimateJobMinutes(q: QuoteInput): number {
   }
   const rugs = rugCount(q.rugs);
   if (rugs > 0) m += onsite ? TIME_MODEL.rugLoad : TIME_MODEL.rugPickupStop;
-  const rounded = Math.max(30, Math.ceil(m / 15) * 15);
+  // Owner calibration 3 Nov 2026: real jobs run ~15% under the model, so every
+  // estimate is scaled down before rounding (minimum 30 min stays).
+  const scaled = m * 0.85;
+  const rounded = Math.max(30, Math.ceil(scaled / 15) * 15);
   // Never longer than one working day — jobs are done in a single day, so a
   // monster quote simply takes the whole day instead of spilling into the next.
   return Math.min(rounded, SLOT_MINUTES * TIME_SLOTS.length);
