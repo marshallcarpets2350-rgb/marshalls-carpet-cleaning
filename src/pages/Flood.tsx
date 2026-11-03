@@ -49,7 +49,6 @@ const YES_NO = [
 
 export default function Flood() {
   const bfybQ = trpc.public.bfybChecked.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
-  const theirFlood = (bfybQ.data?.model ?? BFYB_MODEL).flood ?? BFYB_MODEL.flood!;
   const prices = floodPrices(bfybQ.data?.model ?? BFYB_MODEL);
 
   const [name, setName] = useState("");
@@ -166,9 +165,9 @@ export default function Flood() {
               No panic pricing.
             </h2>
             <p className="mt-3 max-w-2xl text-charcoal/75">
-              Most flood work in this town is quoted from a clipboard after the
-              fact. Ours is published, and set 20% under the other published
-              flood rates around — re-checked daily.
+              Most flood work is quoted from a clipboard after the fact. Ours
+              is published — the number you see here is the number on the
+              invoice.
             </p>
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               <div className="border-[1.5px] border-charcoal bg-background p-6">
@@ -179,9 +178,6 @@ export default function Flood() {
                   <li>• Scope of works within 24 hours</li>
                   <li>• Written for your insurer</li>
                 </ul>
-                <p className="mt-3 text-xs text-charcoal/50">
-                  Their published rate: {money(theirFlood.inspection)}
-                </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Water extraction</p>
@@ -193,9 +189,6 @@ export default function Flood() {
                   <li>• {money(prices.extractionTwo)} — two technicians</li>
                   <li>• Truck-mounted extraction, not a shop-vac</li>
                 </ul>
-                <p className="mt-3 text-xs text-charcoal/50">
-                  Their published rates: {money(theirFlood.extractionOne)} / {money(theirFlood.extractionTwo)}
-                </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Structural drying</p>
