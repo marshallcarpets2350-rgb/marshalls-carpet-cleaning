@@ -1,4 +1,5 @@
-import { Routes, Route, Navigate, useSearchParams } from 'react-router'
+import { useEffect } from 'react'
+import { Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router'
 import Home from './pages/Home'
 import Quote from './pages/Quote'
 import Rugs from './pages/Rugs'
@@ -23,8 +24,19 @@ function FurnishingsRedirect() {
   return <Navigate to={svc ? `/lounge?service=${svc}` : '/lounge'} replace />
 }
 
+// Every page change starts at the top — no landing halfway down the quote.
+function ScrollToTop() {
+  const { pathname } = useLocation()
+  useEffect(() => {
+    window.scrollTo(0, 0)
+  }, [pathname])
+  return null
+}
+
 export default function App() {
   return (
+    <>
+    <ScrollToTop />
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/quote" element={<Quote />} />
@@ -42,5 +54,6 @@ export default function App() {
       <Route path="/terms" element={<Terms />} />
       <Route path="*" element={<Home />} />
     </Routes>
+    </>
   )
 }
