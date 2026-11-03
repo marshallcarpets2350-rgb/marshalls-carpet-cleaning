@@ -777,6 +777,22 @@ export default function Admin() {
                               <span>{money(l.amount)}</span>
                             </li>
                           ))}
+                          {(
+                            [
+                              ["Bulk rug discount", quote.breakdown.rugDiscount],
+                              ["2-cleans-a-year plan", quote.breakdown.maintenanceDiscount],
+                              ["Discount code", quote.breakdown.codeDiscount],
+                              ["Volume discount", quote.breakdown.volumeDiscount],
+                              ["Price-beat discount", quote.breakdown.undercutDiscount],
+                            ] as [string, number | undefined][]
+                          )
+                            .filter(([, v]) => (v ?? 0) > 0)
+                            .map(([label, v]) => (
+                              <li key={label} className="flex justify-between text-[#15803D]">
+                                <span>{label}</span>
+                                <span>−{money(v!)}</span>
+                              </li>
+                            ))}
                           <li className="flex justify-between border-t pt-1">
                             <span>Travel</span>
                             <span>{money(quote.breakdown.travelFee)}</span>
@@ -1940,6 +1956,22 @@ export default function Admin() {
                               <span>{money(l.amount)}</span>
                             </li>
                           ))}
+                          {(
+                            [
+                              ["Bulk rug discount", quote.breakdown.rugDiscount],
+                              ["2-cleans-a-year plan", quote.breakdown.maintenanceDiscount],
+                              ["Discount code", quote.breakdown.codeDiscount],
+                              ["Volume discount", quote.breakdown.volumeDiscount],
+                              ["Price-beat discount", quote.breakdown.undercutDiscount],
+                            ] as [string, number | undefined][]
+                          )
+                            .filter(([, v]) => (v ?? 0) > 0)
+                            .map(([label, v]) => (
+                              <li key={label} className="flex justify-between text-[#15803D]">
+                                <span>{label}</span>
+                                <span>−{money(v!)}</span>
+                              </li>
+                            ))}
                           <li className="flex justify-between border-t pt-1">
                             <span>Travel</span>
                             <span>{money(quote.breakdown.travelFee)}</span>

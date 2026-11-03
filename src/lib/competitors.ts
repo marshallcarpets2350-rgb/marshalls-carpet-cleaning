@@ -16,7 +16,7 @@ export interface CompetitorLine {
 }
 
 export interface CompetitorEstimate {
-  key: "bfyb" | "electrodry";
+  key: "bfyb";
   name: string;
   lines: CompetitorLine[];
   /** Selected items the competitor publishes no rate for. */
@@ -85,19 +85,6 @@ function bfybView(model: BfybModel) {
     travelByTown: model.travelByTown,
   };
 }
-
-/**
- * Electrodry (published specials on their website; franchise pricing varies by
- * area): 2 rooms + hallway $219, 3 rooms + 4th free $259 (rooms max 13m²),
- * 3 seats + 4th free $259, queen mattress $149. Minimum service charge applies.
- */
-const ELECTRODRY = {
-  carpetSmall: 219, // up to 2 × 13m² rooms (+ hallway)
-  carpetFourRoom: 259, // up to 4 × 13m² rooms
-  roomCapM2: 13,
-  loungeSpecial: 259, // 3 seats, 4th free
-  queenMattress: 149,
-};
 
 function seatCount(input: QuoteInput): number {
   return input.lounges.reduce((s, l) => s + l.seats + l.reclinerSeats, 0);
@@ -225,82 +212,14 @@ function estimateBFYB(input: QuoteInput, ctx?: CompareContext, model: BfybModel 
   };
 }
 
-function estimateElectrodry(input: QuoteInput): CompetitorEstimate {
-  const lines: CompetitorLine[] = [];
-  const missing: string[] = [];
-
-  if (input.carpetAreaM2 > 0) {
-    const twoRoomCap = 2 * ELECTRODRY.roomCapM2;
-    const fourRoomCap = 4 * ELECTRODRY.roomCapM2;
-    if (input.carpetAreaM2 <= twoRoomCap) {
-      lines.push({ label: `Carpet, 2-room special`, amount: ELECTRODRY.carpetSmall });
-    } else if (input.carpetAreaM2 <= fourRoomCap) {
-      lines.push({ label: `Carpet, 4-room special`, amount: ELECTRODRY.carpetFourRoom });
-    } else {
-      missing.push("Carpet over 4 rooms — beyond their published specials");
-    }
-  }
-
-  const seats = seatCount(input);
-  if (seats >= 3 && seats <= 4) {
-    lines.push({ label: `${seats} lounge seats, special`, amount: ELECTRODRY.loungeSpecial });
-  } else if (seats > 0) {
-    missing.push(`${seats} lounge seats — outside their published 3–4 seat special`);
-  }
-
-  const queens = input.mattresses
-    .filter((m) => m.size === "queen")
-    .reduce((s, m) => s + m.qty, 0);
-  const otherSizes = input.mattresses
-    .filter((m) => m.size !== "queen")
-    .reduce((s, m) => s + m.qty, 0);
-  if (queens > 0) {
-    lines.push({
-      label: `${queens} queen mattress${queens > 1 ? "es" : ""} × ${money(ELECTRODRY.queenMattress)}`,
-      amount: queens * ELECTRODRY.queenMattress,
-    });
-  }
-  if (otherSizes > 0) missing.push("Non-queen mattresses — not published");
-  if (input.stainPackage || input.stainTypes.length > 0 || input.dirtGum) missing.push("Stain packages — quoted by them directly");
-
-  // Like-for-like: only what their lines price.
-  let oursComparable: number | null = 0;
-  if (input.carpetAreaM2 > 0) {
-    const fourRoomCap = 4 * ELECTRODRY.roomCapM2;
-    oursComparable += input.carpetAreaM2 <= fourRoomCap ? ourCarpet(input) : 0;
-  }
-  const seatN = seatCount(input);
-  if (seatN >= 3 && seatN <= 4) oursComparable += ourSeats(input);
-  if (queens > 0) {
-    oursComparable += Math.round(
-      queens * RATES.mattress.base.queen *
-        RATES.mattress.dirtinessMultiplier[
-          input.mattresses.find((m) => m.size === "queen")?.dirtiness ?? "light"
-        ],
-    );
-  }
-  if (lines.length === 0) oursComparable = null;
-
-  return {
-    key: "electrodry",
-    name: "Electrodry",
-    lines,
-    missing,
-    total: lines.length > 0 ? lines.reduce((s, l) => s + l.amount, 0) : null,
-    partial: missing.length > 0,
-    travelAmount: 0,
-    oursComparable,
-  };
-}
-
 /**
- * Indicative "same job" estimates from each competitor's published rates.
- * Returns both companies; the caller decides how to render partials.
+ * Indicative "same job" estimate from the competitor's live rate card.
+ * (Electrodry was dropped from the panel — owner call, Nov 2026.)
  */
 export function competitorEstimates(
   input: QuoteInput,
   ctx?: CompareContext,
   model: BfybModel = BFYB_MODEL,
 ): CompetitorEstimate[] {
-  return [estimateBFYB(input, ctx, model), estimateElectrodry(input)];
+  return [estimateBFYB(input, ctx, model)];
 }

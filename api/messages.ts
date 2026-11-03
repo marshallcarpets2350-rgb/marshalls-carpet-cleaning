@@ -183,11 +183,27 @@ export function ownerNotification(lead: LeadRow): { subject: string; text: strin
           : `${longDateLabel(b.preferredDate)} — arrival TBC`
       : "Time to be confirmed"
     : "No date booked (quote only)";
-  let lines: string[] = [];
+  let lines: { label: string; amount: number }[] = [];
   let travel: number | null = null;
   try {
-    const bd = (JSON.parse(lead.quoteJson) as { breakdown?: { lines?: { label: string; amount: number }[]; travelFee?: number } }).breakdown;
-    lines = bd?.lines ?? [];
+    const bd = (JSON.parse(lead.quoteJson) as {
+      breakdown?: {
+        lines?: { label: string; amount: number }[];
+        travelFee?: number;
+        rugDiscount?: number;
+        maintenanceDiscount?: number;
+        codeDiscount?: number;
+        volumeDiscount?: number;
+        undercutDiscount?: number;
+      };
+    }).breakdown;
+    lines = [...(bd?.lines ?? [])];
+    // Discount rows, so the listed lines always add up to the TOTAL below.
+    if (bd?.rugDiscount) lines.push({ label: "Bulk rug discount", amount: -bd.rugDiscount });
+    if (bd?.maintenanceDiscount) lines.push({ label: "2-cleans-a-year plan", amount: -bd.maintenanceDiscount });
+    if (bd?.codeDiscount) lines.push({ label: "Discount code", amount: -bd.codeDiscount });
+    if (bd?.volumeDiscount) lines.push({ label: "Volume discount ($10 off every $150)", amount: -bd.volumeDiscount });
+    if (bd?.undercutDiscount) lines.push({ label: "Price-beat discount", amount: -bd.undercutDiscount });
     travel = bd?.travelFee ?? null;
   } catch {
     // no breakdown — details below still stand

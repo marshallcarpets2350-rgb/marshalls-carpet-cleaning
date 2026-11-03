@@ -38,6 +38,11 @@ interface Breakdown {
   lines?: { label: string; amount: number }[];
   travelFee?: number;
   total?: number;
+  rugDiscount?: number;
+  maintenanceDiscount?: number;
+  codeDiscount?: number;
+  volumeDiscount?: number;
+  undercutDiscount?: number;
 }
 
 function money(n: number): string {
@@ -75,8 +80,16 @@ export async function receiptPdfBuffer(lead: ReceiptLead): Promise<Buffer> {
   const lines = [...(breakdown.lines ?? [])];
   const travelFee = breakdown.travelFee ?? 0;
   const where = [lead.address, lead.suburb].filter(Boolean).join(", ");
-  // Make the receipt add up: if the minimum charge lifted the total past
-  // the listed lines, show the top-up as its own line.
+  // Every discount shows as its own line, so the receipt always adds up
+  // exactly to the total paid. (Discounts live on the breakdown, not in
+  // `lines`, apart from the cross-sell line which is already there.)
+  if (breakdown.rugDiscount) lines.push({ label: "Bulk rug discount", amount: -breakdown.rugDiscount });
+  if (breakdown.maintenanceDiscount) lines.push({ label: "2-cleans-a-year plan discount", amount: -breakdown.maintenanceDiscount });
+  if (breakdown.codeDiscount) lines.push({ label: "Discount code", amount: -breakdown.codeDiscount });
+  if (breakdown.volumeDiscount) lines.push({ label: "Volume discount ($10 off every $150)", amount: -breakdown.volumeDiscount });
+  if (breakdown.undercutDiscount) lines.push({ label: "Price-beat discount", amount: -breakdown.undercutDiscount });
+  // If the minimum charge lifted the total past the listed lines, show the
+  // top-up as its own line.
   const listed = lines.reduce((s, l) => s + l.amount, 0) + travelFee;
   const gap = Math.round((lead.total - listed) * 100) / 100;
   if (gap > 0.009) lines.push({ label: "Minimum charge adjustment", amount: gap });
