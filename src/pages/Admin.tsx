@@ -1,6 +1,7 @@
 import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
+import FloodReports from "@/pages/admin/FloodReports";
 import {
   BUSINESS,
   money,
@@ -71,7 +72,7 @@ function DotLegend() {
 
 const TOKEN_KEY = "mcc_admin_token";
 
-type Tab = "overview" | "runsheet" | "leads" | "joblog" | "clients" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
+type Tab = "overview" | "runsheet" | "leads" | "joblog" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -79,6 +80,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "leads", label: "Jobs" },
   { key: "joblog", label: "Job log" },
   { key: "clients", label: "Clients" },
+  { key: "flood", label: "Flood reports" },
   { key: "availability", label: "Availability" },
   { key: "subscribers", label: "Subscribers" },
   { key: "newsletter", label: "Newsletter" },
@@ -250,6 +252,7 @@ export default function Admin() {
         {tab === "leads" && <Leads />}
         {tab === "joblog" && <JobLog />}
         {tab === "clients" && <Clients />}
+        {tab === "flood" && <FloodReports />}
         {tab === "availability" && <Availability />}
         {tab === "subscribers" && <Subscribers />}
         {tab === "newsletter" && <NewsletterTab />}

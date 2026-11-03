@@ -429,6 +429,36 @@ export function nudgeSms(lead: LeadRow): string {
 // Payment receipt — goes out automatically when a job is marked done.
 // ---------------------------------------------------------------------------
 
+export function floodReportEmail(
+  lead: LeadRow,
+  total: number,
+  attendedAt: string,
+): { subject: string; text: string } {
+  const ref = bookingReference(lead);
+  const jobDate = new Date(`${attendedAt}T12:00:00`).toLocaleDateString("en-AU", {
+    day: "numeric",
+    month: "long",
+    year: "numeric",
+  });
+  return {
+    subject: `Your flood & water damage report — ${BUSINESS.name} (${ref})`,
+    text: `Hi ${firstName(lead.name)},
+
+Your flood & water damage report is attached as a PDF — it covers what we found, the work we did, the drying status and the itemised charges. It's written for your insurer: forward it straight to them with your claim.
+
+REPORT ${ref}
+• Date attended: ${jobDate}
+• Total: ${money(total)}
+
+No GST has been charged — not registered for GST.
+
+If your assessor wants anything clarified, send them our way — ${BUSINESS.phone} or reply to this email.
+
+— ${BUSINESS.name}
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
 export function receiptEmail(lead: LeadRow): { subject: string; text: string } {
   const ref = bookingReference(lead);
   const b = parseBooking(lead);

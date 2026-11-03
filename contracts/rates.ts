@@ -291,6 +291,55 @@ export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) 
   };
 }
 
+// ---------------------------------------------------------------------------
+// Flood job report — what Ben logs after attending, and the priced lines it
+// produces. The SAME function backs the admin preview, the stored quote and
+// the insurer PDF, so every surface always agrees.
+export interface FloodReportInput {
+  technicians: number; // 1–4
+  standardHours: number; // hours on site, 7 AM – 7 PM
+  afterHoursHours: number; // hours on site, 7 PM – 7 AM
+  fans: number; // drying fans left on site
+  fanDays: number; // days the fans stayed
+  inspectionCharged: boolean; // the flat emergency inspection & assessment
+}
+
+export type FloodPrices = ReturnType<typeof floodPrices>;
+
+export function floodReportCharges(
+  input: FloodReportInput,
+  prices: FloodPrices,
+): { lines: { label: string; amount: number }[]; total: number } {
+  const lines: { label: string; amount: number }[] = [];
+  const techs = Math.max(1, Math.round(input.technicians));
+  const round = (n: number) => Math.round(n * 100) / 100;
+  if (input.inspectionCharged) {
+    lines.push({
+      label: "Emergency inspection & assessment — thermal imaging, moisture readings, insurer-ready scope",
+      amount: prices.inspection,
+    });
+  }
+  if (input.standardHours > 0) {
+    lines.push({
+      label: `Extraction & drying labour — ${techs} technician${techs > 1 ? "s" : ""} × ${input.standardHours}h (standard hours)`,
+      amount: round(techs * input.standardHours * prices.labourPerHour),
+    });
+  }
+  if (input.afterHoursHours > 0) {
+    lines.push({
+      label: `After-hours labour — ${techs} technician${techs > 1 ? "s" : ""} × ${input.afterHoursHours}h (7 PM – 7 AM)`,
+      amount: round(techs * input.afterHoursHours * prices.labourAfterHours),
+    });
+  }
+  if (input.fans > 0 && input.fanDays > 0) {
+    lines.push({
+      label: `Drying fans — ${input.fans} fan${input.fans > 1 ? "s" : ""} × ${input.fanDays} day${input.fanDays > 1 ? "s" : ""}`,
+      amount: round(input.fans * input.fanDays * prices.fanPerDay),
+    });
+  }
+  return { lines, total: round(lines.reduce((s, l) => s + l.amount, 0)) };
+}
+
 export interface LoungeItem {
   seats: number; // 1–10
   dirtiness: Dirtiness;

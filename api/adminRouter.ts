@@ -5,7 +5,7 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceKinds, type ServiceKind } from "@contracts/rates";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceKinds, floodPrices, floodReportCharges, type ServiceKind } from "@contracts/rates";
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
@@ -22,10 +22,14 @@ import {
   confirmationSms,
   followUpEmail,
   followUpSms,
+  floodReportEmail,
   deliver,
 } from "./messages";
 import { TRPCError } from "@trpc/server";
-import { getPriceWatchReport, runPriceWatch } from "./priceWatch";
+import { getPriceWatchReport, runPriceWatch, loadBfybModel } from "./priceWatch";
+import { floodReportPdfBuffer, type FloodReportData } from "./floodReportPdf";
+import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
+import { brandLogo } from "./brand";
 
 const SMTP_KEYS = ["smtp_host", "smtp_port", "smtp_user", "smtp_pass", "smtp_from"];
 
@@ -164,6 +168,118 @@ export const adminRouter = createRouter({
         .set({ paidOfflineAt: input.paid ? new Date() : null })
         .where(eq(leads.id, input.id));
       return { ok: true as const };
+    }),
+
+  // ── Flood job reports ─────────────────────────────────────────────
+  // Ben logs what happened on a flood callout; the report prices itself off
+  // the published flood rates (live BFYB model when the watch has one) and
+  // produces the insurer-ready PDF.
+  floodReportData: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      const db = getDb();
+      const [lead] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      let parsed: { flood?: unknown; floodReport?: FloodReportData } = {};
+      try { parsed = JSON.parse(lead.quoteJson); } catch { /* fall through */ }
+      const prices = floodPrices(await loadBfybModel());
+      return {
+        lead: {
+          id: lead.id,
+          name: lead.name,
+          email: lead.email,
+          phone: lead.phone,
+          address: lead.address,
+          suburb: lead.suburb,
+          status: lead.status,
+          total: lead.total,
+          createdAt: lead.createdAt,
+        },
+        flood: parsed.flood ?? null,
+        report: parsed.floodReport ?? null,
+        prices,
+      };
+    }),
+
+  saveFloodReport: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        attendedAt: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        technicians: z.number().int().min(1).max(6),
+        standardHours: z.number().min(0).max(200),
+        afterHoursHours: z.number().min(0).max(200),
+        fans: z.number().int().min(0).max(40),
+        fanDays: z.number().int().min(0).max(60),
+        inspectionCharged: z.boolean(),
+        summary: z.string().trim().max(4000),
+        workDone: z.string().trim().max(4000),
+        readings: z.string().trim().max(4000),
+        insurerNotes: z.string().trim().max(4000),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [lead] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      const prices = floodPrices(await loadBfybModel());
+      const { lines, total } = floodReportCharges(input, prices);
+      if (total <= 0) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Nothing to charge — add hours, fans or the inspection" });
+      }
+      let parsed: Record<string, unknown> = {};
+      try { parsed = JSON.parse(lead.quoteJson); } catch { /* fall through */ }
+      const prev = parsed.floodReport as FloodReportData | undefined;
+      const report: FloodReportData = {
+        attendedAt: input.attendedAt,
+        technicians: input.technicians,
+        standardHours: input.standardHours,
+        afterHoursHours: input.afterHoursHours,
+        fans: input.fans,
+        fanDays: input.fanDays,
+        inspectionCharged: input.inspectionCharged,
+        summary: input.summary,
+        workDone: input.workDone,
+        readings: input.readings,
+        insurerNotes: input.insurerNotes,
+        rates: prices,
+        savedAt: new Date().toISOString(),
+        emailedAt: prev?.emailedAt,
+      };
+      parsed.floodReport = report;
+      parsed.breakdown = { lines, travelFee: 0, total };
+      await db.update(leads).set({ quoteJson: JSON.stringify(parsed), total }).where(eq(leads.id, input.id));
+      return { ok: true as const, total };
+    }),
+
+  emailFloodReport: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [lead] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      let parsed: Record<string, unknown> = {};
+      try { parsed = JSON.parse(lead.quoteJson); } catch { /* fall through */ }
+      const report = parsed.floodReport as FloodReportData | undefined;
+      if (!report) throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Save the report first" });
+      if (!lead.email) throw new TRPCError({ code: "BAD_REQUEST", message: "No customer email on this job" });
+      const smtp = await loadSmtpConfig();
+      if (!isSmtpConfigured(smtp)) {
+        throw new TRPCError({ code: "PRECONDITION_FAILED", message: "Gmail settings aren't saved yet" });
+      }
+      const breakdown = parsed.breakdown as { lines?: { label: string; amount: number }[]; total?: number } | undefined;
+      const lines = breakdown?.lines ?? [];
+      const total = breakdown?.total ?? lead.total;
+      const pdf = await floodReportPdfBuffer(lead, (parsed.flood as never) ?? null, report, lines, total);
+      const em = floodReportEmail(lead as never, total, report.attendedAt);
+      const ref = bookingReference(lead as never);
+      await sendMail(smtp, lead.email, em.subject, em.text, [
+        { filename: `Flood-Report-${ref}.pdf`, content: pdf, contentType: "application/pdf" },
+        { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
+      ], brandedEmailHtml(em.text));
+      report.emailedAt = new Date().toISOString();
+      await db.update(leads).set({ quoteJson: JSON.stringify(parsed) }).where(eq(leads.id, input.id));
+      return { ok: true as const, emailedTo: lead.email };
     }),
 
   listSubscribers: adminProcedure.query(async () => {
