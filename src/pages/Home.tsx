@@ -1,5 +1,6 @@
 import { Link } from "react-router";
 import Header from "@/sections/Header";
+import FlowArt from "@/components/FlowArt";
 import Reviews from "@/sections/Reviews";
 import { BUSINESS } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
@@ -32,6 +33,7 @@ export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col">
       <Header />
+      <FlowArt />
 
       <main className="flex flex-1 flex-col justify-center bg-creamlight py-5 md:py-6">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">

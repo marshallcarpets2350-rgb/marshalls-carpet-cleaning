@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router";
 import Header from "@/sections/Header";
+import FlowArt from "@/components/FlowArt";
 import Footer from "@/sections/Footer";
 import type { TravelResult } from "@/components/AddressField";
 import NewsletterForm from "@/components/NewsletterForm";
@@ -246,13 +247,17 @@ export default function Quote() {
     return t;
   }, [carpetAreaM2, quoteInput, rates, bfybModel]);
   const jobMinutes = useMemo(() => estimateJobMinutes(quoteInput), [quoteInput]);
+  // Electrodry only joins the panel when the daily watch has verified their
+  // specials within the freshness window — otherwise we're not certain and
+  // they stay hidden.
+  const electroModel = bfybQ.data?.electro?.model ?? null;
   const competitors = useMemo(
     () =>
       competitorEstimates(quoteInput, {
         roomCounts: mode === "rooms" ? roomCounts : undefined,
         suburb: travel?.suburb,
-      }, bfybModel),
-    [quoteInput, mode, roomCounts, travel, bfybModel],
+      }, bfybModel, electroModel),
+    [quoteInput, mode, roomCounts, travel, bfybModel, electroModel],
   );
   // The savings figure must match the two numbers on the page: their
   // displayed total (ex-travel) vs our displayed final total. Anything
@@ -347,6 +352,7 @@ export default function Quote() {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -384,6 +390,7 @@ export default function Quote() {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -422,6 +429,7 @@ export default function Quote() {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -469,6 +477,7 @@ export default function Quote() {
   return (
     <div className="min-h-dvh">
       <Header />
+      <FlowArt />
       <main className="bg-creamlight py-12 pb-28 md:py-16 lg:pb-16">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
           <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">

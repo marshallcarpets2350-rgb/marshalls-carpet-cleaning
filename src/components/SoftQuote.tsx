@@ -8,6 +8,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import Header from "@/sections/Header";
+import FlowArt from "@/components/FlowArt";
 import Footer from "@/sections/Footer";
 import type { TravelResult } from "@/components/AddressField";
 import NewsletterForm from "@/components/NewsletterForm";
@@ -217,9 +218,10 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
 
   const breakdown = useMemo(() => computeQuote(quoteInput, rates, bfybModel), [quoteInput, rates, bfybModel]);
   const jobMinutes = useMemo(() => estimateJobMinutes(quoteInput), [quoteInput]);
+  const electroModel = bfybQ.data?.electro?.model ?? null;
   const competitors = useMemo(
-    () => competitorEstimates(quoteInput, { suburb: travel?.suburb }, bfybModel),
-    [quoteInput, travel, bfybModel],
+    () => competitorEstimates(quoteInput, { suburb: travel?.suburb }, bfybModel, electroModel),
+    [quoteInput, travel, bfybModel, electroModel],
   );
 
   // Plain-English list of the items — shown on the review page.
@@ -346,6 +348,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -383,6 +386,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -421,6 +425,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     return (
       <div className="min-h-dvh">
         <Header />
+        <FlowArt />
         <main className="bg-creamlight py-20">
           <div className="mx-auto max-w-2xl px-4 md:px-6">
             <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
@@ -468,6 +473,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   return (
     <div className="min-h-dvh">
       <Header />
+      <FlowArt />
       <main className="bg-creamlight py-12 pb-28 md:py-16 lg:pb-16">
         <div className="mx-auto max-w-6xl px-4 md:px-6">
           <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">

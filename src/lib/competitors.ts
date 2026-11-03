@@ -1,14 +1,22 @@
 // Competitor comparison for the live quote summary.
-// Every figure here is taken from the competitor's own website or their own
-// online quote calculator, checked on COMPARE_CHECKED. BFYB's per-room rates
-// were read off their calculator by running jobs through it — their site
-// publishes no rate card. If a competitor has no rate for a selected item, it
-// lands in `missing` and is shown as "not published". Update the figures and
-// the date together.
+// Every figure is taken from the competitor's own website or their own online
+// quote calculator, and re-verified by the daily price watch (api/priceWatch.ts).
+// BFYB's per-room rates come off their live booking config; Electrodry publish
+// specials only (franchise pricing varies by area), so Electrodry appears ONLY
+// when the daily check verified their numbers within the last 48 hours. If a
+// competitor has no rate for a selected item, it lands in `missing` and is
+// shown as not included in their price.
 
-import { BFYB_MODEL, RATES, carpetStandardForArea, money, stainTreatmentFee, type BfybModel, type QuoteInput } from "@contracts/rates";
-
-export const COMPARE_CHECKED = "19 October 2026";
+import {
+  BFYB_MODEL,
+  RATES,
+  carpetStandardForArea,
+  money,
+  stainTreatmentFee,
+  type BfybModel,
+  type ElectroModel,
+  type QuoteInput,
+} from "@contracts/rates";
 
 export interface CompetitorLine {
   label: string;
@@ -16,7 +24,7 @@ export interface CompetitorLine {
 }
 
 export interface CompetitorEstimate {
-  key: "bfyb";
+  key: "bfyb" | "electrodry";
   name: string;
   lines: CompetitorLine[];
   /** Selected items the competitor publishes no rate for. */
@@ -212,14 +220,90 @@ function estimateBFYB(input: QuoteInput, ctx?: CompareContext, model: BfybModel 
   };
 }
 
+/** Electrodry's published specials, mapped onto this quote. Only called when
+ *  the daily watch has freshly verified the model — franchise pricing varies
+ *  by area, so stale numbers are never shown. */
+function estimateElectrodry(input: QuoteInput, model: ElectroModel): CompetitorEstimate {
+  const lines: CompetitorLine[] = [];
+  const missing: string[] = [];
+
+  if (input.carpetAreaM2 > 0) {
+    const twoRoomCap = 2 * model.roomCapM2;
+    const fourRoomCap = 4 * model.roomCapM2;
+    if (input.carpetAreaM2 <= twoRoomCap) {
+      lines.push({ label: "Carpet, 2-room special", amount: model.carpetTwoRoom });
+    } else if (input.carpetAreaM2 <= fourRoomCap) {
+      lines.push({ label: "Carpet, 3-room special (4th room free)", amount: model.carpetThreeRoom });
+    } else {
+      missing.push("Carpet over 4 rooms — beyond their published specials");
+    }
+  }
+
+  const seats = seatCount(input);
+  if (seats >= 3 && seats <= 4) {
+    lines.push({ label: `${seats} lounge seats, special`, amount: model.loungeSpecial });
+  } else if (seats > 0) {
+    missing.push(`${seats} lounge seats — outside their published 3–4 seat special`);
+  }
+
+  const queens = input.mattresses
+    .filter((m) => m.size === "queen")
+    .reduce((s, m) => s + m.qty, 0);
+  const otherSizes = input.mattresses
+    .filter((m) => m.size !== "queen")
+    .reduce((s, m) => s + m.qty, 0);
+  if (queens > 0) {
+    lines.push({
+      label: `${queens} queen mattress${queens > 1 ? "es" : ""} × ${money(model.queenMattress)}`,
+      amount: queens * model.queenMattress,
+    });
+  }
+  if (otherSizes > 0) missing.push("Non-queen mattresses — not published");
+  if (input.stainPackage || input.stainTypes.length > 0 || input.dirtGum)
+    missing.push("Stain packages — quoted by them directly");
+  if (input.rugs.some((r) => r.qty > 0)) missing.push("Rugs — not published");
+
+  // Like-for-like: our price for exactly what their specials cover.
+  let oursComparable: number | null = 0;
+  if (input.carpetAreaM2 > 0) {
+    const fourRoomCap = 4 * model.roomCapM2;
+    oursComparable += input.carpetAreaM2 <= fourRoomCap ? ourCarpet(input) : 0;
+  }
+  if (seats >= 3 && seats <= 4) oursComparable += ourSeats(input);
+  if (queens > 0) {
+    oursComparable += Math.round(
+      queens * RATES.mattress.base.queen *
+        RATES.mattress.dirtinessMultiplier[
+          input.mattresses.find((m) => m.size === "queen")?.dirtiness ?? "light"
+        ],
+    );
+  }
+  if (lines.length === 0) oursComparable = null;
+
+  return {
+    key: "electrodry",
+    name: "Electrodry",
+    lines,
+    missing,
+    total: lines.length > 0 ? lines.reduce((s, l) => s + l.amount, 0) : null,
+    partial: missing.length > 0,
+    travelAmount: 0,
+    oursComparable,
+  };
+}
+
 /**
- * Indicative "same job" estimate from the competitor's live rate card.
- * (Electrodry was dropped from the panel — owner call, Nov 2026.)
+ * Indicative "same job" estimates from each competitor's verified rates.
+ * Electrodry is included only when `electroModel` is passed — i.e. the daily
+ * watch verified their published specials within the freshness window.
  */
 export function competitorEstimates(
   input: QuoteInput,
   ctx?: CompareContext,
   model: BfybModel = BFYB_MODEL,
+  electroModel?: ElectroModel | null,
 ): CompetitorEstimate[] {
-  return [estimateBFYB(input, ctx, model)];
+  const out: CompetitorEstimate[] = [estimateBFYB(input, ctx, model)];
+  if (electroModel) out.push(estimateElectrodry(input, electroModel));
+  return out;
 }

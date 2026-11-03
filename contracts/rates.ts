@@ -235,6 +235,31 @@ export function bfybTravelForTown(town: string | null | undefined, model: BfybMo
   return null;
 }
 
+// ---------------------------------------------------------------------------
+// Electrodry — published specials only. Franchise pricing varies by area, so
+// the comparison panel shows Electrodry ONLY when the daily watch verified
+// these numbers within the last 48 hours (api/priceWatch.ts). Fallback below
+// is the last verified read (specials page, 3 Nov 2026).
+export interface ElectroModel {
+  carpetThreeRoom: number; // "3 rooms cleaned + 4th room free"
+  carpetTwoRoom: number; // "2 rooms cleaned + hallway free"
+  loungeSpecial: number; // "3 seats cleaned + 4th seat free"
+  queenMattress: number;
+  roomCapM2: number; // max room size on the specials
+}
+
+export const ELECTRO_MODEL: ElectroModel = {
+  carpetThreeRoom: 289,
+  carpetTwoRoom: 259,
+  loungeSpecial: 289,
+  queenMattress: 159,
+  roomCapM2: 13,
+};
+
+/** How fresh the daily Electrodry verification must be before we quote their
+ *  numbers to customers — older than this and the panel hides them. */
+export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
 export interface LoungeItem {
   seats: number; // 1–10
   dirtiness: Dirtiness;

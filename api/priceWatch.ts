@@ -16,10 +16,13 @@
 import {
   BFYB_MODEL,
   BFYB_UNDERCUT_PERCENT,
+  ELECTRO_MODEL,
+  ELECTRO_VERIFY_MAX_AGE_MS,
   RATES,
   carpetStandardForArea,
   computeQuote,
   type BfybModel,
+  type ElectroModel,
   type QuoteInput,
 } from "../contracts/rates";
 import { getSettings, setSetting, loadRates } from "./queries/settings";
@@ -96,6 +99,8 @@ export interface PriceWatchReport {
   margins: PriceWatchMargin[];
   /** True when this check moved our live competitor model to their new numbers. */
   modelUpdated?: boolean;
+  /** Combinations run through the strict both-sides sweep (rooms × levels × lounge sizes). */
+  variationsChecked?: number;
   error?: string;
 }
 
@@ -478,9 +483,102 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     }
   }
 
+  // --- 2b. Strict variation sweep: every room-count × clean-level combo,
+  // plus lounge sizes 1–6, priced through BOTH sides. Any combination where
+  // our final price (automatic discounts included) lands less than 17% under
+  // their live price is flagged — the promise must hold on EVERY variation,
+  // not just the reference jobs above.
+  let variationsChecked = 0;
+  if (carpet) {
+    const ROOM_M2: Record<string, number> = {
+      bed: 16, bedLarge: 25, wir: 4, wirLarge: 9, living: 25, livingLg: 36,
+      dining: 16, hall: 3, hall2: 6, hall3: 9, hall4: 12,
+    };
+    const m2Of = (rooms: Record<string, number>) =>
+      Object.entries(rooms).reduce((s, [k, n]) => s + (ROOM_M2[k] ?? 0) * n, 0);
+    const roomSets: Record<string, number>[] = [
+      { bed: 1 },
+      { bed: 2 },
+      { bed: 2, living: 1 },
+      { bed: 3 },
+      { bed: 3, living: 1 },
+      { bed: 4, living: 1 },
+      { bed: 3, living: 1, dining: 1, hall: 1 },
+      { bedLarge: 4, livingLg: 1, dining: 1, hall: 1, wir: 1 },
+      { bedLarge: 5, livingLg: 1, living: 1, hall2: 1 },
+      { living: 1, stairs: 0 },
+    ];
+    const levels = ["bronze", "silver", "gold"] as const;
+    const ourMultOf = { bronze: "light", silver: "medium", gold: "heavy" } as const;
+    for (const rooms of roomSets) {
+      const m2 = m2Of(rooms);
+      if (m2 <= 0) continue;
+      for (const level of levels) {
+        variationsChecked++;
+        const q: QuoteInput = {
+          carpetAreaM2: m2,
+          carpetDirtiness: ourMultOf[level],
+          maintenance: "none",
+          lounges: [],
+          mattresses: [],
+          rugs: [],
+          stainPackage: false,
+          dirtGum: false,
+          enzymePreSpray: false,
+          stainTypes: [],
+          preVacuumRooms: 0,
+          dryingFans: 0,
+          travelFee: 0,
+          discountPercent: 0,
+          roomCounts: rooms,
+        };
+        const ours = computeQuote(q, liveRates, effectiveModel).cleaningTotal;
+        const theirs = liveBfybTotal(carpet, rooms, level, []);
+        if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
+          const label = Object.entries(rooms).map(([k, n]) => `${n}×${k}`).join("+");
+          drifts.push(
+            `Variation ${label} ${level}: ours lands at $${ours} vs their $${theirs} — under the 17% rule, needs a rates review`,
+          );
+        }
+      }
+    }
+    if (upholstery) {
+      for (let seats = 1; seats <= 6; seats++) {
+        variationsChecked++;
+        const ours = computeQuote(
+          {
+            carpetAreaM2: 0,
+            carpetDirtiness: "light",
+            maintenance: "none",
+            lounges: [{ seats, dirtiness: "light", reclinerSeats: 0 }],
+            mattresses: [],
+            rugs: [],
+            stainPackage: false,
+            dirtGum: false,
+            enzymePreSpray: false,
+            stainTypes: [],
+            preVacuumRooms: 0,
+            dryingFans: 0,
+            travelFee: 0,
+            discountPercent: 0,
+          },
+          liveRates,
+          effectiveModel,
+        ).cleaningTotal;
+        // Their minimum callout applies to a lounge-only booking too.
+        const theirs = Math.max(seats * Number(upholstery.from), Number(carpet.minimum));
+        if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
+          drifts.push(
+            `Variation ${seats}-seat lounge: ours lands at $${ours} vs their $${theirs} — under the 17% rule, needs a rates review`,
+          );
+        }
+      }
+    }
+  }
+
   const undercutHolds = margins.every(
     (m) => m.pctOfTheirs <= 100 - BFYB_UNDERCUT_PERCENT,
-  );
+  ) && !drifts.some((d) => d.includes("under the 17% rule"));
   for (const m of margins) {
     if (m.pctOfTheirs > 100 - BFYB_UNDERCUT_PERCENT) {
       drifts.push(
@@ -497,6 +595,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     drifts,
     margins,
     modelUpdated,
+    variationsChecked,
   };
   await setSetting(PRICE_WATCH_KEY, JSON.stringify(report));
   savePriceWatchEvidence({ checkedAt, source: CONFIG_URL, fetchOk: true, rawConfig: cfg, report });
@@ -537,6 +636,291 @@ export async function getPriceWatchReport(): Promise<PriceWatchReport | null> {
   }
 }
 
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
+// ===========================================================================
+// Electrodry price watch — published specials only.
+//
+// Electrodry's main site gates specials behind a postcode lookup and sits
+// behind Cloudflare, so the watch reads the static specials page their
+// franchise network publishes (electrodry.net.au/special-deals — same
+// national specials). Because franchise pricing varies by area, Electrodry
+// only appears in our comparison panel when this check has verified the
+// numbers within ELECTRO_VERIFY_MAX_AGE_MS — otherwise the panel hides them
+// rather than show a price we can't stand behind.
+// ===========================================================================
+
+const ELECTRO_SPECIALS_URL = "https://www.electrodry.net.au/special-deals/";
+export const ELECTRO_WATCH_KEY = "electro_price_watch";
+export const ELECTRO_LIVE_MODEL_KEY = "electro_model_live";
+
+export interface ElectroLive {
+  model: ElectroModel;
+  checkedAt: string; // ISO of the last SUCCESSFUL verification
+}
+
+export interface ElectroWatchReport {
+  checkedAt: string;
+  fetchOk: boolean;
+  verified: boolean; // all four specials found + within sanity bounds
+  drifts: string[];
+  margins: PriceWatchMargin[];
+  error?: string;
+}
+
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
+/** Parse the specials table: rows carry data-title + a single $ cell. */
+export function parseElectroSpecials(html: string): { model: ElectroModel; missing: string[] } {
+  const decode = (s: string) =>
+    s
+      .replace(/&#36;/g, "$")
+      .replace(/&amp;/g, "&")
+      .replace(/<[^>]+>/g, " ");
+  const rows = html.split("<tr");
+  const wanted: [RegExp, keyof Omit<ElectroModel, "roomCapM2">][] = [
+    [/3 ROOMS CLEANED AND 4TH ROOM FREE/i, "carpetThreeRoom"],
+    [/2 ROOMS CLEANED AND HALLWAY FREE/i, "carpetTwoRoom"],
+    [/3 SEAT CLEANED AND 4TH SEAT FREE/i, "loungeSpecial"],
+    [/QUEEN MATTRESS CLEANED/i, "queenMattress"],
+  ];
+  const model: ElectroModel = { ...ELECTRO_MODEL };
+  const found = new Set<string>();
+  for (const row of rows) {
+    const text = decode(row).replace(/\s+/g, " ");
+    for (const [pattern, key] of wanted) {
+      if (found.has(key) || !pattern.test(text)) continue;
+      const amounts = [...text.matchAll(/\$\s?(\d+(?:\.\d{2})?)/g)].map((m) => Number(m[1]));
+      const price = amounts.find((a) => a >= 50);
+      if (price !== undefined) {
+        model[key] = price;
+        found.add(key);
+      }
+    }
+  }
+  const missing = wanted.filter(([, k]) => !found.has(k)).map(([, k]) => k);
+  return { model, missing };
+}
+
+/** Sanity bounds — any real-world price move passes, only garbage fails. */
+export function validateElectroModel(m: ElectroModel): string[] {
+  const bad: string[] = [];
+  const inRange = (label: string, v: number, lo: number, hi: number) => {
+    if (!Number.isFinite(v) || v < lo || v > hi) bad.push(`${label} = ${v} (expected ${lo}–${hi})`);
+  };
+  inRange("2-room special", m.carpetTwoRoom, 80, 800);
+  inRange("3-room special", m.carpetThreeRoom, 80, 900);
+  inRange("3-seat lounge special", m.loungeSpecial, 80, 900);
+  inRange("queen mattress", m.queenMattress, 40, 500);
+  return bad;
+}
+
+let electroCache: { at: number; live: ElectroLive | null } | null = null;
+
+/** Electrodry's specials ONLY when verified within the freshness window —
+ *  null means "not certain right now", and the panel hides them. */
+export async function loadElectroModel(): Promise<ElectroLive | null> {
+  if (electroCache && Date.now() - electroCache.at < 5 * 60 * 1000) return electroCache.live;
+  let live: ElectroLive | null = null;
+  try {
+    const s = await getSettings([ELECTRO_LIVE_MODEL_KEY]);
+    const raw = s[ELECTRO_LIVE_MODEL_KEY];
+    if (raw) {
+      const parsed = JSON.parse(raw) as ElectroLive;
+      const fresh = Date.now() - new Date(parsed.checkedAt).getTime() < ELECTRO_VERIFY_MAX_AGE_MS;
+      if (fresh && validateElectroModel(parsed.model).length === 0) live = parsed;
+    }
+  } catch (err) {
+    console.error("Live Electrodry model unreadable, hiding:", err);
+  }
+  electroCache = { at: Date.now(), live };
+  return live;
+}
+
+/** Reference jobs re-priced through Electrodry's verified specials. No 17%
+ *  promise here — we just flag any job where we'd show as DEARER in the
+ *  comparison panel, so the owner can decide whether to say anything. */
+async function electroMargins(model: ElectroModel): Promise<PriceWatchMargin[]> {
+  const liveRates = await loadRates();
+  const margins: PriceWatchMargin[] = [];
+  const job = (
+    label: string,
+    input: Partial<QuoteInput>,
+    theirs: number,
+  ) => {
+    const q: QuoteInput = {
+      carpetAreaM2: 0,
+      carpetDirtiness: "light",
+      maintenance: "none",
+      lounges: [],
+      mattresses: [],
+      rugs: [],
+      stainPackage: false,
+      dirtGum: false,
+      enzymePreSpray: false,
+      stainTypes: [],
+      preVacuumRooms: 0,
+      dryingFans: 0,
+      travelFee: 0,
+      discountPercent: 0,
+      ...input,
+    };
+    const ours = computeQuote(q, liveRates).cleaningTotal;
+    margins.push({
+      label,
+      ours,
+      oursList: ours,
+      theirs,
+      pctOfTheirs: Math.round((ours / theirs) * 100),
+    });
+  };
+  job("2 rooms + hallway (26 m²)", { carpetAreaM2: 2 * model.roomCapM2 }, model.carpetTwoRoom);
+  job("3 rooms + 4th free (52 m²)", { carpetAreaM2: 4 * model.roomCapM2 }, model.carpetThreeRoom);
+  job("3-seat lounge", { lounges: [{ seats: 3, dirtiness: "light", reclinerSeats: 0 }] }, model.loungeSpecial);
+  job("4-seat lounge", { lounges: [{ seats: 4, dirtiness: "light", reclinerSeats: 0 }] }, model.loungeSpecial);
+  job(
+    "Queen mattress",
+    { mattresses: [{ size: "queen", dirtiness: "light", qty: 1 }] },
+    model.queenMattress,
+  );
+  return margins;
+}
+
+export async function runElectroWatch(): Promise<ElectroWatchReport> {
+  const checkedAt = new Date().toISOString();
+  const drifts: string[] = [];
+  const prev = await loadElectroModel();
+
+  let html: string | null = null;
+  let fetchError: string | undefined;
+  try {
+    const res = await fetch(ELECTRO_SPECIALS_URL, {
+      signal: AbortSignal.timeout(15000),
+      headers: {
+        "User-Agent":
+          "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/126.0 Safari/537.36",
+        Accept: "text/html,application/xhtml+xml",
+        "Accept-Language": "en-AU,en;q=0.9",
+      },
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    html = await res.text();
+  } catch (err) {
+    fetchError = err instanceof Error ? err.message : String(err);
+  }
+
+  if (html === null) {
+    const report: ElectroWatchReport = {
+      checkedAt,
+      fetchOk: false,
+      verified: false,
+      drifts: prev
+        ? [`Couldn't verify Electrodry's specials (${fetchError}). The comparison panel hides them until a check succeeds again.`]
+        : [],
+      margins: [],
+      error: fetchError,
+    };
+    await setSetting(ELECTRO_WATCH_KEY, JSON.stringify(report));
+    void setSetting(
+      `electro_evidence_${sydneyDateKey()}`,
+      JSON.stringify({ checkedAt, source: ELECTRO_SPECIALS_URL, fetchOk: false, error: fetchError }),
+    ).catch(() => {});
+    await emailElectroWatch(report, prev !== null);
+    return report;
+  }
+
+  const { model, missing } = parseElectroSpecials(html);
+  const problems = [...missing.map((k) => `special "${k}" not found on their page`), ...validateElectroModel(model)];
+
+  if (problems.length > 0) {
+    const report: ElectroWatchReport = {
+      checkedAt,
+      fetchOk: true,
+      verified: false,
+      drifts: [
+        `Electrodry verification failed (${problems.join("; ")}). Keeping the last verified numbers; the panel hides them once they're 48 hours old.`,
+      ],
+      margins: [],
+    };
+    await setSetting(ELECTRO_WATCH_KEY, JSON.stringify(report));
+    void setSetting(
+      `electro_evidence_${sydneyDateKey()}`,
+      JSON.stringify({ checkedAt, source: ELECTRO_SPECIALS_URL, fetchOk: true, verified: false, problems }),
+    ).catch(() => {});
+    await emailElectroWatch(report, prev !== null);
+    return report;
+  }
+
+  // Verified — this becomes the only model the comparison panel may show.
+  const live: ElectroLive = { model, checkedAt };
+  const prevModel = prev?.model ?? null;
+  if (prevModel) {
+    const expect = (label: string, now: number, was: number) => {
+      if (now !== was) drifts.push(`${label}: now $${now} (was $${was})`);
+    };
+    expect("2 rooms + hallway special", model.carpetTwoRoom, prevModel.carpetTwoRoom);
+    expect("3 rooms + 4th free special", model.carpetThreeRoom, prevModel.carpetThreeRoom);
+    expect("3 seats + 4th seat free special", model.loungeSpecial, prevModel.loungeSpecial);
+    expect("Queen mattress special", model.queenMattress, prevModel.queenMattress);
+  }
+  await setSetting(ELECTRO_LIVE_MODEL_KEY, JSON.stringify(live));
+  electroCache = { at: Date.now(), live };
+
+  const margins = await electroMargins(model);
+  for (const m of margins) {
+    if (m.ours >= m.theirs) {
+      drifts.push(
+        `${m.label}: ours comes out at $${m.ours} vs their $${m.theirs} — we'd show as dearer on that special, worth a look`,
+      );
+    }
+  }
+
+  const report: ElectroWatchReport = { checkedAt, fetchOk: true, verified: true, drifts, margins };
+  await setSetting(ELECTRO_WATCH_KEY, JSON.stringify(report));
+  void setSetting(
+    `electro_evidence_${sydneyDateKey()}`,
+    JSON.stringify({ checkedAt, source: ELECTRO_SPECIALS_URL, fetchOk: true, verified: true, model, report }),
+  ).catch(() => {});
+  await emailElectroWatch(report, drifts.length > 0);
+  return report;
+}
+
+async function emailElectroWatch(report: ElectroWatchReport, worthTelling: boolean): Promise<void> {
+  if (!worthTelling || report.drifts.length === 0) return;
+  try {
+    const smtp = await loadSmtpConfig();
+    if (!isSmtpConfigured(smtp)) return;
+    await sendMail(
+      smtp,
+      BUSINESS.email,
+      report.verified
+        ? `Electrodry price watch — ${report.drifts.length} change${report.drifts.length > 1 ? "s" : ""} spotted`
+        : "Electrodry price watch — couldn't verify their prices",
+      `The daily check of Electrodry's published specials:\n\n` +
+        report.drifts.map((d) => `• ${d}`).join("\n") +
+        (report.verified
+          ? `\n\nThe comparison panel is showing their new numbers.`
+          : `\n\nThe comparison panel only shows Electrodry when their prices are verified fresh — they'll disappear from it automatically until a check succeeds.`) +
+        `\n\nChecked ${report.checkedAt}.`,
+    );
+  } catch (err) {
+    console.error("Electrodry watch email failed:", err);
+  }
+}
+
+export async function getElectroWatchReport(): Promise<ElectroWatchReport | null> {
+  const s = await getSettings([ELECTRO_WATCH_KEY]);
+  const raw = s[ELECTRO_WATCH_KEY];
+  if (!raw) return null;
+  try {
+    return JSON.parse(raw) as ElectroWatchReport;
+  } catch {
+    return null;
+  }
+}
+
+/* eslint-enable @typescript-eslint/no-explicit-any */
+
 /** Milliseconds until the next 6:00 AM in Sydney (Armidale's timezone). */
 function msUntilNext6amSydney(): number {
   const now = Date.now();
@@ -559,15 +943,15 @@ function msUntilNext6amSydney(): number {
  * today's check was missed (e.g. a redeploy after 6 AM).
  */
 export function schedulePriceWatch(): void {
-  if (!hasTodaysEvidence()) {
+  const runBoth = () => {
     void runPriceWatch().catch((err) => console.error("Price watch failed:", err));
-  }
+    void runElectroWatch().catch((err) => console.error("Electrodry watch failed:", err));
+  };
+  if (!hasTodaysEvidence()) runBoth();
   const firstIn = msUntilNext6amSydney();
   console.log(`Price watch: next check in ${Math.round(firstIn / 60000)} min (6:00 AM Sydney)`);
   setTimeout(() => {
-    void runPriceWatch().catch((err) => console.error("Price watch failed:", err));
-    setInterval(() => {
-      void runPriceWatch().catch((err) => console.error("Price watch failed:", err));
-    }, 24 * 60 * 60 * 1000).unref();
+    runBoth();
+    setInterval(runBoth, 24 * 60 * 60 * 1000).unref();
   }, firstIn).unref();
 }

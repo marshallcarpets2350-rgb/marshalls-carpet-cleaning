@@ -262,10 +262,13 @@ export const publicRouter = createRouter({
   // When the daily price watch last confirmed BFYB's live prices — feeds the
   // "checked {date}" line on the comparison table so it can never go stale.
   bfybChecked: publicQuery.query(async () => {
-    const { getPriceWatchReport, loadBfybModel } = await import("./priceWatch");
+    const { getPriceWatchReport, loadBfybModel, loadElectroModel } = await import("./priceWatch");
     const r = await getPriceWatchReport();
     const model = await loadBfybModel();
-    return { checkedAt: r?.fetchOk ? r.checkedAt : null, model };
+    // Null unless the daily watch verified Electrodry's specials within the
+    // freshness window — the panel hides them when we're not certain.
+    const electro = await loadElectroModel();
+    return { checkedAt: r?.fetchOk ? r.checkedAt : null, model, electro };
   }),
 
   // Live Google rating + reviews for the homepage — cached server-side and
