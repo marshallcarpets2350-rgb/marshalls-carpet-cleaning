@@ -751,24 +751,27 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                   </div>
                   <div className="space-y-4 px-5 py-4">
                     {competitors.filter((c) => c.total !== null).map((c) => {
-                      // When every selected item has a published BFYB price
-                      // (only their travel is unpriced), customers see our
-                      // FINAL total — compare against that, including
-                      // discounts, not the pre-discount comparable portion.
-                      const fullyComparable = c.missing.every((m) =>
-                        m.startsWith("Their travel surcharge"),
-                      );
-                      const oursBase = fullyComparable
-                        ? breakdown.cleaningTotal
-                        : c.oursComparable;
+                      // Compare the two numbers on the page: their displayed
+                      // total (ex-travel) vs our displayed final total. Items
+                      // they don't publish (e.g. mattresses) just aren't in
+                      // their number, so a partial comparison understates the
+                      // saving — never overstates it.
+                      const oursBase = breakdown.cleaningTotal;
                       const saves =
-                        c.total !== null && oursBase !== null && c.total - c.travelAmount > oursBase
+                        c.total !== null && c.total - c.travelAmount > oursBase
                           ? c.total - c.travelAmount - oursBase
                           : null;
                       return (
                         <div key={c.key} className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-bold text-charcoal">{c.name}</p>
+                            {c.missing
+                              .filter((m) => !m.startsWith("Their travel surcharge"))
+                              .map((m) => (
+                                <p key={m} className="mt-0.5 text-xs text-charcoal/50">
+                                  {m.split(" — ")[0]} not in their price
+                                </p>
+                              ))}
                             {saves !== null && (
                               <p className="mt-0.5 font-bold text-[#15803D]">
                                 Marshall's saves you {money(saves)}

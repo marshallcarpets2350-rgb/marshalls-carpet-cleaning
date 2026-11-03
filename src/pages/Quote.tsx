@@ -254,13 +254,12 @@ export default function Quote() {
       }, bfybModel),
     [quoteInput, mode, roomCounts, travel, bfybModel],
   );
-  // When every selected item has a published BFYB price, the honest savings
-  // figure is our final cleaning total (discounts included). If something is
-  // unpublished at BFYB, fall back to the like-for-like comparable portion.
-  const savingsBaseFor = (c: (typeof competitors)[number]): number | null =>
-    c.missing.every((m) => m.startsWith("Their travel surcharge"))
-      ? breakdown.cleaningTotal
-      : c.oursComparable;
+  // The savings figure must match the two numbers on the page: their
+  // displayed total (ex-travel) vs our displayed final total. Anything
+  // BFYB can't price (mattresses etc.) simply isn't in their number — so
+  // when they're partial our saving is understated, never overstated.
+  const savingsBaseFor = (_c: (typeof competitors)[number]): number | null =>
+    breakdown.cleaningTotal;
 
   // --- per-section validation ---
   const coreValid = [
@@ -742,6 +741,13 @@ export default function Quote() {
                         <div key={c.key} className="flex items-center justify-between gap-3">
                           <div>
                             <p className="font-bold text-charcoal">{c.name}</p>
+                            {c.missing
+                              .filter((m) => !m.startsWith("Their travel surcharge"))
+                              .map((m) => (
+                                <p key={m} className="mt-0.5 text-xs text-charcoal/50">
+                                  {m.split(" — ")[0]} not in their price
+                                </p>
+                              ))}
                             {saves !== null && (
                               <p className="mt-0.5 font-bold text-[#15803D]">
                                 Marshall's saves you {money(saves)}
