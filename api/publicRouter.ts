@@ -1,6 +1,8 @@
 import { z } from "zod";
 import { createRouter, publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
+import { BUSINESS } from "@contracts/rates";
+import type { FloodRequest } from "./messages";
 import { subscribers, leads, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, and, isNotNull, gte } from "drizzle-orm";
 import { TRPCError } from "@trpc/server";
@@ -551,6 +553,95 @@ export const publicRouter = createRouter({
         total: breakdown.total,
         checkoutUrl,
       };
+    }),
+
+  // Flood & water damage emergency — minimal form, instant alert. No slot
+  // checks, no quote engine: water damage is triaged by phone, and the owner
+  // gets an emergency email the moment this lands.
+  floodEmergency: publicQuery
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().min(6).max(40),
+        email: z.string().trim().toLowerCase().email().max(320).optional().or(z.literal("")),
+        address: z.string().trim().min(3).max(500),
+        suburb: z.string().trim().max(255).optional(),
+        cause: z.string().trim().max(100),
+        rooms: z.string().trim().max(100),
+        activeLeak: z.string().trim().max(30),
+        insurance: z.string().trim().max(30),
+        notes: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const { floodPrices } = await import("../contracts/rates");
+      const { loadBfybModel } = await import("./priceWatch");
+      const model = await loadBfybModel();
+      const inspectionPrice = floodPrices(model).inspection;
+
+      const flood: FloodRequest = {
+        name: input.name,
+        phone: input.phone,
+        email: input.email || undefined,
+        address: input.address,
+        suburb: input.suburb ?? "",
+        cause: input.cause,
+        rooms: input.rooms,
+        activeLeak: input.activeLeak,
+        insurance: input.insurance,
+        notes: input.notes || undefined,
+      };
+
+      const result = await db.insert(leads).values({
+        name: input.name,
+        email: input.email || "",
+        phone: input.phone,
+        address: input.address,
+        suburb: input.suburb ?? null,
+        distanceKm: null,
+        travelFee: 0,
+        total: inspectionPrice,
+        quoteJson: JSON.stringify({
+          input: null,
+          breakdown: {
+            lines: [
+              {
+                label: "Flood & water damage — emergency inspection & assessment",
+                amount: inspectionPrice,
+              },
+            ],
+            travelFee: 0,
+            total: inspectionPrice,
+          },
+          flood,
+        }),
+        bookingJson: null,
+        status: "new",
+      });
+      const leadId = Number((result[0] as { insertId?: number }).insertId ?? 0);
+      const reference = `MCC-${String(leadId).padStart(4, "0")}`;
+
+      // The whole point: the owner's inbox lights up IMMEDIATELY.
+      try {
+        const { floodOwnerAlert, floodCustomerEmail } = await import("./messages");
+        const { loadSmtpConfig, isSmtpConfigured, sendMail } = await import("./mailer");
+        const smtp = await loadSmtpConfig();
+        if (isSmtpConfigured(smtp)) {
+          const alert = floodOwnerAlert(flood, reference, inspectionPrice);
+          const { brandedEmailHtml } = await import("./emailTemplate");
+          await sendMail(smtp, BUSINESS.email, alert.subject, alert.text, undefined, brandedEmailHtml(alert.text));
+          if (flood.email) {
+            const cust = floodCustomerEmail(flood);
+            await sendMail(smtp, flood.email, cust.subject, cust.text, undefined, brandedEmailHtml(cust.text));
+          }
+        }
+      } catch (err) {
+        // Never let an alert failure lose the emergency — the lead row stands.
+        console.error("Flood emergency alert failed:", err);
+      }
+
+      return { ok: true as const, reference };
     }),
 
   // After Stripe sends the customer back, confirm the money actually landed.

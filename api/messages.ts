@@ -235,6 +235,69 @@ It's in the admin Jobs list — ${ref}.`,
   };
 }
 
+// ---------------------------------------------------------------------------
+// Flood & water damage emergency — instant alerts, no queue.
+// ---------------------------------------------------------------------------
+
+export interface FloodRequest {
+  name: string;
+  phone: string;
+  email?: string;
+  address: string;
+  suburb: string;
+  cause: string;
+  rooms: string;
+  activeLeak: string;
+  insurance: string;
+  notes?: string;
+}
+
+export function floodOwnerAlert(d: FloodRequest, ref: string, inspectionPrice: number): { subject: string; text: string } {
+  return {
+    subject: `🚨 FLOOD EMERGENCY — ${d.name} — ${d.suburb || d.address}`,
+    text: `FLOOD EMERGENCY REQUEST — ${ref}
+
+${d.name}
+${d.phone}${d.email ? ` · ${d.email}` : ""}
+
+WHERE
+• ${d.address}${d.suburb ? `, ${d.suburb}` : ""}
+
+WHAT
+• Cause: ${d.cause}
+• Rooms affected: ${d.rooms}
+• Still leaking: ${d.activeLeak}
+• Insurance claim: ${d.insurance}
+${d.notes ? `• Notes: ${d.notes}\n` : ""}
+Published inspection price they saw: $${inspectionPrice}.
+
+CALL THEM BACK NOW: ${d.phone}
+
+It's in the admin Jobs list — ${ref}.`,
+  };
+}
+
+export function floodCustomerEmail(d: FloodRequest): { subject: string; text: string } {
+  return {
+    subject: `We've got your flood emergency — ${BUSINESS.name}`,
+    text: `Hi ${d.name},
+
+Your emergency request is in and has gone straight to us. Keep your phone on you — we're calling you back on ${d.phone}.
+
+While you wait, if it's safe:
+1. Stop the water at the source or the mains tap if you can.
+2. Keep clear of wet power points and appliances — if water is near outlets, switch the power off at the meter box (only if it's dry and safe to reach).
+3. Lift furniture and valuables off the wet floor — foil or containers under legs stops stains.
+4. Don't walk on wet carpet more than you have to — it spreads the water and the damage.
+5. Take photos of everything for your insurer before we arrive.
+
+If anyone is in danger, call 000 first.
+
+— ${BUSINESS.name}
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
 export async function notifyOwner(lead: LeadRow): Promise<void> {
   try {
     const smtp = await loadSmtpConfig();

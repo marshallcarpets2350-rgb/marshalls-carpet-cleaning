@@ -21,6 +21,7 @@ import {
   RATES,
   carpetStandardForArea,
   computeQuote,
+  floodPrices,
   type BfybModel,
   type ElectroModel,
   type QuoteInput,
@@ -173,6 +174,21 @@ export function buildLiveModel(cfg: any): { model: BfybModel; problems: string[]
   } else {
     model.loungePerSeat = Number(upholstery.from);
   }
+  // Flood: flat inspection price + extraction rates parsed from their quote note.
+  const floodInspection = cfg?.services?.find((s: any) => s.id === "flood-inspection");
+  const floodQuote = cfg?.services?.find((s: any) => s.id === "flood");
+  const exMatch = String(floodQuote?.quoteNote ?? "").match(
+    /\$(\d+)\s*for one technician,\s*\$(\d+)\s*for two/i,
+  );
+  if (floodInspection && exMatch) {
+    model.flood = {
+      inspection: Number(floodInspection.price),
+      extractionOne: Number(exMatch[1]),
+      extractionTwo: Number(exMatch[2]),
+    };
+  } else {
+    problems.push("flood rates missing or quote-note format changed");
+  }
   const towns: Record<string, number> = {};
   for (const t of cfg?.towns ?? []) {
     towns[String(t.name).toLowerCase()] = Number(t.travel);
@@ -210,6 +226,12 @@ export function validateLiveModel(m: BfybModel): string[] {
   inRange("extras.fanHire", m.extras.fanPerDay, 0, 300);
   for (const [town, fee] of Object.entries(m.travelByTown)) {
     inRange(`travel ${town}`, fee, 0, 600);
+  }
+  if (!m.flood) bad.push("flood rates missing");
+  else {
+    inRange("flood inspection", m.flood.inspection, 50, 600);
+    inRange("flood extraction (one tech)", m.flood.extractionOne, 100, 1200);
+    inRange("flood extraction (two techs)", m.flood.extractionTwo, 100, 1800);
   }
   return bad;
 }
@@ -340,6 +362,23 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
 
   if (upholstery) {
     expect("Upholstery per seat", upholstery.from, currentModel.loungePerSeat);
+  }
+
+  // Flood rates — the published inspection price and the extraction figures
+  // in their quote note.
+  {
+    const floodInspection = cfg.services.find((s: any) => s.id === "flood-inspection");
+    const floodQuote = cfg.services.find((s: any) => s.id === "flood");
+    const exMatch = String(floodQuote?.quoteNote ?? "").match(
+      /\$(\d+)\s*for one technician,\s*\$(\d+)\s*for two/i,
+    );
+    if (!floodInspection || !exMatch) {
+      drifts.push("Flood rates not found in their config (or quote-note format changed)");
+    } else if (currentModel.flood) {
+      expect("Flood inspection", Number(floodInspection.price), currentModel.flood.inspection);
+      expect("Flood extraction (one tech)", Number(exMatch[1]), currentModel.flood.extractionOne);
+      expect("Flood extraction (two techs)", Number(exMatch[2]), currentModel.flood.extractionTwo);
+    }
   }
 
   for (const t of cfg.towns ?? []) {
@@ -480,6 +519,20 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         theirs: 3 * upholstery.from,
         pctOfTheirs: Math.round(((3 * RATES.lounge.perSeat.light) / (3 * upholstery.from)) * 100),
       });
+    }
+    // Flood: ours is set 20% under their published rates — verify it held.
+    if (effectiveModel.flood) {
+      const ours = floodPrices(effectiveModel);
+      const row = (label: string, our: number, their: number): PriceWatchMargin => ({
+        label,
+        ours: our,
+        oursList: our,
+        theirs: their,
+        pctOfTheirs: Math.round((our / their) * 100),
+      });
+      margins.push(row("Flood inspection", ours.inspection, effectiveModel.flood.inspection));
+      margins.push(row("Flood extraction (one tech)", ours.extractionOne, effectiveModel.flood.extractionOne));
+      margins.push(row("Flood extraction (two techs)", ours.extractionTwo, effectiveModel.flood.extractionTwo));
     }
   }
 

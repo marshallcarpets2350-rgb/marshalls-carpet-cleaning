@@ -128,6 +128,8 @@ export interface BfybModel {
   approxPerM2: number;
   // Flat per-town travel surcharge from their config (Armidale free).
   travelByTown: Record<string, number>;
+  // Their published flood & water damage rates (from the same booking config).
+  flood?: { inspection: number; extractionOne: number; extractionTwo: number };
 }
 
 // This is the FALLBACK model. The daily price watch (api/priceWatch.ts) keeps
@@ -166,6 +168,8 @@ export const BFYB_MODEL: BfybModel = {
     guyra: 91,
     walcha: 143,
   },
+  // Their published flood & water damage rates (same config, verified 3 Nov 2026).
+  flood: { inspection: 182, extractionOne: 289, extractionTwo: 409 },
 };
 
 /** Their calculator's total for the carpet + lounges + matched extras in a
@@ -259,6 +263,32 @@ export const ELECTRO_MODEL: ElectroModel = {
 /** How fresh the daily Electrodry verification must be before we quote their
  *  numbers to customers — older than this and the panel hides them. */
 export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
+
+// ---------------------------------------------------------------------------
+// Flood & water damage — published prices, 20% under BFYB's published flood
+// rates ($182 inspection, extraction from $289/$409 — read off their booking
+// config). The daily price watch re-reads theirs; floodPrices() follows their
+// moves automatically. These constants are the fallbacks (verified 3 Nov 2026).
+export const FLOOD_UNDERCUT_PERCENT = 20;
+
+export const FLOOD_RATES = {
+  inspection: 145, // floor(182 × 0.8) — thermal imaging, moisture readings, insurer-ready scope
+  extractionOne: 231, // floor(289 × 0.8) — one technician
+  extractionTwo: 327, // floor(409 × 0.8) — two technicians
+};
+
+/** Our flood prices: always 20% under BFYB's CURRENT published rates when the
+ *  daily watch has a live model, else the verified fallbacks. */
+export function floodPrices(model?: Pick<BfybModel, "flood"> | null): typeof FLOOD_RATES {
+  const f = model?.flood;
+  if (!f) return FLOOD_RATES;
+  const under = (n: number) => Math.floor(n * (1 - FLOOD_UNDERCUT_PERCENT / 100));
+  return {
+    inspection: under(f.inspection),
+    extractionOne: under(f.extractionOne),
+    extractionTwo: under(f.extractionTwo),
+  };
+}
 
 export interface LoungeItem {
   seats: number; // 1–10

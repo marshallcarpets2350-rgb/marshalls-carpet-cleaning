@@ -22,6 +22,12 @@ const TILES: { title: string; under?: string; sub: string; to: string }[] = [
     sub: "Priced per seat with three soiling levels.",
     to: "/lounge",
   },
+  {
+    title: "Flood & water damage",
+    under: "24/7 emergency",
+    sub: "Extraction, structural drying, insurer-ready reports — published prices.",
+    to: "/flood",
+  },
 ];
 
 const STATS: { value: string; label: string }[] = [
@@ -75,7 +81,7 @@ export default function Home() {
           </div>
 
           {/* The three ways in — big, centred, impossible to miss */}
-          <div className="mt-7 grid gap-5 md:grid-cols-3">
+          <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
             {TILES.map((t) => (
               <Link
                 key={t.title}
@@ -94,7 +100,7 @@ export default function Home() {
                   {t.sub}
                 </p>
                 <span className="btn-pill mx-auto mt-5 !px-6 !py-2.5 text-base group-hover:-translate-y-0.5">
-                  Start this quote →
+                  {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
                 </span>
               </Link>
             ))}

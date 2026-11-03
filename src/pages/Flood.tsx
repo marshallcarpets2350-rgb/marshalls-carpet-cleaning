@@ -1,0 +1,333 @@
+import { useState } from "react";
+import Header from "@/sections/Header";
+import Footer from "@/sections/Footer";
+import FlowArt from "@/components/FlowArt";
+import { Field, PillGroup } from "@/components/wizard/ui";
+import { trpc } from "@/providers/trpc";
+import { BUSINESS, BFYB_MODEL, floodPrices, money } from "@contracts/rates";
+
+const STEPS: { title: string; body: string }[] = [
+  {
+    title: "Stop the water",
+    body: "Turn the tap, the valve, or the mains off if you can reach it safely. Every minute it runs, the damage grows.",
+  },
+  {
+    title: "Think power",
+    body: "Water near power points or appliances? Switch the power off at the meter box — only if it's dry and safe to reach. Never stand in water to do it.",
+  },
+  {
+    title: "Lift what you can",
+    body: "Furniture legs on foil or containers, valuables and rugs off the wet floor. Don't walk on wet carpet more than you have to.",
+  },
+  {
+    title: "Photograph everything",
+    body: "Before we arrive, photograph the water, the source and every affected room. Your insurer will ask for exactly this.",
+  },
+  {
+    title: "Get us moving",
+    body: "Call the emergency line or send the form below — it lands in our hands instantly, and we call you straight back.",
+  },
+];
+
+const CAUSES = [
+  { value: "Burst pipe", label: "Burst pipe" },
+  { value: "Storm or rain", label: "Storm / rain" },
+  { value: "Appliance or hose", label: "Appliance / hose" },
+  { value: "Sewer or toilet", label: "Sewer / toilet" },
+  { value: "Not sure", label: "Not sure" },
+];
+const ROOMS = [
+  { value: "1–2 rooms", label: "1–2 rooms" },
+  { value: "3–4 rooms", label: "3–4 rooms" },
+  { value: "Most of the house", label: "Most of the house" },
+];
+const YES_NO = [
+  { value: "Yes", label: "Yes" },
+  { value: "No", label: "No" },
+  { value: "Not sure", label: "Not sure" },
+];
+
+export default function Flood() {
+  const bfybQ = trpc.public.bfybChecked.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
+  const theirFlood = (bfybQ.data?.model ?? BFYB_MODEL).flood ?? BFYB_MODEL.flood!;
+  const prices = floodPrices(bfybQ.data?.model ?? BFYB_MODEL);
+
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [suburb, setSuburb] = useState("");
+  const [cause, setCause] = useState<string | null>(null);
+  const [rooms, setRooms] = useState<string | null>(null);
+  const [activeLeak, setActiveLeak] = useState<string | null>(null);
+  const [insurance, setInsurance] = useState<string | null>(null);
+  const [notes, setNotes] = useState("");
+  const [sentRef, setSentRef] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  const flood = trpc.public.floodEmergency.useMutation({
+    onSuccess: (r) => {
+      setSentRef(r.reference);
+      window.scrollTo(0, 0);
+    },
+    onError: (e) => setError(e.message || "That didn't send — call the emergency line instead."),
+  });
+
+  const valid =
+    name.trim().length > 0 &&
+    phone.trim().length >= 6 &&
+    address.trim().length >= 3 &&
+    cause !== null &&
+    rooms !== null &&
+    activeLeak !== null &&
+    insurance !== null;
+
+  return (
+    <div className="min-h-dvh">
+      <Header />
+      <FlowArt />
+
+      {/* Emergency strip — the phone number is never more than a glance away */}
+      <div className="bg-[#B91C1C] text-background">
+        <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
+          <p className="text-sm font-bold uppercase tracking-widest">
+            Flood or water damage emergency
+          </p>
+          <a
+            href={BUSINESS.phoneHref}
+            className="whitespace-nowrap font-display text-xl font-black no-underline md:text-2xl"
+          >
+            Call {BUSINESS.phone} — 24/7
+          </a>
+        </div>
+      </div>
+
+      <main className="bg-creamlight">
+        {/* ============ hero ============ */}
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <h1 className="max-w-3xl font-display text-4xl font-black leading-[1.05] text-charcoal md:text-6xl">
+              Water where it shouldn't be.
+            </h1>
+            <p className="mt-4 max-w-2xl text-lg leading-relaxed text-charcoal/80">
+              Burst pipes, storm water, washing machine hoses — we extract the
+              water, dry the structure, and write the report your insurer will
+              ask for. Flood work is priced by how fast someone gets there, so
+              this line is answered around the clock.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <a href={BUSINESS.phoneHref} className="btn-pill no-underline">
+                Call the emergency line
+              </a>
+              <a
+                href="#emergency-form"
+                className="border-[1.5px] border-charcoal bg-background px-6 py-3 font-bold text-charcoal no-underline transition-transform hover:-translate-y-0.5"
+              >
+                Send an emergency request →
+              </a>
+            </div>
+            <p className="mt-3 text-sm text-charcoal/60">
+              The form goes straight to our phones — you get a call back, not a queue.
+            </p>
+          </div>
+        </section>
+
+        {/* ============ do this right now ============ */}
+        <section className="border-t-[1.5px] border-charcoal bg-background py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <h2 className="font-display text-3xl font-black text-charcoal md:text-5xl">
+              Do this right now.
+            </h2>
+            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {STEPS.map((s, i) => (
+                <div key={s.title} className="border-[1.5px] border-charcoal bg-creamlight p-5">
+                  <p className="font-display text-3xl font-black text-forest">{i + 1}</p>
+                  <p className="mt-2 font-bold text-charcoal">{s.title}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-charcoal/75">{s.body}</p>
+                </div>
+              ))}
+              <div className="border-[1.5px] border-[#B91C1C] bg-background p-5">
+                <p className="font-display text-3xl font-black text-[#B91C1C]">!</p>
+                <p className="mt-2 font-bold text-charcoal">Anyone in danger?</p>
+                <p className="mt-1 text-sm leading-relaxed text-charcoal/75">
+                  Call 000 first. Flooded electrics, sewage and structural damage are
+                  not DIY jobs.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* ============ published prices ============ */}
+        <section className="border-t-[1.5px] border-charcoal py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <p className="text-sm font-bold uppercase tracking-widest text-forest">Published prices</p>
+            <h2 className="mt-2 font-display text-3xl font-black text-charcoal md:text-5xl">
+              No panic pricing.
+            </h2>
+            <p className="mt-3 max-w-2xl text-charcoal/75">
+              Most flood work in this town is quoted from a clipboard after the
+              fact. Ours is published, and set 20% under the other published
+              flood rates around — re-checked daily.
+            </p>
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">Inspection &amp; assessment</p>
+                <p className="mt-2 font-display text-4xl font-black text-forest">{money(prices.inspection)}</p>
+                <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
+                  <li>• Thermal imaging &amp; moisture readings</li>
+                  <li>• Scope of works within 24 hours</li>
+                  <li>• Written for your insurer</li>
+                </ul>
+                <p className="mt-3 text-xs text-charcoal/50">
+                  Their published rate: {money(theirFlood.inspection)}
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">Water extraction</p>
+                <p className="mt-2 font-display text-4xl font-black text-forest">
+                  from {money(prices.extractionOne)}
+                </p>
+                <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
+                  <li>• {money(prices.extractionOne)} — one technician</li>
+                  <li>• {money(prices.extractionTwo)} — two technicians</li>
+                  <li>• Truck-mounted extraction, not a shop-vac</li>
+                </ul>
+                <p className="mt-3 text-xs text-charcoal/50">
+                  Their published rates: {money(theirFlood.extractionOne)} / {money(theirFlood.extractionTwo)}
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">Structural drying</p>
+                <p className="mt-2 font-display text-4xl font-black text-forest">From the scope</p>
+                <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
+                  <li>• Drying equipment, monitored until readings clear</li>
+                  <li>• Quoted from the inspection, in writing</li>
+                  <li>• We beat any written quote for the same job</li>
+                </ul>
+                <p className="mt-3 text-xs text-charcoal/50">
+                  Nobody publishes drying rates — it depends on the readings.
+                </p>
+              </div>
+            </div>
+            <p className="mt-4 max-w-2xl text-sm text-charcoal/60">
+              We dry the structure and document it. Rebuilding — plaster, carpet
+              replacement, cabinetry — is a builder's job, and the insurance
+              claim itself stays with you: we hand you the report they need.
+            </p>
+          </div>
+        </section>
+
+        {/* ============ emergency form ============ */}
+        <section id="emergency-form" className="border-t-[1.5px] border-charcoal bg-background py-14 md:py-20">
+          <div className="mx-auto max-w-3xl px-4 md:px-6">
+            {sentRef ? (
+              <div className="border-[1.5px] border-charcoal bg-creamlight p-8 text-center">
+                <p className="font-display text-4xl font-black text-forest">Got it — {sentRef}.</p>
+                <p className="mx-auto mt-3 max-w-md text-charcoal/80">
+                  Your emergency request just landed in our hands. Keep your phone
+                  on you — we're calling {phone} back.
+                </p>
+                <p className="mt-4 text-charcoal/80">
+                  Need us faster?{" "}
+                  <a href={BUSINESS.phoneHref} className="font-bold text-forest">
+                    Call {BUSINESS.phone}
+                  </a>
+                </p>
+              </div>
+            ) : (
+              <>
+                <p className="text-sm font-bold uppercase tracking-widest text-forest">Emergency request</p>
+                <h2 className="mt-2 font-display text-3xl font-black text-charcoal md:text-5xl">
+                  Skip the phone tag.
+                </h2>
+                <p className="mt-3 text-charcoal/75">
+                  Four quick answers and this lands with us instantly — a call
+                  back follows, usually within minutes.
+                </p>
+                <form
+                  className="mt-8 space-y-6"
+                  onSubmit={(e) => {
+                    e.preventDefault();
+                    if (!valid || flood.isPending) return;
+                    setError(null);
+                    flood.mutate({
+                      name: name.trim(),
+                      phone: phone.trim(),
+                      email: email.trim() || "",
+                      address: address.trim(),
+                      suburb: suburb.trim() || undefined,
+                      cause: cause!,
+                      rooms: rooms!,
+                      activeLeak: activeLeak!,
+                      insurance: insurance!,
+                      notes: notes.trim() || undefined,
+                    });
+                  }}
+                >
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field id="flood-name" label="Your name">
+                      <input id="flood-name" className="input-sharp" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+                    </Field>
+                    <Field id="flood-phone" label="Best phone">
+                      <input id="flood-phone" className="input-sharp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" />
+                    </Field>
+                  </div>
+                  <div className="grid gap-5 md:grid-cols-2">
+                    <Field id="flood-address" label="Street address">
+                      <input id="flood-address" className="input-sharp" value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" />
+                    </Field>
+                    <Field id="flood-suburb" label="Suburb / town">
+                      <input id="flood-suburb" className="input-sharp" value={suburb} onChange={(e) => setSuburb(e.target.value)} placeholder="Armidale" />
+                    </Field>
+                  </div>
+                  <Field id="flood-email" label="Email (optional — we'll send the next steps)">
+                    <input id="flood-email" className="input-sharp" value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" />
+                  </Field>
+                  <div>
+                    <p className="mb-2 font-bold text-charcoal">What happened?</p>
+                    <PillGroup options={CAUSES} value={cause} onChange={setCause} />
+                  </div>
+                  <div>
+                    <p className="mb-2 font-bold text-charcoal">How much of the house?</p>
+                    <PillGroup options={ROOMS} value={rooms} onChange={setRooms} />
+                  </div>
+                  <div className="grid gap-6 md:grid-cols-2">
+                    <div>
+                      <p className="mb-2 font-bold text-charcoal">Is it still leaking?</p>
+                      <PillGroup options={YES_NO} value={activeLeak} onChange={setActiveLeak} />
+                    </div>
+                    <div>
+                      <p className="mb-2 font-bold text-charcoal">Insurance claim?</p>
+                      <PillGroup options={YES_NO} value={insurance} onChange={setInsurance} />
+                    </div>
+                  </div>
+                  <Field id="flood-notes" label="Anything else? (optional)">
+                    <textarea id="flood-notes" className="input-sharp min-h-24" value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Water came through the kitchen ceiling about an hour ago…" />
+                  </Field>
+                  {error && (
+                    <p className="border-[1.5px] border-destructive bg-background px-4 py-3 text-sm font-semibold text-destructive" role="alert">
+                      {error}
+                    </p>
+                  )}
+                  <button type="submit" disabled={!valid || flood.isPending} className="btn-pill w-full disabled:cursor-not-allowed disabled:opacity-40 md:w-auto">
+                    {flood.isPending ? "Sending…" : "Send emergency request"}
+                  </button>
+                  <p className="text-sm text-charcoal/60">
+                    Prefer to talk?{" "}
+                    <a href={BUSINESS.phoneHref} className="font-bold text-forest">
+                      Call {BUSINESS.phone}
+                    </a>{" "}
+                    — 24/7.
+                  </p>
+                </form>
+              </>
+            )}
+          </div>
+        </section>
+      </main>
+
+      <Footer />
+    </div>
+  );
+}

@@ -2,6 +2,7 @@ import { useEffect } from 'react'
 import { Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router'
 import Home from './pages/Home'
 import Quote from './pages/Quote'
+import Flood from './pages/Flood'
 import Rugs from './pages/Rugs'
 import Lounge from './pages/Lounge'
 import Admin from './pages/Admin'
@@ -40,6 +41,7 @@ export default function App() {
     <Routes>
       <Route path="/" element={<Home />} />
       <Route path="/quote" element={<Quote />} />
+      <Route path="/flood" element={<Flood />} />
       <Route path="/rugs" element={<Rugs />} />
       <Route path="/lounge" element={<Lounge />} />
       <Route path="/furnishings" element={<FurnishingsRedirect />} />
