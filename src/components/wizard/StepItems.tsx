@@ -66,6 +66,8 @@ export default function StepItems({
   rugs,
   setRugs,
   kicker = "Step 2 · The items",
+  title,
+  sub,
 }: {
   mode: "lounge" | "rugs";
   lounges: LoungeItem[];
@@ -75,6 +77,8 @@ export default function StepItems({
   rugs: RugItem[];
   setRugs: (fn: (prev: RugItem[]) => RugItem[]) => void;
   kicker?: string;
+  title?: string;
+  sub?: string;
 }) {
   if (mode === "rugs") {
     return (
@@ -134,8 +138,8 @@ export default function StepItems({
     <div className="space-y-10">
       <StepHeading
         kicker={kicker}
-        title="Which pieces are we cleaning?"
-        sub="Lounges are priced per seat with three soiling levels; mattresses by size. Add as many pieces as you like — it all combines into one price."
+        title={title ?? "Which pieces are we cleaning?"}
+        sub={sub ?? "Lounges are priced per seat with three soiling levels; mattresses by size. Add as many pieces as you like — it all combines into one price."}
       />
 
       {/* Lounges */}

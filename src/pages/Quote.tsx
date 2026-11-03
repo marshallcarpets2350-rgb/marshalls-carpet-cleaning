@@ -29,12 +29,12 @@ import {
   type QuoteInput,
   type LoungeItem,
   type MattressItem,
-  type RugItem,
 } from "@contracts/rates";
 import StepWhereWho, { contactValid, type Contact } from "@/components/wizard/StepWhereWho";
 import StepJob, { ROOMS } from "@/components/wizard/StepJob";
 import { StepCarpet } from "@/components/wizard/StepCarpet";
 import { StepExtras } from "@/components/wizard/StepExtras";
+import StepItems from "@/components/wizard/StepItems";
 import { StepWhen } from "@/components/wizard/StepWhen";
 import { StepPayment } from "@/components/wizard/StepPayment";
 import { StepReview } from "@/components/wizard/StepReview";
@@ -44,6 +44,7 @@ const SECTION_IDS = [
   "q-job",
   "q-carpet",
   "q-extras",
+  "q-lounge",
   "q-when",
   "q-payment",
 ];
@@ -52,6 +53,7 @@ const MISSING_LABELS = [
   "your name, phone and email",
   "the reason for the clean and at least one room",
   "the carpet questions",
+  "",
   "",
   "a day and time (or 'call me to arrange')",
   "how you'd like to pay",
@@ -75,11 +77,11 @@ export default function Quote() {
   const [purpose, setPurpose] = useState<CleanPurpose | null>(null);
   const [mode, setMode] = useState<"rooms" | "area">("rooms");
   const [roomCounts, setRoomCounts] = useState<Record<string, number>>({});
-  // Checkout cross-sell — extra services tacked on at the payment step (10% off
-  // the added service). Empty until the customer taps one.
+  // Same-visit soft furnishings — lounges & mattresses the customer adds to
+  // this booking (10% off the added pieces). Rugs stay on their own page:
+  // they're a Thursday/Friday pick-up run, never same-day.
   const [csLounges, setCsLounges] = useState<LoungeItem[]>([]);
   const [csMattresses, setCsMattresses] = useState<MattressItem[]>([]);
-  const [csRugs, setCsRugs] = useState<RugItem[]>([]);
   const [areaInput, setAreaInput] = useState("");
 
   // --- step 3: carpet condition ---
@@ -178,13 +180,28 @@ export default function Quote() {
 
   // Plain-English list of what was counted — shown on the review page.
   const roomsSummary = useMemo(() => {
-    if (carpetAreaM2 === 0) return "";
-    if (mode === "area") return `${carpetAreaM2} m² of carpet (area entered directly)`;
-    const parts = ROOMS.filter((r) => (roomCounts[r.key] ?? 0) > 0).map(
-      (r) => `${roomCounts[r.key]}× ${r.label.toLowerCase()}`,
-    );
-    return `${parts.join(", ")} — ${carpetAreaM2} m² all up`;
-  }, [mode, roomCounts, carpetAreaM2]);
+    const carpetBit =
+      carpetAreaM2 === 0
+        ? ""
+        : mode === "area"
+          ? `${carpetAreaM2} m² of carpet (area entered directly)`
+          : `${ROOMS.filter((r) => (roomCounts[r.key] ?? 0) > 0)
+              .map((r) => `${roomCounts[r.key]}× ${r.label.toLowerCase()}`)
+              .join(", ")} — ${carpetAreaM2} m² all up`;
+    const softBits = [
+      ...csLounges
+        .filter((l) => l.seats > 0)
+        .map((l) =>
+          `${l.seats}-seater lounge` +
+          (l.reclinerSeats > 0 ? ` (${l.reclinerSeats} recliner seat${l.reclinerSeats === 1 ? "" : "s"})` : "") +
+          " — same visit",
+        ),
+      ...csMattresses
+        .filter((m) => m.qty > 0)
+        .map((m) => `${m.qty}× ${m.size} mattress — same visit`),
+    ];
+    return [carpetBit, ...softBits].filter(Boolean).join("; ");
+  }, [mode, roomCounts, carpetAreaM2, csLounges, csMattresses]);
 
   // Rooms the pre-vacuum would cover — actual rooms, or a fair guess from m².
   const totalRooms = useMemo(() => {
@@ -197,9 +214,9 @@ export default function Quote() {
       carpetAreaM2,
       carpetDirtiness,
       maintenance: "none",
-      lounges: csLounges,
-      mattresses: csMattresses,
-      rugs: csRugs,
+      lounges: csLounges.map((l) => ({ ...l, added: true })),
+      mattresses: csMattresses.map((m) => ({ ...m, added: true })),
+      rugs: [], // rugs are their own Thursday/Friday pick-up run — never same-day
       stainPackage: false, // stain treatment is priced from the stain answers now
       dirtGum: false,
       enzymePreSpray,
@@ -211,9 +228,9 @@ export default function Quote() {
       discountPercent: appliedCode?.percentOff ?? 0,
       // room counts let the BFYB comparison model their price exactly
       roomCounts: mode === "rooms" ? roomCounts : undefined,
-      crossSellApplied: csLounges.length + csMattresses.length + csRugs.length > 0,
+      crossSellApplied: csLounges.length + csMattresses.length > 0,
     }),
-    [carpetAreaM2, carpetDirtiness, condition, enzymePreSpray, totalRooms, travel, appliedCode, mode, roomCounts, csLounges, csMattresses, csRugs],
+    [carpetAreaM2, carpetDirtiness, condition, enzymePreSpray, totalRooms, travel, appliedCode, mode, roomCounts, csLounges, csMattresses],
   );
 
   const breakdown = useMemo(() => computeQuote(quoteInput, rates, bfybModel), [quoteInput, rates, bfybModel]);
@@ -251,6 +268,7 @@ export default function Quote() {
     purpose !== null && !breakdown.isEmpty,
     carpetAreaM2 === 0 || conditionComplete(condition),
     true,
+    true, // soft furnishings are optional — nothing to validate
     whenFlexible || (whenDate !== null && whenSlot !== null),
     payment !== null,
   ];
@@ -460,13 +478,10 @@ export default function Quote() {
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
             One page — answer your way down and the price moves as you go. The
             Continue button at the bottom takes you to the review &amp; send page.
-            Rugs, lounges and mattresses have their own quotes —{" "}
+            Lounges and mattresses can join this same visit (10% off, a few
+            questions down). Rugs are their own{" "}
             <Link to="/rugs" className="font-bold text-forest underline-offset-4 hover:underline">
-              rug pick-up &amp; clean
-            </Link>{" "}
-            and{" "}
-            <Link to="/lounge" className="font-bold text-forest underline-offset-4 hover:underline">
-              lounge, mattress &amp; upholstery
+              Thursday/Friday pick-up &amp; clean
             </Link>
             . Nothing is booked or charged until we confirm it with you.
           </p>
@@ -513,6 +528,17 @@ export default function Quote() {
                         stainPackage={false} setStainPackage={() => {}}
                         enzymePreSpray={enzymePreSpray} setEnzymePreSpray={setEnzymePreSpray}
                         rugsOnly={false}
+                      />
+                    </section>
+                    <section id="q-lounge">
+                      <StepItems
+                        mode="lounge"
+                        lounges={csLounges} setLounges={setCsLounges}
+                        mattresses={csMattresses} setMattresses={setCsMattresses}
+                        rugs={[]} setRugs={() => {}}
+                        kicker="Optional · same visit"
+                        title="Lounge or mattress too? Add it here — 10% off."
+                        sub="Same crew, same day, one booking. Anything you add here is cleaned while we're already at your place, so the added pieces come in 10% under their usual price. Rugs are different — they're a Thursday/Friday pick-up & clean, with their own quote."
                       />
                     </section>
                     <section id="q-when">
@@ -569,7 +595,7 @@ export default function Quote() {
                   date={whenFlexible ? null : whenDate} slot={whenFlexible ? null : whenSlot}
                   rugsOnly={false} hasCarpet={carpetAreaM2 > 0} jobMinutes={jobMinutes}
                   kicker="Nearly done · review & send"
-                  stepOf={{ where: 0, job: 1, carpet: 2, extras: 3, when: 4, payment: 5 }}
+                  stepOf={{ where: 0, job: 1, carpet: 2, extras: 3, when: 5, payment: 6 }}
                   notes={notes} setNotes={setNotes}
                   codeInput={codeInput} setCodeInput={setCodeInput}
                   appliedCode={appliedCode} codeError={codeError} applyCode={applyCode}
