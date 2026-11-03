@@ -39,7 +39,18 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-4">
+          <div className="md:col-span-2">
+            <h3 className="text-sm font-bold uppercase tracking-widest text-mint">Areas &amp; services</h3>
+            <ul className="mt-4 space-y-2 text-sm">
+              <li><a href="/carpet-cleaning-uralla" className="text-background/75 no-underline hover:text-mint">Carpet cleaning Uralla</a></li>
+              <li><a href="/carpet-cleaning-guyra" className="text-background/75 no-underline hover:text-mint">Carpet cleaning Guyra</a></li>
+              <li><a href="/carpet-cleaning-walcha" className="text-background/75 no-underline hover:text-mint">Carpet cleaning Walcha</a></li>
+              <li><a href="/end-of-lease-carpet-cleaning-armidale" className="text-background/75 no-underline hover:text-mint">End-of-lease cleans</a></li>
+              <li><a href="/pet-urine-carpet-cleaning-armidale" className="text-background/75 no-underline hover:text-mint">Pet urine &amp; odour</a></li>
+            </ul>
+          </div>
+
+          <div className="md:col-span-2">
             <h3 className="text-sm font-bold uppercase tracking-widest text-mint">
               Monthly deals, one email
             </h3>

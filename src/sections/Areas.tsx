@@ -1,5 +1,11 @@
 import { FALLBACK_TOWNS, RATES, travelFeeForTown, money } from "@contracts/rates";
 
+const TOWN_LINKS: Record<string, string> = {
+  Uralla: "/carpet-cleaning-uralla",
+  Guyra: "/carpet-cleaning-guyra",
+  Walcha: "/carpet-cleaning-walcha",
+};
+
 export default function Areas() {
   const towns = FALLBACK_TOWNS.filter((t) =>
     ["Armidale", "Uralla", "Guyra", "Walcha"].includes(t.name),
@@ -19,6 +25,17 @@ export default function Areas() {
               each way outside town. Enter your address in the quote builder and it
               works itself out.
             </p>
+            <p className="mt-4 text-sm text-charcoal/60">
+              Moving out? See our{" "}
+              <a href="/end-of-lease-carpet-cleaning-armidale" className="font-bold text-forest">
+                end-of-lease carpet cleaning
+              </a>{" "}
+              — or if pets got there first,{" "}
+              <a href="/pet-urine-carpet-cleaning-armidale" className="font-bold text-forest">
+                pet urine &amp; odour treatment
+              </a>
+              .
+            </p>
           </div>
 
           <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-7 md:p-9">
@@ -28,7 +45,15 @@ export default function Areas() {
             <ul className="mt-5 divide-y-[1.5px] divide-charcoal/20">
               {towns.map((t) => (
                 <li key={t.name} className="flex items-baseline justify-between py-3">
-                  <span className="text-lg font-semibold text-charcoal">{t.name}</span>
+                  <span className="text-lg font-semibold text-charcoal">
+                    {TOWN_LINKS[t.name] ? (
+                      <a href={TOWN_LINKS[t.name]} className="text-charcoal no-underline hover:text-forest">
+                        {t.name} →
+                      </a>
+                    ) : (
+                      t.name
+                    )}
+                  </span>
                   <span className="font-display text-xl font-black text-forest">
                     {travelFeeForTown(t.name, t.km) === 0 ? "Free" : money(travelFeeForTown(t.name, t.km))}
                   </span>

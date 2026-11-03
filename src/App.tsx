@@ -9,6 +9,8 @@ import Admin from './pages/Admin'
 import Unsubscribe from './pages/Unsubscribe'
 import Terms from './pages/Terms'
 import { SectionPage, ContactPage } from './pages/sections'
+import { TownPage } from './pages/seo/TownPage'
+import { EndOfLeasePage, PetUrinePage } from './pages/seo/IntentPages'
 import Services from './sections/Services'
 import Pricing from './sections/Pricing'
 import Areas from './sections/Areas'
@@ -49,6 +51,11 @@ export default function App() {
       <Route path="/prices" element={<SectionPage><Pricing /></SectionPage>} />
       <Route path="/work" element={<SectionPage><Gallery /></SectionPage>} />
       <Route path="/areas" element={<SectionPage><Areas /></SectionPage>} />
+      <Route path="/carpet-cleaning-uralla" element={<TownPage slug="carpet-cleaning-uralla" />} />
+      <Route path="/carpet-cleaning-guyra" element={<TownPage slug="carpet-cleaning-guyra" />} />
+      <Route path="/carpet-cleaning-walcha" element={<TownPage slug="carpet-cleaning-walcha" />} />
+      <Route path="/end-of-lease-carpet-cleaning-armidale" element={<EndOfLeasePage />} />
+      <Route path="/pet-urine-carpet-cleaning-armidale" element={<PetUrinePage />} />
       <Route path="/faq" element={<SectionPage><Faq /></SectionPage>} />
       <Route path="/contact" element={<ContactPage />} />
       <Route path="/admin" element={<Admin />} />
