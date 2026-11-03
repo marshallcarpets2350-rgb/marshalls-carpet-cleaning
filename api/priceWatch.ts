@@ -358,7 +358,8 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     expect("Anti-microbial", extraOf("antimicro"), currentModel.extras.antimicro);
     expect("Pre-vacuum per room", extraOf("prevac"), currentModel.extras.prevacPerRoom);
     expect("Fan hire", extraOf("fanHire"), currentModel.extras.fanPerDay);
-    expect("Flea treatment (end of lease)", extraOf("fleaEol"), currentModel.extras.fleaEol);
+    // Flea treatment is still captured into the live model above, but we don't
+    // offer it — no drift email until we add the service.
   } else {
     drifts.push("Carpet service not found in their config at all");
   }
