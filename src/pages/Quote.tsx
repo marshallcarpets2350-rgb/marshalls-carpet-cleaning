@@ -747,27 +747,30 @@ export default function Quote() {
                           ? c.total - c.travelAmount - base
                           : null;
                       return (
-                        <div key={c.key} className="flex items-center justify-between gap-3">
-                          <div>
+                        <div key={c.key}>
+                          <div className="flex items-baseline justify-between gap-3">
                             <p className="font-bold text-charcoal">{c.name}</p>
-                            {c.missing
-                              .filter((m) => !m.startsWith("Their travel surcharge"))
-                              .map((m) => (
-                                <p key={m} className="mt-0.5 text-xs text-charcoal/50">
-                                  {m.split(" — ")[0]} not in their price
-                                </p>
-                              ))}
-                            {saves !== null && (
-                              <p className="mt-1 font-display text-xl font-black text-[#15803D]">
-                                🎉 Marshall's saves you {money(saves)}
-                                {c.partial ? " or more" : ""}
+                            {c.total !== null && (
+                              <p className="whitespace-nowrap font-display text-2xl font-black text-[#E8710A]">
+                                {money(c.total)}
+                                {c.partial ? "+" : ""}
                               </p>
                             )}
                           </div>
-                          {c.total !== null && (
-                            <p className="font-display text-2xl font-black text-[#E8710A]">
-                              {money(c.total)}
-                              {c.partial ? "+" : ""}
+                          {c.missing
+                            .filter((m) => !m.startsWith("Their travel surcharge"))
+                            .map((m) => (
+                              <p key={m} className="mt-0.5 text-xs text-charcoal/50">
+                                {m.split(" — ")[0]} not in their price
+                              </p>
+                            ))}
+                          {saves !== null && (
+                            <p className="mt-1 font-display text-lg font-black text-[#15803D] md:text-xl">
+                              🎉 Marshall's saves you{" "}
+                              <span className="whitespace-nowrap">
+                                {money(saves)}
+                                {c.partial ? " or more" : ""}
+                              </span>
                             </p>
                           )}
                         </div>
