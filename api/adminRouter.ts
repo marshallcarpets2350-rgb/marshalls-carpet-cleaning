@@ -614,6 +614,16 @@ export const adminRouter = createRouter({
     }
   }),
 
+  // Manual rating + count — the homepage badge runs off these until the
+  // Places API is connected (and as a fallback if the key ever stops working).
+  saveGoogleManual: adminProcedure
+    .input(z.object({ rating: z.number().min(1).max(5), count: z.number().int().min(1).max(100000) }))
+    .mutation(async ({ input }) => {
+      const { saveGoogleManual } = await import("./googleReviews");
+      await saveGoogleManual(input.rating, input.count);
+      return { ok: true as const };
+    }),
+
   getSmtpSettings: adminProcedure.query(async () => {
     const s = await getSettings(SMTP_KEYS);    return {
       smtp_host: s.smtp_host ?? "",

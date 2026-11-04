@@ -47,8 +47,8 @@ export default function Reviews() {
               {data.rating.toFixed(1)} stars on Google.
             </h2>
             <p className="mt-3 max-w-xl text-lg text-charcoal/80">
-              From {data.userRatingCount} Google review{data.userRatingCount === 1 ? "" : "s"} —
-              checked and updated weekly, straight from Google.
+              From {data.userRatingCount} Google review{data.userRatingCount === 1 ? "" : "s"}
+              {data.live === false ? " — rated by the locals we clean for." : " — checked and updated weekly, straight from Google."}
             </p>
           </div>
           <div className="border-[1.5px] border-charcoal bg-creamlight px-5 py-4 text-center">

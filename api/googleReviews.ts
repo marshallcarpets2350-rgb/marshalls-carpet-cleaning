@@ -28,6 +28,9 @@ export interface GoogleReviewsData {
   mapsUrl: string;
   reviewUrl: string;
   fetchedAt: string;
+  /** False when the numbers come from the owner's manual entry in Settings
+   *  rather than a live Places API fetch — the homepage copy stays honest. */
+  live?: boolean;
 }
 
 // The business trades as "Marshall's" — the owner's personal name must never
@@ -169,6 +172,7 @@ export async function refreshGoogleReviews(): Promise<GoogleReviewsData | null> 
     mapsUrl: data.googleMapsUri || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Marshall's Carpet Cleaning Armidale")}`,
     reviewUrl: `https://search.google.com/local/writereview?placeid=${placeId}`,
     fetchedAt: new Date().toISOString(),
+    live: true,
   };
   await setSetting(CACHE_KEY, JSON.stringify(result));
 
@@ -187,11 +191,42 @@ export async function getGoogleReviews(): Promise<GoogleReviewsData | null> {
   const fresh = cached && Date.now() - new Date(cached.fetchedAt).getTime() < WEEK_MS;
   if (fresh) return cached;
   try {
-    return (await refreshGoogleReviews()) ?? cached;
+    const live = await refreshGoogleReviews();
+    if (live) return live;
   } catch (err) {
     console.error("Google reviews refresh failed:", err);
-    return cached;
   }
+  if (cached) return cached;
+  // No API connection (or it's never worked) — fall back to the rating the
+  // owner typed into Settings. Better a hand-updated 5.0 than no stars at all.
+  return manualGoogleReviews();
+}
+
+/** Owner-entered rating + count, shown on the homepage until/unless the
+ *  Places API is connected. Links use the saved review URL if there is one. */
+async function manualGoogleReviews(): Promise<GoogleReviewsData | null> {
+  const s = await getSettings(["google_manual_rating", "google_manual_count", "google_review_url"]);
+  const rating = Number(s.google_manual_rating);
+  const count = Number(s.google_manual_count);
+  if (!rating || !count || rating < 1 || rating > 5 || count < 1) return null;
+  const reviewUrl = s.google_review_url?.trim() || null;
+  return {
+    rating: Math.round(rating * 10) / 10,
+    userRatingCount: Math.round(count),
+    reviews: [], // no review cards in manual mode — badge + links only
+    mapsUrl: `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Marshall's Carpet Cleaning Armidale reviews")}`,
+    reviewUrl: reviewUrl || `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent("Marshall's Carpet Cleaning Armidale")}`,
+    fetchedAt: new Date().toISOString(),
+    live: false,
+  };
+}
+
+/** Save the owner's hand-entered rating + review count (manual mode). */
+export async function saveGoogleManual(rating: number, count: number): Promise<void> {
+  if (!(rating >= 1 && rating <= 5)) throw new Error("Rating needs to be between 1 and 5.");
+  if (!(count >= 1 && count <= 100000)) throw new Error("Review count needs to be at least 1.");
+  await setSetting("google_manual_rating", String(rating));
+  await setSetting("google_manual_count", String(Math.round(count)));
 }
 
 /** Status block for Admin → Settings. */
@@ -200,10 +235,13 @@ export async function googleReviewsStatus(): Promise<{
   keyHint: string;
   placeId: string;
   cached: { rating: number; userRatingCount: number; reviewCount: number; fetchedAt: string } | null;
+  manual: { rating: number; count: number } | null;
 }> {
-  const s = await getSettings(["google_places_api_key", "google_place_id"]);
+  const s = await getSettings(["google_places_api_key", "google_place_id", "google_manual_rating", "google_manual_count"]);
   const cached = await loadCache();
   const key = s.google_places_api_key?.trim() ?? "";
+  const mRating = Number(s.google_manual_rating);
+  const mCount = Number(s.google_manual_count);
   return {
     configured: Boolean(key),
     keyHint: key ? `…${key.slice(-4)}` : "",
@@ -216,6 +254,7 @@ export async function googleReviewsStatus(): Promise<{
           fetchedAt: cached.fetchedAt,
         }
       : null,
+    manual: mRating && mCount ? { rating: mRating, count: mCount } : null,
   };
 }
 

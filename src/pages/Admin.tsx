@@ -2237,6 +2237,15 @@ export default function Admin() {
       },
       onError: (e) => setGoogleMsg(e.message),
     });
+    const [manualRating, setManualRating] = useState("");
+    const [manualCount, setManualCount] = useState("");
+    const saveManual = trpc.admin.saveGoogleManual.useMutation({
+      onSuccess: async () => {
+        await utils.admin.getGoogleSettings.invalidate();
+        setGoogleMsg("Saved ✓ — your stars are on the homepage now. Update these numbers here whenever they change.");
+      },
+      onError: (e) => setGoogleMsg(e.message),
+    });
     const gallery = trpc.public.gallery.useQuery();
     const [gCaption, setGCaption] = useState("");
     const [gSuburb, setGSuburb] = useState("");
@@ -2454,6 +2463,43 @@ export default function Admin() {
               </p>
             </div>
           )}
+          <div className="mt-4 border-[1.5px] border-charcoal bg-creamlight p-5">
+            <p className="font-bold text-charcoal">Or just type the numbers in yourself</p>
+            <p className="mt-1 text-sm text-charcoal/75">
+              No Google key needed — your star rating goes on the homepage straight from these two numbers.
+              Update them here whenever they change (once a month is plenty).
+              {google.data?.manual && (
+                <> Right now it's set to <strong>{google.data.manual.rating} stars from {google.data.manual.count} reviews</strong>.</>
+              )}
+            </p>
+            <form
+              className="mt-3 flex flex-wrap items-end gap-3"
+              onSubmit={(e) => {
+                e.preventDefault();
+                setGoogleMsg("");
+                const rating = Number(manualRating);
+                const count = Number(manualCount);
+                if (rating >= 1 && rating <= 5 && count >= 1) saveManual.mutate({ rating, count });
+                else setGoogleMsg("Rating needs to be 1–5 and the count at least 1.");
+              }}
+            >
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold">Star rating</span>
+                <input className="input-sharp !w-28" type="number" step="0.1" min="1" max="5" value={manualRating}
+                  placeholder={google.data?.manual ? String(google.data.manual.rating) : "5.0"}
+                  onChange={(e) => setManualRating(e.target.value)} />
+              </label>
+              <label className="block">
+                <span className="mb-1 block text-sm font-bold">How many reviews</span>
+                <input className="input-sharp !w-28" type="number" step="1" min="1" value={manualCount}
+                  placeholder={google.data?.manual ? String(google.data.manual.count) : "28"}
+                  onChange={(e) => setManualCount(e.target.value)} />
+              </label>
+              <button type="submit" className="btn-pill !px-5 !py-2.5 text-sm" disabled={saveManual.isPending || !manualRating.trim() || !manualCount.trim()}>
+                {saveManual.isPending ? "Saving…" : "Put my stars on the site"}
+              </button>
+            </form>
+          </div>
           {googleMsg && (
             <p className={`mt-3 border-[1.5px] p-3 text-sm font-semibold ${googleMsg.startsWith("Saved ✓") || googleMsg.startsWith("Refreshed ✓") ? "border-forest bg-mintlight text-forest" : "border-destructive text-destructive"}`} role="status">
               {googleMsg}
