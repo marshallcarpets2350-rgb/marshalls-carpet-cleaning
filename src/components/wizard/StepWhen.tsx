@@ -242,7 +242,7 @@ export function StepWhen({
   );
 
   const span = slotsNeededFor(jobMinutes);
-  const fullDayJob = span >= TIME_SLOTS.length; // takes the whole day — 7:00 AM start
+  const fullDayJob = span >= TIME_SLOTS.length; // takes the whole day — 8:00 AM start
   const driveMin = driveMinutesFor(town);
   const morningOnly = isMorningOnlyTown(driveMin);
 
@@ -321,7 +321,7 @@ export function StepWhen({
       )}
       {!rugsOnly && fullDayJob && (
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/80">
-          That's a full-day job — it starts at 7:00 AM and the whole day is
+          That's a full-day job — it starts at 8:00 AM and the whole day is
           yours. Every job is finished in one day, so nothing carries over to
           the next.
         </p>

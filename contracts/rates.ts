@@ -1147,10 +1147,11 @@ export interface BookingDetails {
   secondVisit: { date: string; slot: number } | null;
 }
 
-// Day/time picker — hourly windows 7:00 AM–5:00 PM, Monday to Saturday, from
-// two days out.
+// Day/time picker — hourly windows 8:00 AM–5:00 PM, Monday to Friday, from
+// two days out. Owner call 4 Nov 2026: weekdays start at 8 (no more 7am
+// starts), and Saturdays stopped being offered from 14 Nov 2026 — weekends
+// are for the rug run and rest (see bookableDates in contracts/calendar.ts).
 export const TIME_SLOTS = [
-  "7:00 – 8:00 AM",
   "8:00 – 9:00 AM",
   "9:00 – 10:00 AM",
   "10:00 – 11:00 AM",
@@ -1166,8 +1167,8 @@ export const SLOT_MINUTES = 60;
 export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
 export const BOOKING_NOTICE_DAYS = 2; // today and tomorrow are never offered
 
-/** Minutes after midnight each slot starts at (7:00 AM through 4:00 PM). */
-export const SLOT_START_MINUTES = [420, 480, 540, 600, 660, 720, 780, 840, 900, 960] as const;
+/** Minutes after midnight each slot starts at (8:00 AM through 4:00 PM). */
+export const SLOT_START_MINUTES = [480, 540, 600, 660, 720, 780, 840, 900, 960] as const;
 
 /** "7:00 AM" style label for a minutes-after-midnight time. */
 export function clockLabel(mins: number): string {
@@ -1374,7 +1375,7 @@ export function isMorningOnlyTown(driveMinutes: number): boolean {
 
 /** Slots a far-town job may start in — the morning windows only. */
 export function morningOnlySlotAllowed(slotIndex: number): boolean {
-  return slotIndex <= 3; // 7:00, 8:00, 9:00, 10:00 starts
+  return slotIndex <= 3; // 8:00, 9:00, 10:00, 11:00 starts
 }
 
 // ---------------------------------------------------------------------------

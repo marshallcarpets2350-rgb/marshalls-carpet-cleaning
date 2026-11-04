@@ -600,7 +600,7 @@ export default function Admin() {
       const slotMin =
         b.preferredSlot !== null && b.preferredSlot !== undefined
           ? (SLOT_START_MINUTES[b.preferredSlot] ?? 420)
-          : 420;
+          : 480;
       return { date: b.preferredDate, sort: `${b.preferredDate}T${String(slotMin).padStart(4, "0")}` };
     };
     const isUpcoming = (r: Row) => {

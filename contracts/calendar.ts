@@ -22,14 +22,24 @@ export function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Dates offered in the picker: Mon–Sat, from BOOKING_NOTICE_DAYS out. */
+/** Dates offered in the picker: from BOOKING_NOTICE_DAYS out. Sundays are
+ *  never offered, and Saturdays stopped being offered from 14 Nov 2026
+ *  (owner call — weekends are for the rug run and rest). Saturday bookings
+ *  made before then (e.g. 7 Nov) are honoured. */
+export const LAST_BOOKABLE_SATURDAY = "2026-11-07";
+
 export function bookableDates(): string[] {
   const out: string[] = [];
   const start = sydneyToday();
   for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
     const diff = Math.round((d.getTime() - start.getTime()) / 86400000);
     if (diff > BOOKING_DAYS_AHEAD) break;
-    if (diff >= BOOKING_NOTICE_DAYS && d.getDay() !== 0) out.push(isoDay(d));
+    if (diff < BOOKING_NOTICE_DAYS) continue;
+    const day = d.getDay();
+    const iso = isoDay(d);
+    if (day === 0) continue; // Sundays never
+    if (day === 6 && iso > LAST_BOOKABLE_SATURDAY) continue; // Saturdays: rug/rest days
+    out.push(iso);
   }
   return out;
 }

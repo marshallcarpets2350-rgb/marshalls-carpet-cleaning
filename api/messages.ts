@@ -111,7 +111,7 @@ export function confirmationEmail(lead: LeadRow): { subject: string; text: strin
   const where = [lead.address, lead.suburb].filter(Boolean).join(", ") || "your place";
   const big =
     b && slotsNeededFor(b.jobMinutes) >= TIME_SLOTS.length
-      ? `\nThis is a big one — a full day on the tools, starting at 7:00 AM sharp. The whole day is yours.\n`
+      ? `\nThis is a big one — a full day on the tools, starting at 8:00 AM sharp. The whole day is yours.\n`
       : "";
   const collection = b?.rugPickup
     ? `\n• Collection: ${
