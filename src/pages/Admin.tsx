@@ -508,7 +508,7 @@ export default function Admin() {
                 <span className="text-xl" aria-hidden="true">🏠</span>
                 <p className="font-bold text-charcoal">
                   Home by {d.arriveHomeMin !== null ? clockLabel(d.arriveHomeMin) : "—"}
-                  <span className="block text-sm font-semibold text-charcoal/60">{d.homeDrive} min drive back · job-done messages send themselves 30 min after each finish</span>
+                  <span className="block text-sm font-semibold text-charcoal/60">{d.homeDrive} min drive back · job-done messages go out together at 5:00 PM</span>
                 </p>
               </li>
             </ol>
@@ -897,7 +897,7 @@ export default function Admin() {
                               <strong>Job-done thanks + review ask:</strong>{" "}
                               {r.followUpSentAt
                                 ? `sent ${new Date(r.followUpSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
-                                : "goes automatically 30 min after the job ends"}
+                                : "goes automatically at 5:00 PM on the day"}
                             </li>
                           </ul>
                           <div className="mt-3 flex flex-wrap gap-2">
@@ -2539,7 +2539,8 @@ export default function Admin() {
           <h2 className="font-display text-2xl font-black text-charcoal">Customer messages</h2>
           <p className="mt-2 text-sm text-charcoal/70">
             Every booking gets a confirmation the moment it lands, and a thank-you with your review
-            link 30 minutes after the job ends — sent by email, text, or both, however the customer
+            link at 5:00 PM once the day's work is done — sent by email, text, or both, however the
+            customer
             asked. Email uses the Gmail settings above. Text messages need a Twilio account (about
             $6/month plus a few cents a text) — until then the booking form simply confirms by
             email. The moment you save Twilio settings here, the "text me" option appears on the

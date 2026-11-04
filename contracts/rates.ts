@@ -1194,17 +1194,19 @@ export function longDateLabel(iso: string): string {
 // Job duration + travel — how long a job ties up the day, and how far it is.
 // Used to space bookings so there's always enough time before the next one.
 //
-// Times tuned so a standard 3-bed house lands at about 2 hours on site and a
-// deep clean around 2½ — four normal jobs fit a 7:00 AM–5:00 PM day with
-// travel room between them. Still cross-checked against published production
-// rates: portable/box-unit hot water extraction runs 600–1,200 sq ft/hour
-// (CMM/ISSA), i.e. ~15–20 min per standard room with pre-spray — a 2-hour
-// standard house sits right in that band, and heavy soil slowing production
-// ~2× matches ISSA's 400 sq ft/hr heavy-soil floor. Tighter, honest times =
-// more bookings fit the day.
+// Times anchored on the operator's rule (4 Nov 2026): an average house takes
+// 2 hours on site. The reference house is a standard-clean 3-bed + living +
+// hall — the raw per-room model puts it at ~93 minutes, so every estimate is
+// scaled to land that reference at exactly 120, and bigger or dirtier jobs
+// stretch proportionally beyond it (a deep-clean 3-bed comes out ~2½ hours).
+// Generous times = the day never over-books. Still consistent with published
+// production rates: portable/box-unit hot water extraction runs 600–1,200
+// sq ft/hour (CMM/ISSA), and heavy soil slowing production ~2× matches ISSA's
+// 400 sq ft/hr heavy-soil floor.
 // ---------------------------------------------------------------------------
 
 export const TIME_MODEL = {
+  averageHouseMinutes: 120, // operator anchor: a typical house, start to packed up
   arriveSetupMinutes: 20, // machine out, hoses run, pre-spray bottles filled
   packUpMinutes: 15, // pack down and load up
   // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
@@ -1290,9 +1292,18 @@ export function estimateJobMinutes(q: QuoteInput): number {
   }
   const rugs = rugCount(q.rugs);
   if (rugs > 0) m += onsite ? TIME_MODEL.rugLoad : TIME_MODEL.rugPickupStop;
-  // Owner calibration 3 Nov 2026: real jobs run ~15% under the model, so every
-  // estimate is scaled down before rounding (minimum 30 min stays).
-  const scaled = m * 0.85;
+  // Owner calibration 4 Nov 2026: anchor the day on a 2-hour average house.
+  // The reference house (3 bed + living + hall, standard clean) is derived
+  // from the room times above, then every estimate scales so that reference
+  // lands exactly on the anchor (minimum 30 min stays).
+  const t = TIME_MODEL;
+  const referenceHouseRaw =
+    t.arriveSetupMinutes +
+    t.packUpMinutes +
+    3 * (t.roomMinutes.bed.pre + t.roomMinutes.bed.clean) +
+    (t.roomMinutes.living.pre + t.roomMinutes.living.clean) +
+    (t.roomMinutes.hall.pre + t.roomMinutes.hall.clean);
+  const scaled = m * (t.averageHouseMinutes / referenceHouseRaw);
   const rounded = Math.max(30, Math.ceil(scaled / 15) * 15);
   // Never longer than one working day — jobs are done in a single day, so a
   // monster quote simply takes the whole day instead of spilling into the next.

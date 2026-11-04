@@ -1,7 +1,8 @@
-// Post-job follow-up timer — once a booking's end time (plus a 30-minute
-// grace) has passed, the customer gets the thank-you + review message and the
-// job flips to completed on the board. Rug pickups are skipped: their "done"
-// moment is the return delivery days later, so those go from the admin button.
+// Post-job follow-up timer — thank-you + review messages go out in one batch
+// at 5:00 PM on the job day (a job still running past 5 gets theirs at its own
+// finish time), and the job flips to completed on the board. Rug pickups are
+// skipped: their "done" moment is the return delivery days later, so those go
+// from the admin button.
 import { eq, isNotNull, isNull, ne, and } from "drizzle-orm";
 import { getDb } from "./queries/connection";
 import { leads } from "@db/schema";
@@ -15,7 +16,7 @@ import {
   type LeadRow,
 } from "./messages";
 
-const GRACE_MINUTES = 30;
+const END_OF_DAY_MIN = 17 * 60; // 5:00 PM — thank-yous batch at close of day
 const TICK_MS = 5 * 60 * 1000;
 
 /** Current date (yyyy-mm-dd) and minutes-after-midnight in business time. */
@@ -55,9 +56,10 @@ async function sendDueFollowUps(): Promise<void> {
       continue;
     if (b.rugPickup) continue; // pickups complete on return delivery — manual button
     const endMin = (SLOT_START_MINUTES[b.preferredSlot] ?? 420) + (b.jobMinutes || 60);
+    const sendAt = Math.max(END_OF_DAY_MIN, endMin);
     const due =
       b.preferredDate < iso ||
-      (b.preferredDate === iso && minutes >= endMin + GRACE_MINUTES);
+      (b.preferredDate === iso && minutes >= sendAt);
     if (!due) continue;
 
     const lead = row as LeadRow;
