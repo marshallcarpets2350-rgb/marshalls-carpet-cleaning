@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import Header from "@/sections/Header";
-import FlowArt from "@/components/FlowArt";
+import FlowArt, { DotCreek } from "@/components/FlowArt";
 import Footer from "@/sections/Footer";
 import NewsletterForm from "@/components/NewsletterForm";
 import { BUSINESS } from "@contracts/rates";
@@ -11,6 +11,7 @@ export function SectionPage({ children }: { children: ReactNode }) {
       <Header />
       <FlowArt />
       <main>{children}</main>
+      <DotCreek seed={5309} />
       <Footer />
     </div>
   );

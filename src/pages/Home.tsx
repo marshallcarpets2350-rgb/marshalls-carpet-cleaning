@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 import Header from "@/sections/Header";
-import FlowArt from "@/components/FlowArt";
+import FlowArt, { DotCreek } from "@/components/FlowArt";
 import Reviews from "@/sections/Reviews";
 import { BUSINESS } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
@@ -115,6 +115,8 @@ export default function Home() {
           </p>
         </div>
       </main>
+
+      <DotCreek seed={4711} />
 
       <Reviews />
 
