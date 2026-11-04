@@ -945,10 +945,15 @@ const CLEAN_LABEL: Record<string, string> = {
   heavy: "Restoration Clean",
 };
 
-/** Human list of what's being done — "2 bedrooms (Restoration Clean); 5-seat lounge; Extras — pet accidents, enzyme pre-spray". */
-export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): string {
-  if (!input) return "Cleaning";
-  const parts: string[] = [];
+/** The job broken into readable lines — main work items separate from extras. */
+export interface ServiceParts {
+  main: string[];
+  extras: string[];
+}
+
+export function serviceParts(input: QuoteInput | null, rugPickup = false): ServiceParts {
+  if (!input) return { main: ["Cleaning"], extras: [] };
+  const main: string[] = [];
   const counts = input.roomCounts ?? {};
   const rooms = Object.entries(counts)
     .filter(([, n]) => n > 0)
@@ -961,17 +966,17 @@ export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): st
       rooms.length > 0
         ? rooms.join(", ").replace(/, ([^,]*)$/, " and $1")
         : `carpet (~${input.carpetAreaM2} m²)`;
-    parts.push(`Carpet — ${what} (${CLEAN_LABEL[input.carpetDirtiness]})`);
+    main.push(`Carpet — ${what} (${CLEAN_LABEL[input.carpetDirtiness]})`);
   }
   for (const l of input.lounges) {
     if (l.seats > 0)
-      parts.push(
+      main.push(
         `Lounge — ${l.seats}-seat${l.reclinerSeats > 0 ? ` incl. ${l.reclinerSeats} recliner${l.reclinerSeats > 1 ? "s" : ""}` : ""} (${CLEAN_LABEL[l.dirtiness]})`,
       );
   }
   for (const m of input.mattresses) {
     if (m.qty > 0)
-      parts.push(`${m.qty}× ${m.size} mattress${m.qty > 1 ? "es" : ""} (${CLEAN_LABEL[m.dirtiness]})`);
+      main.push(`${m.qty}× ${m.size} mattress${m.qty > 1 ? "es" : ""} (${CLEAN_LABEL[m.dirtiness]})`);
   }
   const rugs = input.rugs.reduce((s, r) => s + r.qty, 0);
   if (rugs > 0) {
@@ -979,7 +984,7 @@ export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): st
       .filter((r) => r.qty > 0)
       .map((r) => `${r.qty}× ${r.size}`)
       .join(", ");
-    parts.push(`${rugs} rug${rugs > 1 ? "s" : ""} (${bySize})${rugPickup ? " — pick-up & return" : ""}`);
+    main.push(`${rugs} rug${rugs > 1 ? "s" : ""} (${bySize})${rugPickup ? " — pick-up & return" : ""}`);
   }
   const extras: string[] = [];
   if (input.stainTypes.length)
@@ -991,6 +996,14 @@ export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): st
     extras.push(`pre-vacuum ${input.preVacuumRooms} room${input.preVacuumRooms > 1 ? "s" : ""}`);
   if (input.dryingFans > 0)
     extras.push(`${input.dryingFans} drying fan${input.dryingFans > 1 ? "s" : ""}`);
+  return { main, extras };
+}
+
+/** Human list of what's being done — "2 bedrooms (Restoration Clean); 5-seat lounge; Extras — pet accidents, enzyme pre-spray". */
+export function serviceSummary(input: QuoteInput | null, rugPickup: boolean): string {
+  if (!input) return "Cleaning";
+  const { main, extras } = serviceParts(input, rugPickup);
+  const parts = [...main];
   if (extras.length) parts.push(`Extras — ${extras.join(", ")}`);
   return parts.length ? parts.join("; ") : "Cleaning";
 }

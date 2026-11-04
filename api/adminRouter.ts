@@ -5,7 +5,7 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceKinds, floodPrices, floodReportCharges, type ServiceKind } from "@contracts/rates";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, type ServiceKind } from "@contracts/rates";
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
@@ -699,7 +699,10 @@ export const adminRouter = createRouter({
         phone: string;
         where: string;
         town: string;
-        service: string;
+        lines: string[]; // main work items, one per line
+        extras: string[]; // treatment/extras the customer chose
+        warning: string | null; // e.g. pet stains without stain treatment
+        notes: string | null;
         kinds: ServiceKind[];
         total: number;
         paidOnline: boolean;
@@ -734,8 +737,22 @@ export const adminRouter = createRouter({
           continue;
         }
         if (b.preferredSlot === null || b.preferredSlot === undefined) continue;
-        const startMin = SLOT_START_MINUTES[b.preferredSlot] ?? 420;
+        const startMin = SLOT_START_MINUTES[b.preferredSlot] ?? 480;
         const q = JSON.parse(row.quoteJson) as { input: Parameters<typeof serviceSummary>[0] };
+        const input = q.input;
+        const sp = serviceParts(input, false);
+        // Plain-English flag: pet stains on the job but no stain treatment
+        // paid for — so the operator knows not to reach for stain chemicals.
+        const treatmentBooked = Boolean(
+          input && (input.stainPackage || input.enzymePreSpray || input.stainTypes.length > 0),
+        );
+        const cond = b.condition;
+        const stainsNoted = Boolean(cond?.stains && cond.stains !== "none");
+        const petStain = Boolean(
+          cond?.stainTypes?.includes("pet-urine") ||
+            (cond?.pets === "inside" && stainsNoted) ||
+            /pet|dog|cat|puppy|urine/i.test(b.notes ?? ""),
+        );
         jobs.push({
           id: row.id,
           ref: bookingReference(row as never),
@@ -743,7 +760,13 @@ export const adminRouter = createRouter({
           phone: row.phone,
           where,
           town: b.town || row.suburb || "Armidale",
-          service: serviceSummary(q.input, false),
+          lines: sp.main,
+          extras: sp.extras,
+          warning:
+            petStain && !treatmentBooked
+              ? "Pet stains on this one, but no stain treatment booked — straight clean only, no stain chemicals."
+              : null,
+          notes: b.notes || null,
           kinds: serviceKinds(q.input),
           total: row.total,
           paidOnline: row.paidOnline,

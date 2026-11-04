@@ -473,33 +473,45 @@ export default function Admin() {
               </li>
               {d.jobs.map((j, i) => (
                 <li key={j.id}>
-                  <div className="flex items-center gap-3 border-l-4 border-secondary py-2 pl-3">
-                    <span className="text-xl" aria-hidden="true">🚗</span>
-                    <p className="text-sm font-semibold text-charcoal/80">
-                      {d.legs[i].minutes} min drive{d.legs[i].from !== "Home" ? ` from ${d.legs[i].from}` : ""} to {j.town}
-                      {d.legs[i].slackMin !== null && d.legs[i].slackMin > 5 && (
-                        <span className="text-charcoal/60"> · {d.legs[i].slackMin} min spare after the drive</span>
-                      )}
-                    </p>
-                  </div>
-                  <div className="border-[1.5px] border-charcoal bg-background p-4 offset-shadow-sm">
+                  <p className="py-2 pl-1 text-sm font-semibold text-charcoal/60">
+                    🚗 {d.legs[i].minutes} min drive{d.legs[i].from !== "Home" ? ` from ${d.legs[i].from}` : ""} to {j.town}
+                    {d.legs[i].slackMin !== null && d.legs[i].slackMin > 5 && ` · ${d.legs[i].slackMin} min to spare`}
+                  </p>
+                  <div className="border-[1.5px] border-charcoal bg-background p-5 offset-shadow-sm">
                     <div className="flex flex-wrap items-baseline justify-between gap-2">
-                      <p className="font-display text-xl font-black text-forest">
+                      <p className="font-display text-2xl font-black text-forest">
                         {clockLabel(j.startMin)} – {clockLabel(j.endMin)}
                       </p>
                       <p className="text-sm font-bold text-charcoal">
                         {money(j.total)}
-                        {j.paidOnline || j.paidOfflineAt ? " · paid" : j.payment === "invoice" ? " · invoice" : " · on the day"}
+                        {j.paidOnline || j.paidOfflineAt ? " · paid ✓" : j.payment === "invoice" ? " · invoice after" : " · pay on the day"}
                       </p>
                     </div>
-                    <p className="mt-1 font-bold text-charcoal">
-                      <ServiceDots kinds={j.kinds ?? []} /> {j.name} <span className="text-charcoal/50">({j.ref})</span>
+                    <p className="mt-1 text-lg font-bold text-charcoal">
+                      <ServiceDots kinds={j.kinds ?? []} /> {j.name}{" "}
+                      <span className="text-sm font-semibold text-charcoal/50">{j.ref}</span>
                     </p>
-                    <p className="text-sm text-charcoal/80">{j.service}</p>
-                    <p className="mt-1 text-sm text-charcoal/80">
-                      📍 {j.where || j.town}
-                      {" · "}
-                      <a href={`tel:${j.phone}`} className="font-semibold text-forest">{j.phone}</a>
+                    <ul className="mt-3 space-y-1 text-sm text-charcoal/85">
+                      {j.lines.map((line, li) => (
+                        <li key={li}>• {line}</li>
+                      ))}
+                    </ul>
+                    {j.extras.length > 0 && (
+                      <p className="mt-2.5 border-[1.5px] border-forest/40 bg-mintlight px-3 py-2 text-sm font-bold text-forest">
+                        ✚ Extras booked: {j.extras.join(" · ")}
+                      </p>
+                    )}
+                    {j.warning && (
+                      <p className="mt-2.5 border-[1.5px] border-[#b45309] bg-[#fef3c7] px-3 py-2 text-sm font-bold text-[#92400e]">
+                        🐾 {j.warning}
+                      </p>
+                    )}
+                    {j.notes && (
+                      <p className="mt-2.5 text-sm text-charcoal/70">📝 {j.notes}</p>
+                    )}
+                    <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-charcoal/15 pt-3 text-sm text-charcoal/80">
+                      <span>📍 {j.where || j.town}</span>
+                      <a href={`tel:${j.phone}`} className="font-bold text-forest">📞 {j.phone}</a>
                     </p>
                   </div>
                 </li>
