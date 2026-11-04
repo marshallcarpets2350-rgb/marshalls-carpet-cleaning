@@ -626,7 +626,7 @@ function toAuMobile(phone: string): string {
 /** Where the job sits in the day — used by the run sheet and follow-up timer. */
 export function jobWindow(b: BookingDetails): { startMin: number; endMin: number } | null {
   if (b.preferredSlot === null || b.preferredSlot === undefined) return null;
-  const startMin = SLOT_START_MINUTES[b.preferredSlot] ?? 420;
+  const startMin = SLOT_START_MINUTES[b.preferredSlot] ?? 480;
   return { startMin, endMin: startMin + (b.jobMinutes || 60) };
 }
 

@@ -55,7 +55,7 @@ async function sendDueFollowUps(): Promise<void> {
     if (!b || !b.preferredDate || b.preferredSlot === null || b.preferredSlot === undefined)
       continue;
     if (b.rugPickup) continue; // pickups complete on return delivery — manual button
-    const endMin = (SLOT_START_MINUTES[b.preferredSlot] ?? 420) + (b.jobMinutes || 60);
+    const endMin = (SLOT_START_MINUTES[b.preferredSlot] ?? 480) + (b.jobMinutes || 60);
     const sendAt = Math.max(END_OF_DAY_MIN, endMin);
     const due =
       b.preferredDate < iso ||
