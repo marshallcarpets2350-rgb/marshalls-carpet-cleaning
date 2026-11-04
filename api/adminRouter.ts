@@ -739,12 +739,12 @@ export const adminRouter = createRouter({
         if (b.preferredSlot === null || b.preferredSlot === undefined) continue;
         const startMin = SLOT_START_MINUTES[b.preferredSlot] ?? 480;
         const q = JSON.parse(row.quoteJson) as { input: Parameters<typeof serviceSummary>[0] };
-        const input = q.input;
-        const sp = serviceParts(input, false);
+        const quoteInput = q.input;
+        const sp = serviceParts(quoteInput, false);
         // Plain-English flag: pet stains on the job but no stain treatment
         // paid for — so the operator knows not to reach for stain chemicals.
         const treatmentBooked = Boolean(
-          input && (input.stainPackage || input.enzymePreSpray || input.stainTypes.length > 0),
+          quoteInput && (quoteInput.stainPackage || quoteInput.enzymePreSpray || quoteInput.stainTypes.length > 0),
         );
         const cond = b.condition;
         const stainsNoted = Boolean(cond?.stains && cond.stains !== "none");
