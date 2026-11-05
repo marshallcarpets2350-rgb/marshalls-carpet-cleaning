@@ -34,6 +34,13 @@ export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <Header />
+      <Link
+        to="/quote"
+        className="block border-b-[1.5px] border-charcoal bg-[#1A6FD1] px-4 py-2 text-center text-sm font-bold text-white transition-colors hover:bg-[#1E5FB8]"
+      >
+        🎄 Pre-Christmas cleans now booking — December spots fill fast.{" "}
+        <span className="underline underline-offset-2">Book your clean</span>
+      </Link>
       <FlowArt />
 
       <main className="flex flex-1 flex-col justify-center bg-creamlight py-6 md:py-8">
