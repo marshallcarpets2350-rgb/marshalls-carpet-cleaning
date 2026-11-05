@@ -1,7 +1,7 @@
 // Shared one-page scrolling quote for the soft-furnishing services.
 // Two kinds:
 //   "lounge" — /lounge — lounges & mattresses, on-site visit, fabric add-ons
-//   "rugs"   — /rugs   — rug pick-up & clean, Thursday/Friday 3–5pm run
+//   "rugs"   — /rugs   — rug pick-up & clean, Friday 3–5pm run
 // No progress rail, no steps — one page down, Continue at the bottom, then a
 // review & send screen. Same engine, same live calendar, same server as the
 // carpet quote.
@@ -67,7 +67,7 @@ const COPY = {
     title: "Rug pick-up & clean.",
     blurb: (
       <>
-        We collect your rugs Thursday or Friday between 3 and 5pm, wash and dry
+        We collect your rugs on Fridays between 3 and 5pm, wash and dry
         them at our premises, and have them back on your floor Monday. Free pickup
         in Armidale — beyond town it's a flat $1 per km. Lounges, mattresses and
         carpet have their own quotes —{" "}

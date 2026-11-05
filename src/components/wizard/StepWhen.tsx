@@ -3,7 +3,7 @@
 // real time, the calendar works out how many hours your job needs and only
 // offers start times that genuinely fit — including drive time around other
 // bookings, and morning-only starts for far towns (Walcha way). Rug-only
-// bookings use the same calendar but only the Thursday/Friday pickup days
+// bookings use the same calendar but only the Friday pickup days
 // light up. Everything is sized large so it's easy to read and easy to tap.
 import { useMemo, useState } from "react";
 import { trpc } from "@/providers/trpc";
@@ -294,7 +294,7 @@ export function StepWhen({
         title={rugsOnly ? "Choose your pickup day" : "Choose your date & arrival window"}
         sub={
           rugsOnly
-            ? "Rugs are collected Thursday or Friday between 3 and 5pm, and returned the Monday after — cleaned and dry. The calendar runs a full year ahead."
+            ? "Rugs are collected Friday between 3 and 5pm, and returned the Monday after — cleaned and dry. The calendar runs a full year ahead."
             : "This is our live booking calendar — every booked job comes off the board in real time, so any day and time you can select is genuinely available. It runs a full year ahead, and we confirm the exact time with you before the job."
         }
       />

@@ -333,7 +333,7 @@ export const publicRouter = createRouter({
 
       // If a time was picked, it must still fit — someone else may have
       // booked while the form was open. Rug-only pickups batch into the
-      // Thursday/Friday arvo run, so they only need a valid pickup day.
+      // Friday arvo run, so they only need a valid pickup day.
       const span = slotsNeededFor(estimateJobMinutes(input.quote));
       const town = input.booking?.town || input.suburb || "";
       let load: { blocked: Set<string>; spans: BookedSpan[] } | null = null;
@@ -346,7 +346,7 @@ export const publicRouter = createRouter({
             throw new TRPCError({
               code: "BAD_REQUEST",
               message:
-                "Rug pickups run Thursday and Friday afternoons, 3–5pm. Pick a highlighted day and send again.",
+                "Rug pickups run Friday afternoons, 3–5pm. Pick a highlighted day and send again.",
             });
           }
         } else if (

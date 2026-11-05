@@ -506,8 +506,10 @@ export function rugCount(rugs: RugItem[]): number {
   return rugs.reduce((s, r) => s + r.qty, 0);
 }
 
-/** Pickup days for rug-only bookings: Thursday & Friday afternoons. */
-export const RUG_PICKUP_DAYS = [4, 5]; // getDay(): 4=Thu, 5=Fri
+/** Pickup days for rug-only bookings: Friday afternoons only (owner call
+ *  5 Nov 2026 — Thursdays dropped). Existing Thursday pickups already on the
+ *  board are honoured. */
+export const RUG_PICKUP_DAYS = [5]; // getDay(): 5=Fri
 export const RUG_PICKUP_LABEL = "3:00 – 5:00 PM";
 
 /** All Thu/Fri dates in the booking window that can take a rug pickup. */
@@ -795,7 +797,7 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   }
 
   // The $150 minimum covers the truck and the trip — it exists for on-site
-  // work. A rug-only pickup runs with the Thursday/Friday pickup run, so it
+  // work. A rug-only pickup runs with the Friday pickup run, so it
   // doesn't carry the minimum.
   const onsiteWork =
     input.carpetAreaM2 > 0 ||

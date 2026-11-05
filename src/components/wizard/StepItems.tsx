@@ -1,6 +1,6 @@
 // The items step for the soft-furnishing quote pages. Two modes:
 //   "lounge" — lounges & mattresses (the /lounge page)
-//   "rugs"   — rugs for the Thursday/Friday pick-up run (the /rugs page)
+//   "rugs"   — rugs for the Friday pick-up run (the /rugs page)
 import { Stepper, StepHeading } from "./ui";
 import {
   RATES,
@@ -86,7 +86,7 @@ export default function StepItems({
         <StepHeading
           kicker={kicker}
           title="Which rugs are we collecting?"
-          sub="Priced by size — collected Thursday or Friday 3–5pm, washed and dried at our premises, and back on your floor Monday. Free pickup in Armidale; beyond town it's a flat $1 per km."
+          sub="Priced by size — collected Friday 3–5pm, washed and dried at our premises, and back on your floor Monday. Free pickup in Armidale; beyond town it's a flat $1 per km."
         />
 
         <div>

@@ -80,7 +80,7 @@ export default function Quote() {
   const [roomCounts, setRoomCounts] = useState<Record<string, number>>({});
   // Same-visit soft furnishings — lounges & mattresses the customer adds to
   // this booking (10% off the added pieces). Rugs stay on their own page:
-  // they're a Thursday/Friday pick-up run, never same-day.
+  // they're a Friday pick-up run, never same-day.
   const [csLounges, setCsLounges] = useState<LoungeItem[]>([]);
   const [csMattresses, setCsMattresses] = useState<MattressItem[]>([]);
   const [areaInput, setAreaInput] = useState("");
@@ -217,7 +217,7 @@ export default function Quote() {
       maintenance: "none",
       lounges: csLounges.map((l) => ({ ...l, added: true })),
       mattresses: csMattresses.map((m) => ({ ...m, added: true })),
-      rugs: [], // rugs are their own Thursday/Friday pick-up run — never same-day
+      rugs: [], // rugs are their own Friday pick-up run — never same-day
       stainPackage: false, // stain treatment is priced from the stain answers now
       dirtGum: false,
       enzymePreSpray,
@@ -489,7 +489,7 @@ export default function Quote() {
             Lounges and mattresses can join this same visit (10% off, a few
             questions down). Rugs are their own{" "}
             <Link to="/rugs" className="font-bold text-forest underline-offset-4 hover:underline">
-              Thursday/Friday pick-up &amp; clean
+              Friday pick-up &amp; clean
             </Link>
             . Nothing is booked or charged until we confirm it with you.
           </p>
@@ -546,7 +546,7 @@ export default function Quote() {
                         rugs={[]} setRugs={() => {}}
                         kicker="Optional · same visit"
                         title="Lounge or mattress too? Add it here — 10% off."
-                        sub="Same crew, same day, one booking. Anything you add here is cleaned while we're already at your place, so the added pieces come in 10% under their usual price. Rugs are different — they're a Thursday/Friday pick-up & clean, with their own quote."
+                        sub="Same crew, same day, one booking. Anything you add here is cleaned while we're already at your place, so the added pieces come in 10% under their usual price. Rugs are different — they're a Friday pick-up & clean, with their own quote."
                       />
                     </section>
                     <section id="q-when">

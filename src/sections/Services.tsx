@@ -9,7 +9,7 @@ const SERVICES = [
   },
   {
     title: "Rug pick-up & clean",
-    body: "Rugs collected Thursday or Friday afternoon, washed and dried at our place, and back on your floor Monday. Free pickup in Armidale ($1/km outside) — five or more rugs takes 10% off.",
+    body: "Rugs collected Friday afternoon, washed and dried at our place, and back on your floor Monday. Free pickup in Armidale ($1/km outside) — five or more rugs takes 10% off.",
     price: "from $35 a rug",
     to: "/rugs",
   },
