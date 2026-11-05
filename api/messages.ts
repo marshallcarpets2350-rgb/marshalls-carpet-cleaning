@@ -496,6 +496,62 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
 }
 
 // ---------------------------------------------------------------------------
+// Invoice — completed job that hasn't been paid. Goes out in the 5pm batch
+// (and from the board's "Send invoice" button). Card link rides in the text;
+// the email template linkifies it into a clickable button-blue link.
+// ---------------------------------------------------------------------------
+
+export function invoiceEmail(
+  lead: LeadRow,
+  payUrl: string | null,
+  reviewUrl: string | null,
+): { subject: string; text: string } {
+  const ref = bookingReference(lead);
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const jobIso = b?.preferredDate ?? null;
+  const due = jobIso
+    ? new Date(`${jobIso}T12:00:00`)
+    : null;
+  if (due) due.setDate(due.getDate() + 7); // 7-day terms from the job day
+  const dueLabel = due
+    ? due.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : null;
+  const cardBlock = payUrl ? `• Card: pay securely online — ${payUrl}\n` : "";
+  const reviewBlock = reviewUrl
+    ? `\nHappy with the result? A quick Google review honestly helps our little local business more than anything — it takes about a minute:\n${reviewUrl}\n`
+    : "";
+  return {
+    subject: `Invoice — ${BUSINESS.legalName} (${ref})`,
+    text: `Hi ${firstName(lead.name)},
+
+Thanks for having us${jobIso ? ` on ${longDateLabel(jobIso)}` : ""} — your invoice is attached as a PDF.
+
+INVOICE ${ref}
+• What was done: ${serviceSummary(input, b?.rugPickup ?? false)}
+• Total due: ${money(lead.total)} — 7-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
+
+HOW TO PAY
+${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
+• Cash or bank transfer: call ${BUSINESS.phone} and we'll sort it
+Put ${ref} in the payment description so it lands straight against your job.
+
+No GST has been charged — not registered for GST.
+
+Anything not right with the clean? Call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free.
+${reviewBlock}
+Thanks again,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
+export function invoiceSms(lead: LeadRow): string {
+  const ref = bookingReference(lead);
+  return `${BUSINESS.name}: thanks for having us — invoice ${ref} for ${money(lead.total)} is in your email (7-day terms). PayID ${BUSINESS.payId}, put ${ref} in the description. Questions? Call ${BUSINESS.phone}.`;
+}
+
+// ---------------------------------------------------------------------------
 // Sending — email via Gmail SMTP settings, SMS via Twilio settings.
 // ---------------------------------------------------------------------------
 

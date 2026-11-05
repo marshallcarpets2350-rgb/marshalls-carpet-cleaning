@@ -13,6 +13,7 @@ import {
   buildAvailability,
   canStart,
   isoDay,
+  slotAllowedNow,
   spansForBooking,
   sydneyToday,
   type BookedSpan,
@@ -345,6 +346,7 @@ export const publicRouter = createRouter({
         ) {
           if (
             !bookableDates().includes(input.booking.preferredDate) ||
+            !slotAllowedNow(input.booking.preferredDate, input.booking.preferredSlot) ||
             !canStart(
               input.booking.preferredDate,
               input.booking.preferredSlot,
@@ -692,6 +694,9 @@ export const publicRouter = createRouter({
         return { ok: true as const, paid: false };
       }
       await db.update(leads).set({ paidOnline: true }).where(eq(leads.id, lead.id));
+      // Money landed (booking pay-now or invoice card link) — receipt out.
+      const { sendReceiptFor } = await import("./receipts");
+      await sendReceiptFor(lead.id);
       return {
         ok: true as const,
         paid: true,

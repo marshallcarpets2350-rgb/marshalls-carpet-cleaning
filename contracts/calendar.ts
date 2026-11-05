@@ -4,7 +4,9 @@
 import {
   BOOKING_DAYS_AHEAD,
   BOOKING_NOTICE_DAYS,
+  SAME_DAY_LEAD_MINUTES,
   SLOT_MINUTES,
+  SLOT_START_MINUTES,
   TIME_SLOTS,
   driveBetween,
   driveMinutesFor,
@@ -18,14 +20,28 @@ export function sydneyToday(): Date {
   return new Date(`${s}T00:00:00`);
 }
 
+/** Minutes after midnight right now, in the business's timezone. */
+export function sydneyNowMinutes(): number {
+  const hm = new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Australia/Sydney",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const [h, m] = hm.split(":").map(Number);
+  return h * 60 + m;
+}
+
 export function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
 
-/** Dates offered in the picker: from BOOKING_NOTICE_DAYS out. Sundays are
- *  never offered, and Saturdays stopped being offered from 14 Nov 2026
- *  (owner call — weekends are for the rug run and rest). Saturday bookings
- *  made before then (e.g. 7 Nov) are honoured. */
+/** Dates offered in the picker. Sundays are never offered, and Saturdays
+ *  stopped being offered from 14 Nov 2026 (owner call — weekends are for the
+ *  rug run and rest). Saturday bookings made before then (e.g. 7 Nov) are
+ *  honoured. Tomorrow is never offered (BOOKING_NOTICE_DAYS), but today IS —
+ *  with same-day slots filtered by start time in buildAvailability, so the
+ *  day stays open until no job could still finish by close. */
 export const LAST_BOOKABLE_SATURDAY = "2026-11-07";
 
 export function bookableDates(): string[] {
@@ -34,7 +50,7 @@ export function bookableDates(): string[] {
   for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
     const diff = Math.round((d.getTime() - start.getTime()) / 86400000);
     if (diff > BOOKING_DAYS_AHEAD) break;
-    if (diff < BOOKING_NOTICE_DAYS) continue;
+    if (diff !== 0 && diff < BOOKING_NOTICE_DAYS) continue;
     const day = d.getDay();
     const iso = isoDay(d);
     if (day === 0) continue; // Sundays never
@@ -120,6 +136,16 @@ export function canStart(
   return true;
 }
 
+/** Same-day rule: a slot today must start at least SAME_DAY_LEAD_MINUTES
+ *  from now. The job fitting inside the day (finish by 5pm) is enforced by
+ *  canStart, so today quietly stops offering slots as the afternoon fades.
+ *  Other dates are unaffected. Used by both the calendar and the server's
+ *  booking validation so a stale page can't book a slot that's already gone. */
+export function slotAllowedNow(date: string, slot: number): boolean {
+  if (date !== isoDay(sydneyToday())) return true;
+  return (SLOT_START_MINUTES[slot] ?? 0) >= sydneyNowMinutes() + SAME_DAY_LEAD_MINUTES;
+}
+
 /** Build every bookable day's availability for a job of `span` slots. */
 export function buildAvailability(
   span: number,
@@ -129,7 +155,10 @@ export function buildAvailability(
 ): AvailabilityDay[] {
   return bookableDates().map((date) => ({
     date,
-    slots: TIME_SLOTS.map((_, i) => canStart(date, i, span, town, blocked, spans)),
+    slots: TIME_SLOTS.map(
+      (_, i) =>
+        canStart(date, i, span, town, blocked, spans) && slotAllowedNow(date, i),
+    ),
     occupied: TIME_SLOTS.map(
       (_, i) =>
         blocked.has(`${date}:${i}`) ||

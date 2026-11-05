@@ -1,7 +1,9 @@
 // Post-job follow-up timer — thank-you + review messages go out in one batch
 // at 5:00 PM on the job day (a job still running past 5 gets theirs at its own
-// finish time), and the job flips to completed on the board. Rug pickups are
-// skipped: their "done" moment is the return delivery days later, so those go
+// finish time), and the job flips to completed on the board. UNPAID jobs get
+// the invoice email (PDF attached, card/PayID/bank options) instead — the
+// thank-you and review ask are folded into it. Rug pickups are skipped:
+// their "done" moment is the return delivery days later, so those go
 // from the admin button.
 import { eq, isNotNull, isNull, ne, and } from "drizzle-orm";
 import { getDb } from "./queries/connection";
@@ -15,6 +17,7 @@ import {
   deliver,
   type LeadRow,
 } from "./messages";
+import { sendInvoiceFor } from "./invoices";
 
 const END_OF_DAY_MIN = 17 * 60; // 5:00 PM — thank-yous batch at close of day
 const TICK_MS = 5 * 60 * 1000;
@@ -63,14 +66,22 @@ async function sendDueFollowUps(): Promise<void> {
     if (!due) continue;
 
     const lead = row as LeadRow;
-    const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+    const paid = lead.paidOnline || lead.paidOfflineAt;
+    if (paid) {
+      const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+      console.log(
+        `Follow-up for MCC-${row.id}: ${sent.emailSent ? "email " : ""}${sent.smsSent ? "SMS " : ""}${sent.detail || "ok"}`,
+      );
+    } else {
+      // Unpaid — the invoice email carries the thank-you + review ask, plus
+      // card/PayID/bank payment options and the PDF invoice.
+      const inv = await sendInvoiceFor(row.id);
+      console.log(`Invoice for MCC-${row.id}: ${inv.detail}`);
+    }
     await db
       .update(leads)
       .set({ followUpSentAt: new Date(), status: "completed" })
       .where(eq(leads.id, row.id));
-    console.log(
-      `Follow-up for MCC-${row.id}: ${sent.emailSent ? "email " : ""}${sent.smsSent ? "SMS " : ""}${sent.detail || "ok"}`,
-    );
   }
 }
 

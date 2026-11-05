@@ -9,6 +9,7 @@ import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetwee
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
+import { sendInvoiceFor } from "./invoices";
 import {
   loadSmtpConfig,
   isSmtpConfigured,
@@ -154,12 +155,20 @@ export const adminRouter = createRouter({
         .update(leads)
         .set({ status: input.status })
         .where(eq(leads.id, input.id));
-      // Marking a job done fires the customer's receipt (once per job).
-      const receipt = input.status === "completed" ? await sendReceiptFor(input.id) : null;
+      // Marking a job done fires the customer's receipt (once per job) — but
+      // only when it's actually paid. Unpaid jobs get the invoice instead,
+      // either from the 5pm batch or the board's "Send invoice" button.
+      let receipt = null;
+      if (input.status === "completed") {
+        const [row] = await getDb().select().from(leads).where(eq(leads.id, input.id)).limit(1);
+        if (row && (row.paidOnline || row.paidOfflineAt)) receipt = await sendReceiptFor(input.id);
+      }
       return { ok: true as const, receipt };
     }),
 
   // PayID / bank / cash landed — tick it off on the board (or untick on a mistake).
+  // Ticking paid fires the receipt (once per job); unticking leaves any sent
+  // receipt alone — the customer already has it, no take-backs by email.
   markLeadPaid: adminProcedure
     .input(z.object({ id: z.number(), paid: z.boolean() }))
     .mutation(async ({ input }) => {
@@ -167,7 +176,17 @@ export const adminRouter = createRouter({
         .update(leads)
         .set({ paidOfflineAt: input.paid ? new Date() : null })
         .where(eq(leads.id, input.id));
-      return { ok: true as const };
+      const receipt = input.paid ? await sendReceiptFor(input.id) : null;
+      return { ok: true as const, receipt };
+    }),
+
+  // Manual invoice for a completed-but-unpaid job (the 5pm batch also sends
+  // these automatically — this is the mid-day "send it now" button).
+  sendInvoice: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const invoice = await sendInvoiceFor(input.id);
+      return { ok: true as const, invoice };
     }),
 
   // ── Flood job reports ─────────────────────────────────────────────
@@ -857,13 +876,24 @@ export const adminRouter = createRouter({
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
       const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
       const lead = row as never as Parameters<typeof followUpEmail>[0];
-      const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
-      const receipt = await sendReceiptFor(input.id);
+      const paid = row.paidOnline || row.paidOfflineAt;
+      let sent: { emailSent: boolean; smsSent: boolean; detail: string };
+      let receipt: Awaited<ReturnType<typeof sendReceiptFor>> | null = null;
+      let invoice: Awaited<ReturnType<typeof sendInvoiceFor>> | null = null;
+      if (paid) {
+        sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+        receipt = await sendReceiptFor(input.id);
+      } else {
+        // Unpaid — invoice email carries the thank-you + review ask, with
+        // card/PayID/bank payment options and the PDF attached.
+        invoice = await sendInvoiceFor(input.id);
+        sent = { emailSent: invoice.sent, smsSent: false, detail: invoice.detail };
+      }
       await db
         .update(leads)
         .set({ status: "completed", followUpSentAt: new Date() })
         .where(eq(leads.id, row.id));
-      return { ok: true as const, ...sent, receipt, reviewUrlSet: Boolean(reviewUrl) };
+      return { ok: true as const, ...sent, receipt, invoice, reviewUrlSet: Boolean(reviewUrl) };
     }),
 
   getMessagingSettings: adminProcedure.query(async () => {

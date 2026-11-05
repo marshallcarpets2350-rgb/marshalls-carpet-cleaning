@@ -1178,7 +1178,12 @@ export const TIME_SLOTS = [
 
 export const SLOT_MINUTES = 60;
 export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
-export const BOOKING_NOTICE_DAYS = 2; // today and tomorrow are never offered
+export const BOOKING_NOTICE_DAYS = 2; // tomorrow is never offered (rugs use this too)
+/** Same-day bookings: today IS offered, but a slot must start at least this
+ *  far in the future — owner call 5 Nov 2026 ("should still say available
+ *  times until the day is fully finished"). The day drops out when the last
+ *  slot that could still finish by 5pm falls inside this window. */
+export const SAME_DAY_LEAD_MINUTES = 120;
 
 /** Minutes after midnight each slot starts at (8:00 AM through 4:00 PM). */
 export const SLOT_START_MINUTES = [480, 540, 600, 660, 720, 780, 840, 900, 960] as const;

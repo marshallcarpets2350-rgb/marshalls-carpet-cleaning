@@ -566,22 +566,51 @@ export default function Admin() {
     });
     const complete = trpc.admin.completeAndThank.useMutation({
       onSuccess: (r, v) => {
-        const receiptNote = r.receipt?.sent
-          ? "receipt sent"
-          : r.receipt?.alreadySent
-            ? "receipt already sent"
-            : `receipt not sent — ${r.receipt?.detail || "check Settings"}`;
+        const receiptNote = r.invoice
+          ? r.invoice.sent
+            ? `invoice sent${r.invoice.payUrl ? " with card link" : ""}`
+            : r.invoice.alreadySent
+              ? "invoice already sent"
+              : `invoice not sent — ${r.invoice.detail || "check Settings"}`
+          : r.receipt?.sent
+            ? "receipt sent"
+            : r.receipt?.alreadySent
+              ? "receipt already sent"
+              : `receipt not sent — ${r.receipt?.detail || "check Settings"}`;
         setMsgNote((m) => ({
           ...m,
-          [v.id]: `Marked done — thank-you sent${r.reviewUrlSet ? " with the review link" : " (add your Google review link in Settings to include it)"} · ${receiptNote}${r.detail ? ` · ${r.detail}` : ""}`,
+          [v.id]: `Marked done — ${r.invoice ? "invoice on its way" : `thank-you sent${r.reviewUrlSet ? " with the review link" : " (add your Google review link in Settings to include it)"}`} · ${receiptNote}${r.detail ? ` · ${r.detail}` : ""}`,
+        }));
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
+    });
+    const sendInv = trpc.admin.sendInvoice.useMutation({
+      onSuccess: (r, v) => {
+        setMsgNote((m) => ({
+          ...m,
+          [v.id]: r.invoice.sent
+            ? `Invoice sent${r.invoice.payUrl ? " with card pay link" : " (PayID/bank details — no card link)"}`
+            : r.invoice.alreadySent
+              ? "Invoice already sent for this job"
+              : r.invoice.alreadyPaid
+                ? "Already paid — no invoice needed"
+                : `Couldn't send — ${r.invoice.detail || "check Settings"}`,
         }));
         utils.admin.listLeads.invalidate();
       },
       onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
     });
     const markPaid = trpc.admin.markLeadPaid.useMutation({
-      onSuccess: (_r, v) => {
-        setMsgNote((m) => ({ ...m, [v.id]: v.paid ? "Marked paid ✓" : "Unmarked — back to unpaid" }));
+      onSuccess: (r, v) => {
+        const receiptNote = v.paid
+          ? r.receipt?.sent
+            ? " — receipt sent"
+            : r.receipt?.alreadySent
+              ? " — receipt was already sent"
+              : ` — receipt not sent (${r.receipt?.detail || "check Settings"})`
+          : "";
+        setMsgNote((m) => ({ ...m, [v.id]: `${v.paid ? "Marked paid ✓" : "Unmarked — back to unpaid"}${receiptNote}` }));
         utils.admin.listLeads.invalidate();
       },
       onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
@@ -911,6 +940,14 @@ export default function Admin() {
                                 ? `sent ${new Date(r.followUpSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
                                 : "goes automatically at 5:00 PM on the day"}
                             </li>
+                            {!r.paidOnline && !r.paidOfflineAt && (
+                              <li>
+                                <strong>Invoice:</strong>{" "}
+                                {r.invoiceSentAt
+                                  ? `sent ${new Date(r.invoiceSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
+                                  : "goes automatically at 5:00 PM on the day (unpaid jobs)"}
+                              </li>
+                            )}
                           </ul>
                           <div className="mt-3 flex flex-wrap gap-2">
                             <button
@@ -921,6 +958,16 @@ export default function Admin() {
                             >
                               {r.confirmationSentAt ? "Resend confirmation" : "Send confirmation"}
                             </button>
+                            {!r.paidOnline && !r.paidOfflineAt && !r.invoiceSentAt && (
+                              <button
+                                type="button"
+                                className="btn-pill !px-5 !py-2 text-sm"
+                                disabled={sendInv.isPending}
+                                onClick={() => sendInv.mutate({ id: r.id })}
+                              >
+                                Send invoice now
+                              </button>
+                            )}
                             {!r.followUpSentAt && r.status !== "completed" && (
                               <button
                                 type="button"
