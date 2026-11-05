@@ -31,7 +31,7 @@ const TILES: { title: string; under?: string; sub: string; to: string }[] = [
 ];
 
 const STATS: { value: string; label: string }[] = [
-  { value: "$150", label: "minimum charge" },
+  { value: "5.0★", label: "Google rating" },
   { value: "60 seconds", label: "to receive your quote" },
 ];
 
