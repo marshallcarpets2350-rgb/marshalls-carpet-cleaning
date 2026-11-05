@@ -79,6 +79,9 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
         languageCode: "en",
         regionCode: "AU",
         locationBias: ARMIDALE_BIAS,
+        // We're a service-area business (no storefront) — Google hides those
+        // from text search unless you ask for them by name.
+        includePureServiceAreaBusinesses: true,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -113,6 +116,7 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
       includedType: "carpet_cleaning_service",
       strictTypeFiltering: true,
       locationBias: ARMIDALE_BIAS,
+      includePureServiceAreaBusinesses: true,
     }),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
