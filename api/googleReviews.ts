@@ -66,7 +66,16 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
         "X-Goog-Api-Key": apiKey,
         "X-Goog-FieldMask": "places.id,places.displayName,places.formattedAddress",
       },
-      body: JSON.stringify({ textQuery, languageCode: "en", regionCode: "AU" }),
+      body: JSON.stringify({
+        textQuery,
+        languageCode: "en",
+        regionCode: "AU",
+        // Box the search around Armidale — without it Google hunts the whole
+        // planet and our little SAB listing gets buried or skipped entirely.
+        locationRestriction: {
+          circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 60000 },
+        },
+      }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
     if (!resp.ok) {
