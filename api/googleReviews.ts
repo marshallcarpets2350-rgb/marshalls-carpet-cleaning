@@ -49,11 +49,10 @@ async function loadCache(): Promise<GoogleReviewsData | null> {
 
 // ~60km box around Armidale — without a geographic restriction Google hunts
 // the whole planet and our little SAB listing gets buried or skipped.
+// (locationRestriction takes the rectangle fields directly, no wrapper.)
 const ARMIDALE_BOX = {
-  rectangle: {
-    low: { latitude: -31.05, longitude: 151.1 },
-    high: { latitude: -29.97, longitude: 152.22 },
-  },
+  low: { latitude: -31.05, longitude: 151.1 },
+  high: { latitude: -29.97, longitude: 152.22 },
 };
 
 /** Find our own Place ID by name — runs once, then it's stored. */
