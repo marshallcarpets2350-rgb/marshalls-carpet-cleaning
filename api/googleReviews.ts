@@ -52,7 +52,7 @@ async function loadCache(): Promise<GoogleReviewsData | null> {
 // restriction shape is picky about its JSON wrapper; bias ranks local first
 // and never throws.)
 const ARMIDALE_BIAS = {
-  circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 60000 },
+  circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 50000 },
 };
 
 /** Find our own Place ID by name — runs once, then it's stored. */
