@@ -491,6 +491,16 @@ export default function Admin() {
                       <ServiceDots kinds={j.kinds ?? []} /> {j.name}{" "}
                       <span className="text-sm font-semibold text-charcoal/50">{j.ref}</span>
                     </p>
+                    {(j.where || j.town) && (
+                      <a
+                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(j.where || j.town)}`}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="mt-1.5 inline-block border-[1.5px] border-forest/40 bg-mintlight px-3 py-1.5 text-base font-bold text-forest"
+                      >
+                        📍 {j.where || j.town}
+                      </a>
+                    )}
                     <ul className="mt-3 space-y-1 text-sm text-charcoal/85">
                       {j.lines.map((line, li) => (
                         <li key={li}>• {line}</li>
@@ -510,7 +520,6 @@ export default function Admin() {
                       <p className="mt-2.5 text-sm text-charcoal/70">📝 {j.notes}</p>
                     )}
                     <p className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 border-t border-charcoal/15 pt-3 text-sm text-charcoal/80">
-                      <span>📍 {j.where || j.town}</span>
                       <a href={`tel:${j.phone}`} className="font-bold text-forest">📞 {j.phone}</a>
                     </p>
                   </div>
@@ -716,7 +725,15 @@ export default function Admin() {
               const quote = safeParse(r.quoteJson);
               const booking = parseBooking(r.bookingJson);
               const when = whenOf(r);
-              const where = [r.address, r.suburb].filter(Boolean).join(", ");
+              // Suburb only gets appended when the address doesn't already
+              // include it (Google-style addresses end with it anyway).
+              const addr = (r.address ?? "").trim();
+              const sub = (r.suburb ?? "").trim();
+              const where = addr
+                ? sub && !addr.toLowerCase().includes(sub.toLowerCase())
+                  ? `${addr}, ${sub}`
+                  : addr
+                : sub;
               const driveMin = driveMinutesFor(booking?.town || r.suburb, r.distanceKm);
               return (
                 <li key={r.id} className="border-[1.5px] border-charcoal bg-background">
@@ -742,6 +759,9 @@ export default function Admin() {
                             } · ${booking.town || r.suburb || ""}`
                           : `${r.suburb || "Suburb n/a"} · sent ${new Date(r.createdAt).toLocaleDateString("en-AU")}`}
                       </span>
+                      {r.address && (
+                        <span className="block text-sm text-charcoal/60">📍 {r.address}</span>
+                      )}
                       <span className="mt-0.5 block text-sm font-semibold text-charcoal/80">
                         {serviceSummary(quote?.input ?? null, booking?.rugPickup ?? false)}
                       </span>
@@ -1954,7 +1974,15 @@ export default function Admin() {
             {filtered.map((r) => {
               const quote = safeParse(r.quoteJson);
               const booking = parseBooking(r.bookingJson);
-              const where = [r.address, r.suburb].filter(Boolean).join(", ");
+              // Suburb only gets appended when the address doesn't already
+              // include it (Google-style addresses end with it anyway).
+              const addr = (r.address ?? "").trim();
+              const sub = (r.suburb ?? "").trim();
+              const where = addr
+                ? sub && !addr.toLowerCase().includes(sub.toLowerCase())
+                  ? `${addr}, ${sub}`
+                  : addr
+                : sub;
               const what = (quote?.breakdown?.lines ?? []).map((l) => l.label).join(", ");
               return (
                 <li key={r.id} className="border-[1.5px] border-charcoal bg-background">

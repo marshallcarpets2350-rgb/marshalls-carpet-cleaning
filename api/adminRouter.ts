@@ -746,7 +746,16 @@ export const adminRouter = createRouter({
       for (const row of rows) {
         const b = parseBooking(row as never) ;
         if (!b || b.preferredDate !== input.date) continue;
-        const where = [row.address, row.suburb].filter(Boolean).join(", ");
+        // Full street address for the run sheet — the suburb is only added
+        // when the address line doesn't already end with it (Google-style
+        // addresses like "…, Armidale, New South Wales, 2350" already do).
+        const addr = (row.address ?? "").trim();
+        const sub = (row.suburb ?? "").trim();
+        const where = addr
+          ? sub && !addr.toLowerCase().includes(sub.toLowerCase())
+            ? `${addr}, ${sub}`
+            : addr
+          : sub;
         if (b.rugPickup) {
           const q = JSON.parse(row.quoteJson) as { input: Parameters<typeof serviceSummary>[0] };
           const collection =
