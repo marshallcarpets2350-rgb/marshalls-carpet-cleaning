@@ -51,7 +51,7 @@ const SECTION_IDS = [
 ];
 
 const MISSING_LABELS = [
-  "your name, phone and email",
+  "your address, name, phone and email",
   "the reason for the clean and at least one room",
   "the carpet questions",
   "",
@@ -268,7 +268,7 @@ export default function Quote() {
 
   // --- per-section validation ---
   const coreValid = [
-    contactValid(contact),
+    contactValid(contact) && travel !== null,
     purpose !== null && !breakdown.isEmpty,
     carpetAreaM2 === 0 || conditionComplete(condition),
     true,

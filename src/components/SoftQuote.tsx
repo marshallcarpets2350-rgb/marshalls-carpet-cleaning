@@ -264,7 +264,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const SECTION_IDS = sectionKeys.map((k) => `s-${kind}-${k}`);
 
   const validByKey: Record<(typeof sectionKeys)[number], boolean> = {
-    where: contactValid(contact),
+    where: contactValid(contact) && travel !== null,
     items: hasItems && !breakdown.isEmpty,
     ...(isRugs ? {} : { extras: true }),
     when:
@@ -274,7 +274,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   } as Record<(typeof sectionKeys)[number], boolean>;
 
   const missingByKey: Record<(typeof sectionKeys)[number], string> = {
-    where: "your name, phone and email",
+    where: "your address, name, phone and email",
     items: copy.missingItems,
     ...(isRugs ? {} : { extras: "" }),
     when: isRugs

@@ -375,7 +375,7 @@ export default function AddressField({ value, onChange }: Props) {
   return (
     <div ref={boxRef} className="relative">
       <label htmlFor="address" className="mb-2 block font-bold text-charcoal">
-        Your address
+        Your address <span className="text-sm font-semibold text-charcoal/50">(required — we're coming to you)</span>
       </label>
       <input
         id="address"

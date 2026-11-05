@@ -322,6 +322,15 @@ export const publicRouter = createRouter({
     .mutation(async ({ input }) => {
       const db = getDb();
 
+      // A booking without an address is a job we can't drive to — the wizard
+      // requires it, and this backstops stale pages or hand-built requests.
+      if (input.booking && !(input.address && input.address.trim())) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "We need the job address to book you in — add it on the first step and send again.",
+        });
+      }
+
       // If a time was picked, it must still fit — someone else may have
       // booked while the form was open. Rug-only pickups batch into the
       // Thursday/Friday arvo run, so they only need a valid pickup day.
