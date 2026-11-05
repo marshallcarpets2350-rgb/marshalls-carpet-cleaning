@@ -14,6 +14,9 @@ export interface TravelResult {
   fee: number;
   outOfRange: boolean;
   source: "live" | "fallback";
+  /** True when we matched the street but not the exact house number —
+   *  the distance/fee is close but not guaranteed. */
+  estimated?: boolean;
 }
 
 interface Props {
@@ -33,17 +36,123 @@ interface PhotonProperties {
   postcode?: string;
 }
 
+interface PhotonFeature {
+  properties: PhotonProperties;
+  geometry: { coordinates: [number, number] };
+}
+
 interface Suggestion {
   label: string;
   lat: number;
   lon: number;
   suburb: string;
+  streetLevel: boolean;
 }
 
-function photonToSuggestion(f: {
-  properties: PhotonProperties;
-  geometry: { coordinates: [number, number] };
-}): Suggestion {
+/** Words that don't help identify WHICH street — road types and state filler. */
+const STREET_TYPES = new Set([
+  "road", "rd", "street", "st", "avenue", "ave", "av", "drive", "dr", "lane",
+  "ln", "place", "pl", "close", "cl", "court", "ct", "crescent", "cres",
+  "parade", "pde", "terrace", "tce", "way", "boulevard", "blvd", "circuit",
+  "cct", "highway", "hwy", "nsw", "new", "south", "wales", "australia",
+]);
+
+const KNOWN_TOWNS =
+  /\b(armidale|uralla|guyra|walcha|inverell|tamworth|glen innes|dorrigo|kellys plains|saumarez|benn lomond|ebnor|yarrowyck|hillgrove|wollomombi|tingha|bundarra|kingstown|bendemeer|kootingal|manilla|barraba|bingara|warialda|moree|narrabri|quirlindi|quirindi)\b/i;
+
+interface ParsedQuery {
+  number?: string;
+  /** Distinctive street words, e.g. "52 Blanch Road" -> ["blanch"]. */
+  streetWords: string[];
+}
+
+/** Strip the house number / unit prefix, leaving street + locality. */
+function stripNumber(qRaw: string): string {
+  let q = qRaw.replace(
+    /^\s*(unit|flat|apartment|apt|suite|shop|lot)\s*\d+[a-z]?\s*[\/\-]\s*/i,
+    "",
+  );
+  q = q.replace(/^\s*\d+[a-z]?\s*\/\s*(?=\d)/i, ""); // "3/52" -> "52"
+  return q.replace(/^\s*\d+[a-z]?\s+/i, "");
+}
+
+/** Pull the house number and the meaningful street words out of what was typed. */
+function parseQuery(qRaw: string): ParsedQuery {
+  const m = qRaw
+    .replace(/^\s*(unit|flat|apartment|apt|suite|shop|lot)\s*\d+[a-z]?\s*[\/\-]\s*/i, "")
+    .replace(/^\s*\d+[a-z]?\s*\/\s*(?=\d)/i, "")
+    .match(/^\s*(\d+[a-z]?)\s+(.+)$/i);
+  const number = m?.[1]?.toLowerCase();
+  const rest = (m ? m[2] : qRaw).toLowerCase().replace(/['']/g, "");
+  const streetWords = rest
+    .split(/[^a-z0-9]+/)
+    .filter((w) => w.length > 1 && !/^\d+$/.test(w) && !STREET_TYPES.has(w));
+  return { number, streetWords };
+}
+
+// Apostrophes vanish without a space so "O'Dell" matches "Odell".
+const norm = (s: string) =>
+  s.toLowerCase().replace(/['']/g, "").replace(/[^a-z0-9 ]/g, " ").replace(/\s+/g, " ").trim();
+
+/**
+ * Score a Photon feature against what was typed.
+ * Returns null for junk results (e.g. the right house number on the WRONG
+ * street) so they never reach the list.
+ */
+function scoreFeature(
+  f: PhotonFeature,
+  parsed: ParsedQuery,
+): { score: number; streetLevel: boolean } | null {
+  const p = f.properties;
+  // Match street words against the street field only — a business name like
+  // "Armidale Electrical" must not count as matching the word "Armidale".
+  const featStreet = norm(p.street ?? p.name ?? "");
+  const featNum = (p.housenumber ?? "").toLowerCase().trim();
+  let score = 0;
+  let streetLevel = false;
+
+  if (parsed.streetWords.length > 0) {
+    const hits = parsed.streetWords.filter((w) =>
+      featStreet.split(" ").includes(w) || featStreet.includes(w),
+    ).length;
+    if (hits === 0) {
+      // Street name not in the result at all. If it only matched because the
+      // house number coincided ("52 Crest Road" for "52 Blanch Road"), it's
+      // junk — drop it. Otherwise keep weakly (town/locality-level results),
+      // flagged as an estimate since nothing precise was matched.
+      if (parsed.number && featNum === parsed.number) return null;
+      score += 0.5;
+      streetLevel = true;
+    } else {
+      score += 2 * hits + (hits === parsed.streetWords.length ? 2 : 0);
+      if (parsed.number) {
+        if (featNum === parsed.number) {
+          score += 6; // exact house number + street — best possible
+        } else if (featNum === "") {
+          // Right street, no number in the data (common rural) — best estimate
+          streetLevel = true;
+          score += 2;
+        } else {
+          // Right street but a DIFFERENT number — useful coords, but showing
+          // the wrong number is confusing, so rank it below the plain street
+          streetLevel = true;
+        }
+      }
+    }
+  } else if (parsed.number && featNum === parsed.number) {
+    score += 1; // bare number match, no street typed to check against
+  }
+
+  const locality = norm(p.suburb ?? p.city ?? p.town ?? p.village ?? "");
+  if (KNOWN_TOWNS.test(locality)) score += 1;
+
+  return { score, streetLevel };
+}
+
+function photonToSuggestion(
+  f: PhotonFeature,
+  streetLevel: boolean,
+): Suggestion {
   const p = f.properties;
   const streetPart = [p.housenumber, p.street ?? p.name].filter(Boolean).join(" ");
   // Town/locality results carry the name only — no street — so the name IS
@@ -60,7 +169,23 @@ function photonToSuggestion(f: {
     lon: f.geometry.coordinates[0],
     lat: f.geometry.coordinates[1],
     suburb: locality,
+    streetLevel,
   };
+}
+
+async function fetchPhoton(q: string): Promise<PhotonFeature[]> {
+  const url =
+    "https://photon.komoot.io/api/?limit=8&lang=en" +
+    "&lat=-30.51&lon=151.66" + // bias toward Armidale
+    "&bbox=150.2,-31.6,153.0,-29.5&q=" +
+    encodeURIComponent(q);
+  const res = await fetch(url, { headers: { Accept: "application/json" } });
+  if (!res.ok) return [];
+  const data = await res.json();
+  return (data.features ?? []).filter(
+    (f: PhotonFeature) =>
+      f.properties.state === "New South Wales" || f.properties.state === "NSW",
+  );
 }
 
 async function roadDistanceKm(lat: number, lon: number): Promise<number | null> {
@@ -83,39 +208,57 @@ export default function AddressField({ value, onChange }: Props) {
   const boxRef = useRef<HTMLDivElement>(null);
   const skipNextSearch = useRef(false);
 
-  // Debounced Nominatim autocomplete
+  // Debounced Photon (OSM) autocomplete, biased to the New England
   useEffect(() => {
     if (skipNextSearch.current) {
       skipNextSearch.current = false;
       return;
     }
-    if (query.trim().length < 4) {
+    const trimmed = query.trim();
+    if (trimmed.length < 4) {
       setSuggestions([]);
       return;
     }
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        // Photon (OSM) geocoder, biased to the New England bbox
-        const url =
-          "https://photon.komoot.io/api/?limit=6&lang=en" +
-          "&bbox=150.2,-31.6,153.0,-29.5&q=" +
-          encodeURIComponent(query);
-        const res = await fetch(url, { headers: { Accept: "application/json" } });
-        const data = await res.json();
+        // Try the query as typed. Extra variants catch common failure modes:
+        // no town typed -> add "Armidale"; a house number present -> also try
+        // without it, because number-matching can bury the actual street.
+        const variants = [trimmed];
+        if (!KNOWN_TOWNS.test(trimmed)) variants.push(`${trimmed} Armidale`);
+        const numberless = stripNumber(trimmed);
+        if (numberless !== trimmed && numberless.trim().length >= 4) {
+          variants.push(numberless);
+        }
+        const batches = await Promise.all(variants.map(fetchPhoton));
+
+        const parsed = parseQuery(trimmed);
         const seen = new Set<string>();
-        const list: Suggestion[] = (data.features ?? [])
-          .filter(
-            (f: { properties: PhotonProperties }) =>
-              f.properties.state === "New South Wales" || f.properties.state === "NSW",
-          )
-          .map(photonToSuggestion)
-          .filter((s: Suggestion) => {
-            if (seen.has(s.label)) return false;
-            seen.add(s.label);
-            return true;
-          })
-          .slice(0, 5);
+        const scored: { s: Suggestion; score: number }[] = [];
+        for (const features of batches) {
+          for (const f of features) {
+            const sc = scoreFeature(f, parsed);
+            if (!sc) continue;
+            const s = photonToSuggestion(f, sc.streetLevel);
+            const key = s.label.toLowerCase();
+            const existing = scored.findIndex(
+              (x) => x.s.label.toLowerCase() === key,
+            );
+            if (existing >= 0) {
+              // Keep the better-scoring copy of a duplicate label
+              if (sc.score > scored[existing].score) {
+                scored[existing] = { s, score: sc.score };
+              }
+              continue;
+            }
+            if (seen.has(key)) continue;
+            seen.add(key);
+            scored.push({ s, score: sc.score });
+          }
+        }
+        scored.sort((a, b) => b.score - a.score);
+        const list = scored.slice(0, 5).map((x) => x.s);
         setSuggestions(list);
         setOpen(list.length > 0);
         setFailed(false);
@@ -157,6 +300,7 @@ export default function AddressField({ value, onChange }: Props) {
       fee: outOfRange ? 0 : travelFeeForTown(s.suburb, km, rates),
       outOfRange,
       source: "live",
+      estimated: s.streetLevel,
     });
   };
 
@@ -209,6 +353,11 @@ export default function AddressField({ value, onChange }: Props) {
                 onClick={() => resolve(s)}
               >
                 {s.label}
+                {s.streetLevel && (
+                  <span className="block text-xs text-charcoal/60">
+                    Street match — exact house number estimated
+                  </span>
+                )}
               </button>
             </li>
           ))}
@@ -236,9 +385,11 @@ export default function AddressField({ value, onChange }: Props) {
               </>
             )}
           </p>
-          {value.source === "fallback" && (
+          {(value.source === "fallback" || value.estimated) && (
             <p className="mt-1 text-sm text-charcoal/70">
-              Estimated from your nearest town — we confirm the exact fee when we book you in.
+              {value.source === "fallback"
+                ? "Estimated from your nearest town — we confirm the exact fee when we book you in."
+                : "Estimated to your street — we confirm the exact fee when we book you in."}
             </p>
           )}
         </div>
