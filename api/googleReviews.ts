@@ -47,12 +47,12 @@ async function loadCache(): Promise<GoogleReviewsData | null> {
   }
 }
 
-// ~60km box around Armidale — without a geographic restriction Google hunts
-// the whole planet and our little SAB listing gets buried or skipped.
-// (locationRestriction takes the rectangle fields directly, no wrapper.)
-const ARMIDALE_BOX = {
-  low: { latitude: -31.05, longitude: 151.1 },
-  high: { latitude: -29.97, longitude: 152.22 },
+// ~60km bias around Armidale — without it Google hunts the whole planet and
+// our little SAB listing gets buried. (Bias, not restriction, because the
+// restriction shape is picky about its JSON wrapper; bias ranks local first
+// and never throws.)
+const ARMIDALE_BIAS = {
+  circle: { center: { latitude: -30.51, longitude: 151.66 }, radius: 60000 },
 };
 
 /** Find our own Place ID by name — runs once, then it's stored. */
@@ -78,7 +78,7 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
         textQuery,
         languageCode: "en",
         regionCode: "AU",
-        locationRestriction: ARMIDALE_BOX,
+        locationBias: ARMIDALE_BIAS,
       }),
       signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
     });
@@ -112,7 +112,7 @@ async function ensurePlaceId(apiKey: string, saved: string | null): Promise<stri
       regionCode: "AU",
       includedType: "carpet_cleaning_service",
       strictTypeFiltering: true,
-      locationRestriction: ARMIDALE_BOX,
+      locationBias: ARMIDALE_BIAS,
     }),
     signal: AbortSignal.timeout(FETCH_TIMEOUT_MS),
   });
