@@ -71,6 +71,7 @@ const labelCls = "mb-1 block text-sm font-bold text-charcoal";
 export default function FloodReports() {
   const leads = trpc.admin.listLeads.useQuery();
   const [selected, setSelected] = useState<number | null>(null);
+  const [showNew, setShowNew] = useState(false);
 
   const floodLeads = useMemo(
     () => ((leads.data ?? []) as LeadRowLike[]).filter(isFloodLead),
@@ -83,16 +84,29 @@ export default function FloodReports() {
 
   return (
     <div>
-      <h2 className="font-display text-2xl font-black text-charcoal">Flood job reports</h2>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="font-display text-2xl font-black text-charcoal">Flood job reports</h2>
+        <button type="button" className="btn-pill" onClick={() => setShowNew((s) => !s)}>
+          {showNew ? "Cancel" : "+ New flood job (they called you)"}
+        </button>
+      </div>
       <p className="mt-1 text-sm text-charcoal/70">
         Log hours and fans after a flood callout — the report prices itself at
         the published rates and emails to the customer as an insurer-ready PDF.
       </p>
+      {showNew && (
+        <NewFloodJob
+          onCreated={(id) => {
+            setShowNew(false);
+            setSelected(id);
+          }}
+        />
+      )}
       <div className="mt-6 space-y-3">
         {floodLeads.length === 0 && (
           <p className="border-[1.5px] border-charcoal bg-background p-6 text-charcoal/70">
             No flood emergencies yet. When one comes in from the flood page it
-            lands here.
+            lands here — or tap "+ New flood job" when someone rings you.
           </p>
         )}
         {floodLeads.map((l) => {
@@ -130,8 +144,80 @@ export default function FloodReports() {
   );
 }
 
-function ReportEditor({ id, onBack }: { id: number; onBack: () => void }) {
-  const data = trpc.admin.floodReportData.useQuery({ id });
+/** Customer rang instead of using the website — Ben types it in and it
+ *  becomes a normal flood job, ready for the report after the callout. */
+function NewFloodJob({ onCreated }: { onCreated: (id: number) => void }) {
+  const utils = trpc.useUtils();
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [suburb, setSuburb] = useState("");
+  const [notes, setNotes] = useState("");
+
+  const create = trpc.admin.createFloodLead.useMutation({
+    onSuccess: async (r) => {
+      await utils.admin.listLeads.invalidate();
+      onCreated(r.id);
+    },
+  });
+
+  const valid = name.trim().length > 0 && phone.trim().length >= 6 && address.trim().length >= 3;
+
+  return (
+    <form
+      className="mt-4 space-y-4 border-[1.5px] border-charcoal bg-creamlight p-5"
+      onSubmit={(e) => {
+        e.preventDefault();
+        if (!valid || create.isPending) return;
+        create.mutate({
+          name: name.trim(),
+          phone: phone.trim(),
+          email: email.trim() || "",
+          address: address.trim(),
+          suburb: suburb.trim() || undefined,
+          notes: notes.trim() || undefined,
+        });
+      }}
+    >
+      <p className="font-bold text-charcoal">New flood job — phoned in</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="nf-name" className={labelCls}>Name</label>
+          <input id="nf-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="nf-phone" className={labelCls}>Phone</label>
+          <input id="nf-phone" className={inputCls} value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" />
+        </div>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label htmlFor="nf-address" className={labelCls}>Address</label>
+          <input id="nf-address" className={inputCls} value={address} onChange={(e) => setAddress(e.target.value)} />
+        </div>
+        <div>
+          <label htmlFor="nf-suburb" className={labelCls}>Suburb / town</label>
+          <input id="nf-suburb" className={inputCls} value={suburb} onChange={(e) => setSuburb(e.target.value)} placeholder="Armidale" />
+        </div>
+      </div>
+      <div>
+        <label htmlFor="nf-email" className={labelCls}>Email (optional — needed if you'll email them the report)</label>
+        <input id="nf-email" className={inputCls} value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" />
+      </div>
+      <div>
+        <label htmlFor="nf-notes" className={labelCls}>What they said (optional)</label>
+        <textarea id="nf-notes" className={`${inputCls} min-h-16`} value={notes} onChange={(e) => setNotes(e.target.value)} placeholder="Burst hose in the laundry, water into the hallway…" />
+      </div>
+      {create.isError && <p className="text-sm font-semibold text-destructive">{create.error.message}</p>}
+      <button type="submit" disabled={!valid || create.isPending} className="btn-pill disabled:cursor-not-allowed disabled:opacity-40">
+        {create.isPending ? "Creating…" : "Create job & open the report"}
+      </button>
+    </form>
+  );
+}
+
+function ReportEditor({ id, onBack }: { id: number; onBack: () => void }) {  const data = trpc.admin.floodReportData.useQuery({ id });
   if (data.isLoading) return <p className="text-charcoal/70">Loading…</p>;
   if (!data.data) return <p className="text-destructive">Couldn't load this job.</p>;
   const key = `${id}-${data.data.report?.savedAt ?? "new"}`;

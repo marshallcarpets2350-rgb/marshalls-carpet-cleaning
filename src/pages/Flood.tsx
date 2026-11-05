@@ -25,7 +25,7 @@ const STEPS: { title: string; body: string }[] = [
   },
   {
     title: "Get us moving",
-    body: "Call the emergency line or send the form below — it lands in our hands instantly, and we call you straight back.",
+    body: "Grab the 24/7 number above or send the form below — either way it lands in our hands instantly, and we call you straight back.",
   },
 ];
 
@@ -86,17 +86,17 @@ export default function Flood() {
       <Header />
       <FlowArt />
 
-      {/* Emergency strip — the phone number is never more than a glance away */}
+      {/* Emergency strip — the number unlocks with four quick answers below */}
       <div className="bg-[#B91C1C] text-background">
         <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-3 px-4 py-3 md:px-6">
           <p className="text-sm font-bold uppercase tracking-widest">
             Flood or water damage emergency
           </p>
           <a
-            href={BUSINESS.phoneHref}
+            href="#emergency-number"
             className="whitespace-nowrap font-display text-xl font-black no-underline md:text-2xl"
           >
-            Call {BUSINESS.phone} — 24/7
+            Get the 24/7 emergency number →
           </a>
         </div>
       </div>
@@ -115,8 +115,8 @@ export default function Flood() {
               this line is answered around the clock.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
-              <a href={BUSINESS.phoneHref} className="btn-pill no-underline">
-                Call the emergency line
+              <a href="#emergency-number" className="btn-pill no-underline">
+                Get the emergency number
               </a>
               <a
                 href="#emergency-form"
@@ -126,8 +126,15 @@ export default function Flood() {
               </a>
             </div>
             <p className="mt-3 text-sm text-charcoal/60">
-              The form goes straight to our phones — you get a call back, not a queue.
+              Four quick answers and the 24/7 number is yours — no accounts, no queues.
             </p>
+          </div>
+        </section>
+
+        {/* ============ the number gate ============ */}
+        <section id="emergency-number" className="border-t-[1.5px] border-charcoal bg-background py-14 md:py-20">
+          <div className="mx-auto max-w-3xl px-4 md:px-6">
+            <NumberGate />
           </div>
         </section>
 
@@ -223,9 +230,10 @@ export default function Flood() {
                 </p>
                 <p className="mt-4 text-charcoal/80">
                   Need us faster?{" "}
-                  <a href={BUSINESS.phoneHref} className="font-bold text-forest">
-                    Call {BUSINESS.phone}
-                  </a>
+                  <a href="#emergency-number" className="font-bold text-forest">
+                    Grab the 24/7 number above
+                  </a>{" "}
+                  — it takes ten seconds.
                 </p>
               </div>
             ) : (
@@ -308,10 +316,10 @@ export default function Flood() {
                   </button>
                   <p className="text-sm text-charcoal/60">
                     Prefer to talk?{" "}
-                    <a href={BUSINESS.phoneHref} className="font-bold text-forest">
-                      Call {BUSINESS.phone}
+                    <a href="#emergency-number" className="font-bold text-forest">
+                      Get the 24/7 emergency number
                     </a>{" "}
-                    — 24/7.
+                    — four quick answers and it's yours.
                   </p>
                 </form>
               </>
@@ -321,6 +329,116 @@ export default function Flood() {
       </main>
 
       <Footer />
+    </div>
+  );
+}
+
+/**
+ * The 24/7 number, unlocked by four quick details. It's deliberately light —
+ * name, phone, email, address, done — because nobody mid-flood has patience
+ * for paperwork. The moment it unlocks, the job lands on the flood board and
+ * the owner gets an alert, so help is already moving while they dial.
+ */
+function NumberGate() {
+  const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
+  const [email, setEmail] = useState("");
+  const [address, setAddress] = useState("");
+  const [error, setError] = useState<string | null>(null);
+  const [ref, setRef] = useState<string | null>(null);
+
+  const unlock = trpc.public.floodUnlock.useMutation({
+    onSuccess: (r) => setRef(r.reference),
+    // Even if the save hiccups, don't stand between them and help.
+    onError: () => setRef(""),
+  });
+
+  const valid =
+    name.trim().length > 0 &&
+    phone.trim().length >= 6 &&
+    /.+@.+\..+/.test(email.trim()) &&
+    address.trim().length >= 3;
+
+  if (ref !== null) {
+    return (
+      <div className="border-[1.5px] border-[#B91C1C] bg-creamlight p-8 text-center">
+        <p className="text-sm font-bold uppercase tracking-widest text-[#B91C1C]">
+          You're in — here's the 24/7 line
+        </p>
+        <a
+          href={BUSINESS.phoneHref}
+          className="mt-3 inline-block font-display text-5xl font-black text-charcoal no-underline md:text-6xl"
+        >
+          {BUSINESS.phone}
+        </a>
+        <p className="mx-auto mt-4 max-w-md text-charcoal/80">
+          Tap to call — day or night. And because we already have your details
+          {ref ? ` (${ref})` : ""}, we'll be ringing you back even while you're
+          dialling.
+        </p>
+        <p className="mt-3 text-sm text-charcoal/60">
+          No answer? We're elbow-deep in another job — leave a message and we
+          call straight back.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <p className="text-sm font-bold uppercase tracking-widest text-[#B91C1C]">
+        24/7 emergency line
+      </p>
+      <h2 className="mt-2 font-display text-3xl font-black text-charcoal md:text-5xl">
+        The number, in four quick answers.
+      </h2>
+      <p className="mt-3 text-charcoal/75">
+        Pop in your details and the emergency number appears straight away. No
+        accounts, no waiting on approval — and the moment you send it, we have
+        everything we need to call you back and get moving.
+      </p>
+      <form
+        className="mt-8 space-y-5"
+        onSubmit={(e) => {
+          e.preventDefault();
+          if (!valid || unlock.isPending) return;
+          setError(null);
+          unlock.mutate({
+            name: name.trim(),
+            phone: phone.trim(),
+            email: email.trim(),
+            address: address.trim(),
+          });
+        }}
+      >
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field id="gate-name" label="Full name">
+            <input id="gate-name" className="input-sharp" value={name} onChange={(e) => setName(e.target.value)} autoComplete="name" />
+          </Field>
+          <Field id="gate-phone" label="Best phone">
+            <input id="gate-phone" className="input-sharp" value={phone} onChange={(e) => setPhone(e.target.value)} inputMode="tel" autoComplete="tel" />
+          </Field>
+        </div>
+        <div className="grid gap-5 md:grid-cols-2">
+          <Field id="gate-email" label="Email">
+            <input id="gate-email" className="input-sharp" value={email} onChange={(e) => setEmail(e.target.value)} inputMode="email" autoComplete="email" />
+          </Field>
+          <Field id="gate-address" label="Address of the property">
+            <input id="gate-address" className="input-sharp" value={address} onChange={(e) => setAddress(e.target.value)} autoComplete="street-address" />
+          </Field>
+        </div>
+        {error && (
+          <p className="border-[1.5px] border-destructive bg-background px-4 py-3 text-sm font-semibold text-destructive" role="alert">
+            {error}
+          </p>
+        )}
+        <button type="submit" disabled={!valid || unlock.isPending} className="btn-pill w-full disabled:cursor-not-allowed disabled:opacity-40 md:w-auto">
+          {unlock.isPending ? "One moment…" : "Show me the emergency number"}
+        </button>
+        <p className="text-sm text-charcoal/60">
+          That's all — four fields, ten seconds, and the number's yours.
+        </p>
+      </form>
     </div>
   );
 }

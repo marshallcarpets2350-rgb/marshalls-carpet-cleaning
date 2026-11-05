@@ -672,6 +672,72 @@ export const publicRouter = createRouter({
       return { ok: true as const, reference };
     }),
 
+  // Four quick details unlock the 24/7 emergency number on the flood page.
+  // It still creates the flood lead and lights up the owner's inbox — the
+  // customer is dialling while we read it.
+  floodUnlock: publicQuery
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().min(6).max(40),
+        email: z.string().trim().toLowerCase().email().max(320).optional().or(z.literal("")),
+        address: z.string().trim().min(3).max(500),
+        suburb: z.string().trim().max(255).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const result = await db.insert(leads).values({
+        name: input.name,
+        email: input.email || "",
+        phone: input.phone,
+        address: input.address,
+        suburb: input.suburb ?? null,
+        distanceKm: null,
+        travelFee: 0,
+        total: 0,
+        quoteJson: JSON.stringify({
+          input: null,
+          breakdown: { lines: [], travelFee: 0, total: 0 },
+          flood: {
+            name: input.name,
+            phone: input.phone,
+            email: input.email || undefined,
+            address: input.address,
+            suburb: input.suburb ?? "",
+            cause: "Not sure",
+            rooms: "Not sure",
+            activeLeak: "Not sure",
+            insurance: "Not sure",
+            notes: "Unlocked the emergency number on the flood page — call them back if the phone hasn't rung yet.",
+            numberOnly: true,
+          },
+        }),
+        bookingJson: null,
+        status: "new",
+      });
+      const leadId = Number((result[0] as { insertId?: number }).insertId ?? 0);
+      const reference = `MCC-${String(leadId).padStart(4, "0")}`;
+
+      try {
+        const { floodUnlockOwnerAlert } = await import("./messages");
+        const { loadSmtpConfig, isSmtpConfigured, sendMail } = await import("./mailer");
+        const smtp = await loadSmtpConfig();
+        if (isSmtpConfigured(smtp)) {
+          const alert = floodUnlockOwnerAlert(
+            { name: input.name, phone: input.phone, email: input.email || undefined, address: input.address, suburb: input.suburb },
+            reference,
+          );
+          const { brandedEmailHtml } = await import("./emailTemplate");
+          await sendMail(smtp, BUSINESS.email, alert.subject, alert.text, undefined, brandedEmailHtml(alert.text));
+        }
+      } catch (err) {
+        console.error("Flood unlock alert failed:", err);
+      }
+
+      return { ok: true as const, reference };
+    }),
+
   // After Stripe sends the customer back, confirm the money actually landed.
   verifyPayment: publicQuery
     .input(z.object({ sessionId: z.string().trim().min(5).max(255) }))

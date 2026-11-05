@@ -72,13 +72,13 @@ function DotLegend() {
 
 const TOKEN_KEY = "mcc_admin_token";
 
-type Tab = "overview" | "runsheet" | "leads" | "joblog" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
+type Tab = "overview" | "runsheet" | "leads" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "runsheet", label: "Run sheet" },
   { key: "leads", label: "Jobs" },
-  { key: "joblog", label: "Job log" },
+  { key: "finished", label: "Finished jobs" },
   { key: "clients", label: "Clients" },
   { key: "flood", label: "Flood reports" },
   { key: "availability", label: "Availability" },
@@ -250,7 +250,7 @@ export default function Admin() {
         {tab === "overview" && <Overview onGo={setTab} />}
         {tab === "runsheet" && <RunSheet />}
         {tab === "leads" && <Leads />}
-        {tab === "joblog" && <JobLog />}
+        {tab === "finished" && <FinishedJobs />}
         {tab === "clients" && <Clients />}
         {tab === "flood" && <FloodReports />}
         {tab === "availability" && <Availability />}
@@ -632,17 +632,24 @@ export default function Admin() {
         utils.public.listAvailability.invalidate();
       },
     });
+    const finish = trpc.admin.finishLead.useMutation({
+      onSuccess: (r, v) => {
+        setMsgNote((m) => ({ ...m, [v.id]: "Ticked off — it's in Finished jobs now ✓" }));
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
+    });
     const [msgNote, setMsgNote] = useState<Record<number, string>>({});
     const [openId, setOpenId] = useState<number | null>(null);
     const [mapId, setMapId] = useState<number | null>(null);
     const [confirmDeleteId, setConfirmDeleteId] = useState<number | null>(null);
 
     if (leads.isPending) return <p>Loading…</p>;
-    const rows = leads.data ?? [];
+    const rows = (leads.data ?? []).filter((r) => !r.finishedAt);
     type Row = (typeof rows)[number];
 
-    // Bucket every lead the way the operator thinks: dated jobs coming up,
-    // things that still need action, and finished work.
+    // One list, latest booked first — the job date when there is one,
+    // otherwise the day the quote came in.
     const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
     const whenOf = (r: Row) => {
       const b = parseBooking(r.bookingJson);
@@ -653,24 +660,21 @@ export default function Admin() {
           : 480;
       return { date: b.preferredDate, sort: `${b.preferredDate}T${String(slotMin).padStart(4, "0")}` };
     };
-    const isUpcoming = (r: Row) => {
+    const sortKey = (r: Row) => whenOf(r)?.sort ?? new Date(r.createdAt).toISOString();
+    const sorted = rows
+      .slice()
+      .sort((a, b) => sortKey(b).localeCompare(sortKey(a)) || b.id - a.id);
+    // Needs the owner's tick-off: the job day's been (or 5pm marked it done)
+    // and it hasn't been finished yet. These pin to the top.
+    const needsTickOff = (r: Row) => {
       const w = whenOf(r);
-      return r.status !== "completed" && !!w && w.date >= todayIso;
+      return r.status === "completed" || (!!w && w.date < todayIso);
     };
-    const upcoming = rows
-      .filter(isUpcoming)
-      .sort((a, b) => whenOf(a)!.sort.localeCompare(whenOf(b)!.sort));
-    const needsAction = rows
-      .filter((r) => r.status !== "completed" && !isUpcoming(r))
-      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    const done = rows
-      .filter((r) => r.status === "completed")
-      .sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
-    const groups: [string, Row[]][] = [
-      ["Upcoming jobs", upcoming],
-      ["Needs action", needsAction],
-      ["Done", done],
-    ];
+    const tickOff = sorted.filter(needsTickOff);
+    const rest = sorted.filter((r) => !needsTickOff(r));
+    const todoCount = tickOff.filter(
+      (r) => !r.paidOnline && !r.paidOfflineAt && !r.invoiceSentAt,
+    ).length;
 
     return (
       <div>
@@ -703,20 +707,32 @@ export default function Admin() {
             Export CSV
           </button>
         </div>
+        <p className="mt-1 text-sm text-charcoal/70">
+          Everything on the go, latest booked first. Once a job's done and the
+          money's sorted, tick it off — it moves to <strong>Finished jobs</strong>.
+        </p>
 
         {rows.length === 0 ? (
-          <p className="mt-6 text-charcoal/70">No jobs yet — they'll land here when customers send quotes.</p>
+          <p className="mt-6 text-charcoal/70">No jobs on the go — new quotes and bookings land here.</p>
         ) : (
-          groups.map(([title, list]) =>
-            list.length === 0 ? null : (
-              <section key={title} className="mt-8 first:mt-6">
-                <h3 className="font-display text-lg font-black uppercase tracking-wide text-charcoal/80">
-                  {title} ({list.length})
+          <>
+            {tickOff.length > 0 && (
+              <section className="mt-6">
+                <h3 className="font-display text-lg font-black uppercase tracking-wide text-[#B91C1C]">
+                  Needs tick-off ({tickOff.length})
+                  {todoCount > 0 && (
+                    <span className="ml-2 text-sm font-bold normal-case tracking-normal text-charcoal/60">
+                      {todoCount} still need{todoCount === 1 ? "s" : ""} an invoice or payment first
+                    </span>
+                  )}
                 </h3>
-                <ul className="mt-3 space-y-3">{list.map((r) => renderRow(r))}</ul>
+                <ul className="mt-3 space-y-3">{tickOff.map((r) => renderRow(r))}</ul>
               </section>
-            ),
-          )
+            )}
+            {rest.length > 0 && (
+              <ul className="mt-6 space-y-3">{rest.map((r) => renderRow(r))}</ul>
+            )}
+          </>
         )}
       </div>
     );
@@ -767,6 +783,11 @@ export default function Admin() {
                       </span>
                     </span>
                     <span className="flex items-center gap-4">
+                      {needsTickOff(r) && (
+                        <span className="border border-[#B91C1C] bg-[#B91C1C] px-2 py-0.5 text-xs font-bold uppercase text-background">
+                          Tick off
+                        </span>
+                      )}
                       {r.paidOnline && (
                         <span className="border border-forest bg-forest px-2 py-0.5 text-xs font-bold uppercase text-background">
                           Paid online
@@ -791,6 +812,67 @@ export default function Admin() {
                   </button>
                   {openId === r.id && (
                     <div className="border-t-[1.5px] border-charcoal/20 p-4">
+                      {needsTickOff(r) && (
+                        <div className="mb-4 border-[1.5px] border-[#B91C1C] bg-background p-4 text-sm">
+                          <p className="font-display text-lg font-black text-[#B91C1C]">
+                            Job done? Finalise it here.
+                          </p>
+                          <ul className="mt-2 space-y-1.5 text-charcoal/80">
+                            <li>
+                              {r.paidOnline || r.paidOfflineAt ? "✅" : "⬜"}{" "}
+                              <strong>Payment</strong> —{" "}
+                              {r.paidOnline
+                                ? "paid online ✓"
+                                : r.paidOfflineAt
+                                  ? `marked paid ${new Date(r.paidOfflineAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} ✓`
+                                  : "not yet — mark it paid below when the money's in"}
+                            </li>
+                            <li>
+                              {r.paidOnline || r.paidOfflineAt ? "✅" : r.invoiceSentAt ? "✅" : "⬜"}{" "}
+                              <strong>Invoice</strong> —{" "}
+                              {r.paidOnline || r.paidOfflineAt
+                                ? "not needed, it's paid"
+                                : r.invoiceSentAt
+                                  ? `sent ${new Date(r.invoiceSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} ✓`
+                                  : "not sent yet — send it below if they're paying later"}
+                            </li>
+                          </ul>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            {!r.paidOnline && !r.paidOfflineAt && !r.invoiceSentAt && (
+                              <button
+                                type="button"
+                                className="btn-pill !px-5 !py-2 text-sm"
+                                disabled={sendInv.isPending}
+                                onClick={() => sendInv.mutate({ id: r.id })}
+                              >
+                                Send invoice
+                              </button>
+                            )}
+                            {!r.paidOnline && !r.paidOfflineAt && (
+                              <button
+                                type="button"
+                                className="btn-pill !px-5 !py-2 text-sm"
+                                disabled={markPaid.isPending}
+                                onClick={() => markPaid.mutate({ id: r.id, paid: true })}
+                              >
+                                Payment received
+                              </button>
+                            )}
+                            <button
+                              type="button"
+                              className="btn-pill-dark !px-5 !py-2 text-sm"
+                              disabled={finish.isPending}
+                              onClick={() => finish.mutate({ id: r.id })}
+                            >
+                              {finish.isPending ? "Ticking off…" : "Tick off — job finished ✓"}
+                            </button>
+                          </div>
+                          <p className="mt-2 text-xs text-charcoal/60">
+                            Tick-off moves it to Finished jobs. It only works once the job's
+                            paid or an invoice has gone out — so nothing slips through unpaid.
+                          </p>
+                        </div>
+                      )}
                       <p className="text-sm">
                         <strong>Phone:</strong>{" "}
                         <a href={`tel:${r.phone}`} className="text-forest">{r.phone}</a>
@@ -1882,20 +1964,21 @@ export default function Admin() {
     );
   }
 
-  function JobLog() {
+  function FinishedJobs() {
     const leads = trpc.admin.listLeads.useQuery();
     const [q, setQ] = useState("");
     const [openId, setOpenId] = useState<number | null>(null);
     if (leads.isPending) return <p>Loading…</p>;
-    const rows = leads.data ?? [];
+    const rows = (leads.data ?? []).filter((r) => r.finishedAt);
     type Row = (typeof rows)[number];
 
     const jobDateOf = (r: Row) =>
       parseBooking(r.bookingJson)?.preferredDate ??
       new Date(r.createdAt).toLocaleDateString("en-CA");
+    // Newest ticked-off first — this is the permanent record of done work.
     const sorted = rows
       .slice()
-      .sort((a, b) => jobDateOf(b).localeCompare(jobDateOf(a)) || b.id - a.id);
+      .sort((a, b) => +new Date(b.finishedAt!) - +new Date(a.finishedAt!) || b.id - a.id);
     const needle = q.trim().toLowerCase();
     const filtered = needle
       ? sorted.filter((r) =>
@@ -1919,20 +2002,21 @@ export default function Admin() {
       <div>
         <div className="flex flex-wrap items-center justify-between gap-3">
           <h2 className="font-display text-2xl font-black text-charcoal">
-            Job log ({filtered.length})
+            Finished jobs ({filtered.length})
           </h2>
           <button
             type="button"
             className="btn-pill-dark !px-5 !py-2 text-sm"
             onClick={() =>
               downloadCsv(
-                "job-log.csv",
+                "finished-jobs.csv",
                 filtered.map((r) => {
                   const b = parseBooking(r.bookingJson);
                   const quote = safeParse(r.quoteJson);
                   return {
                     ref: `MCC-${String(r.id).padStart(4, "0")}`,
                     jobDate: jobDateOf(r),
+                    finished: r.finishedAt ? new Date(r.finishedAt).toLocaleDateString("en-AU") : "",
                     name: r.name,
                     phone: r.phone,
                     email: r.email,
@@ -1953,8 +2037,8 @@ export default function Admin() {
           </button>
         </div>
         <p className="mt-1 text-sm text-charcoal/70">
-          Every job and quote that's come through the site, newest job date first — the permanent
-          record. The CSV is your address book: names, numbers and where every job was.
+          Jobs you've ticked off, newest first — the permanent record. The CSV is
+          your address book: names, numbers and where every job was.
         </p>
         <input
           type="search"
@@ -1962,12 +2046,12 @@ export default function Admin() {
           placeholder="Search name, phone, email or address…"
           value={q}
           onChange={(e) => setQ(e.target.value)}
-          aria-label="Search the job log"
+          aria-label="Search finished jobs"
         />
 
         {filtered.length === 0 ? (
           <p className="mt-6 text-charcoal/70">
-            {rows.length === 0 ? "Nothing logged yet — jobs land here as they come in." : "No matches."}
+            {rows.length === 0 ? "Nothing finished yet — tick a job off on the Jobs page and it lands here." : "No matches."}
           </p>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -1999,18 +2083,20 @@ export default function Admin() {
                       <span className="block text-sm text-charcoal/60">
                         {booking?.town || r.suburb || "Location n/a"}
                         {what ? ` · ${what}` : ""}
+                        {r.finishedAt &&
+                          ` · ticked off ${new Date(r.finishedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`}
                       </span>
                     </span>
                     <span className="flex items-center gap-4">
                       <span className="font-display text-xl font-black text-forest">{money(r.total)}</span>
                       <span
                         className={`border px-2 py-0.5 text-xs font-bold uppercase ${
-                          r.status === "completed"
+                          r.paidOnline || r.paidOfflineAt
                             ? "border-forest bg-mintlight text-forest"
                             : "border-charcoal/40 text-charcoal/60"
                         }`}
                       >
-                        {r.status}
+                        {r.paidOnline || r.paidOfflineAt ? "Paid" : "Invoiced"}
                       </span>
                     </span>
                   </button>
@@ -2036,7 +2122,14 @@ export default function Admin() {
                         <strong>Sent in:</strong>{" "}
                         {new Date(r.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
                         {" · "}
-                        <strong>Paid online:</strong> {r.paidOnline ? "yes" : "no"}
+                        <strong>Paid:</strong> {r.paidOnline ? "online" : r.paidOfflineAt ? "yes (marked)" : "invoiced"}
+                        {r.finishedAt && (
+                          <>
+                            {" · "}
+                            <strong>Ticked off:</strong>{" "}
+                            {new Date(r.finishedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}
+                          </>
+                        )}
                       </p>
                       {quote?.breakdown?.lines && (
                         <ul className="mt-3 space-y-1">

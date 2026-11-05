@@ -252,6 +252,25 @@ export interface FloodRequest {
   notes?: string;
 }
 
+/** Someone unlocked the 24/7 flood number — they're dialling right now. */
+export function floodUnlockOwnerAlert(d: { name: string; phone: string; email?: string; address: string; suburb?: string }, ref: string): { subject: string; text: string } {
+  return {
+    subject: `🚨 FLOOD — ${d.name} just got the emergency number — expect their call`,
+    text: `FLOOD NUMBER UNLOCKED — ${ref}
+
+${d.name}
+${d.phone}${d.email ? ` · ${d.email}` : ""}
+
+WHERE
+• ${d.address}${d.suburb ? `, ${d.suburb}` : ""}
+
+They've just been shown the 24/7 emergency number on the flood page — the phone should ring any second. If it doesn't, CALL THEM: ${d.phone}
+
+— ${BUSINESS.name} website
+`,
+  };
+}
+
 export function floodOwnerAlert(d: FloodRequest, ref: string, inspectionPrice: number): { subject: string; text: string } {
   return {
     subject: `🚨 FLOOD EMERGENCY — ${d.name} — ${d.suburb || d.address}`,

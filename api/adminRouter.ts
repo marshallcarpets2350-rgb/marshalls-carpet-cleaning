@@ -189,6 +189,90 @@ export const adminRouter = createRouter({
       return { ok: true as const, invoice };
     }),
 
+  // Tick-off: the job's done, the money side is sorted (paid, or at least
+  // invoiced), and it moves off the Jobs board into Finished jobs.
+  finishLead: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      const paid = row.paidOnline || row.paidOfflineAt;
+      if (!paid && !row.invoiceSentAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Not ready to tick off — the customer hasn't paid and no invoice has gone out. Send the invoice or mark it paid first.",
+        });
+      }
+      await db
+        .update(leads)
+        .set({ finishedAt: new Date(), status: "completed" })
+        .where(eq(leads.id, input.id));
+      return { ok: true as const };
+    }),
+
+  // A flood job phoned in — Ben takes the details over the phone and starts
+  // the job card himself, so it lands in Flood reports ready for the report.
+  createFloodLead: adminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().min(6).max(40),
+        email: z.string().trim().toLowerCase().email().max(320).optional().or(z.literal("")),
+        address: z.string().trim().min(3).max(500),
+        suburb: z.string().trim().max(255).optional(),
+        cause: z.string().trim().max(100).optional(),
+        rooms: z.string().trim().max(100).optional(),
+        activeLeak: z.string().trim().max(30).optional(),
+        insurance: z.string().trim().max(30).optional(),
+        notes: z.string().trim().max(2000).optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const model = await loadBfybModel();
+      const inspectionPrice = floodPrices(model).inspection;
+      const result = await db.insert(leads).values({
+        name: input.name,
+        email: input.email || "",
+        phone: input.phone,
+        address: input.address,
+        suburb: input.suburb ?? null,
+        distanceKm: null,
+        travelFee: 0,
+        total: inspectionPrice,
+        quoteJson: JSON.stringify({
+          input: null,
+          breakdown: {
+            lines: [
+              {
+                label: "Flood & water damage — emergency inspection & assessment",
+                amount: inspectionPrice,
+              },
+            ],
+            travelFee: 0,
+            total: inspectionPrice,
+          },
+          flood: {
+            name: input.name,
+            phone: input.phone,
+            email: input.email || undefined,
+            address: input.address,
+            suburb: input.suburb ?? "",
+            cause: input.cause || "Phoned in",
+            rooms: input.rooms || "Not sure",
+            activeLeak: input.activeLeak || "Not sure",
+            insurance: input.insurance || "Not sure",
+            notes: input.notes || undefined,
+          },
+        }),
+        bookingJson: null,
+        status: "new",
+      });
+      const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
+      return { ok: true as const, id, reference: `MCC-${String(id).padStart(4, "0")}` };
+    }),
+
   // ── Flood job reports ─────────────────────────────────────────────
   // Ben logs what happened on a flood callout; the report prices itself off
   // the published flood rates (live BFYB model when the watch has one) and
