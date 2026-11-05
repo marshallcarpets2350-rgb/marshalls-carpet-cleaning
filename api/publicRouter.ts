@@ -252,6 +252,23 @@ export const publicRouter = createRouter({
   // built-in figures) — the quote pages re-price with this on load.
   rates: publicQuery.query(async () => loadRates()),
 
+  // Address autocomplete via Google Places (New), server-side. Returns
+  // google:false when unconfigured/failing so the client falls back to the
+  // free Photon lookup without the customer noticing a thing.
+  addressSearch: publicQuery
+    .input(z.object({ q: z.string().trim().min(3).max(160) }))
+    .query(async ({ input }) => {
+      const { autocompleteAddress } = await import("./googlePlaces");
+      return autocompleteAddress(input.q);
+    }),
+
+  addressResolve: publicQuery
+    .input(z.object({ placeId: z.string().trim().min(5).max(400) }))
+    .query(async ({ input }) => {
+      const { resolveAddress } = await import("./googlePlaces");
+      return resolveAddress(input.placeId);
+    }),
+
   paymentsConfigured: publicQuery.query(async () => {
     return { configured: (await getStripe()) !== null };
   }),

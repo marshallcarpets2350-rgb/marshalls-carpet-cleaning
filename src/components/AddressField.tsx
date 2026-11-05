@@ -6,6 +6,7 @@ import {
   travelFeeForTown,
 } from "@contracts/rates";
 import { useRates } from "@/lib/useRates";
+import { trpc } from "@/providers/trpc";
 
 export interface TravelResult {
   addressLabel: string;
@@ -43,8 +44,11 @@ interface PhotonFeature {
 
 interface Suggestion {
   label: string;
-  lat: number;
-  lon: number;
+  /** Google picks carry a placeId and resolve their pin on selection;
+   *  Photon (fallback) picks carry their coordinates up front. */
+  placeId?: string;
+  lat?: number;
+  lon?: number;
   suburb: string;
   streetLevel: boolean;
 }
@@ -199,6 +203,7 @@ async function roadDistanceKm(lat: number, lon: number): Promise<number | null> 
 
 export default function AddressField({ value, onChange }: Props) {
   const rates = useRates();
+  const utils = trpc.useUtils();
   const [query, setQuery] = useState(value?.addressLabel ?? "");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [open, setOpen] = useState(false);
@@ -222,9 +227,27 @@ export default function AddressField({ value, onChange }: Props) {
     setSearching(true);
     const t = setTimeout(async () => {
       try {
-        // Try the query as typed. Extra variants catch common failure modes:
-        // no town typed -> add "Armidale"; a house number present -> also try
-        // without it, because number-matching can bury the actual street.
+        // Google first — it knows the actual house numbers out here.
+        try {
+          const g = await utils.public.addressSearch.fetch({ q: trimmed });
+          if (g.google && g.suggestions.length > 0) {
+            setSuggestions(
+              g.suggestions.map((s) => ({
+                label: s.label,
+                placeId: s.placeId,
+                suburb: "",
+                streetLevel: s.streetLevel,
+              })),
+            );
+            setOpen(true);
+            setFailed(false);
+            return;
+          }
+        } catch {
+          // fall through to the free lookup
+        }
+
+        // Photon (OSM) fallback — multi-query + ranked, no Google needed.
         const variants = [trimmed];
         if (!KNOWN_TOWNS.test(trimmed)) variants.push(`${trimmed} Armidale`);
         const numberless = stripNumber(trimmed);
@@ -269,6 +292,7 @@ export default function AddressField({ value, onChange }: Props) {
       }
     }, 600);
     return () => clearTimeout(t);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [query]);
 
   // Close dropdown on outside click
@@ -284,8 +308,37 @@ export default function AddressField({ value, onChange }: Props) {
     setOpen(false);
     setRouting(true);
     skipNextSearch.current = true;
-    setQuery(s.label);
-    const km = await roadDistanceKm(s.lat, s.lon);
+
+    let lat = s.lat;
+    let lon = s.lon;
+    let label = s.label;
+    let suburb = s.suburb;
+    let streetLevel = s.streetLevel;
+
+    // Google picks resolve their pin + exact suburb on selection.
+    if (s.placeId) {
+      try {
+        const r = await utils.public.addressResolve.fetch({ placeId: s.placeId });
+        if (!r) throw new Error("no details");
+        lat = r.lat;
+        lon = r.lon;
+        label = r.label || s.label;
+        suburb = r.suburb;
+        streetLevel = r.streetLevel;
+      } catch {
+        setRouting(false);
+        setFailed(true);
+        return;
+      }
+    }
+    setQuery(label);
+
+    if (lat === undefined || lon === undefined) {
+      setRouting(false);
+      setFailed(true);
+      return;
+    }
+    const km = await roadDistanceKm(lat, lon);
     setRouting(false);
 
     if (km === null) {
@@ -294,13 +347,13 @@ export default function AddressField({ value, onChange }: Props) {
     }
     const outOfRange = km > rates.travel.maxServiceKm;
     onChange({
-      addressLabel: s.label,
-      suburb: s.suburb,
+      addressLabel: label,
+      suburb,
       km: Math.round(km * 10) / 10,
-      fee: outOfRange ? 0 : travelFeeForTown(s.suburb, km, rates),
+      fee: outOfRange ? 0 : travelFeeForTown(suburb, km, rates),
       outOfRange,
       source: "live",
-      estimated: s.streetLevel,
+      estimated: streetLevel,
     });
   };
 
