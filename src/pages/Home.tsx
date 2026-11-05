@@ -41,7 +41,7 @@ export default function Home() {
       <Header />
       <FlowArt />
 
-      <main className="flex flex-1 flex-col justify-center bg-creamlight py-5 md:py-6">
+      <main className="flex flex-1 flex-col justify-center bg-creamlight py-8 md:py-10">
         <div className="mx-auto w-full max-w-6xl px-4 md:px-6">
           <div className="grid items-center gap-8 lg:grid-cols-[1.15fr_1fr]">
             <div>
@@ -81,32 +81,32 @@ export default function Home() {
           </div>
 
           {/* The three ways in — big, centred, impossible to miss */}
-          <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {TILES.map((t) => (
               <Link
                 key={t.title}
                 to={t.to}
-                className="group border-[1.5px] border-charcoal bg-background p-5 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6"
+                className="group flex flex-col border-[1.5px] border-charcoal bg-background p-5 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6"
               >
-                <h2 className="font-display text-2xl font-black leading-tight text-charcoal md:text-3xl">
-                  {t.title}
+                <h2 className="flex min-h-[4.5rem] flex-col justify-center font-display text-2xl font-black leading-tight text-charcoal md:min-h-[5.5rem] md:text-3xl">
+                  <span>{t.title}</span>
                   {t.under && (
                     <span className="block text-lg font-black text-charcoal/70 md:text-xl">
                       {t.under}
                     </span>
                   )}
                 </h2>
-                <p className="mx-auto mt-3 max-w-xs text-sm leading-relaxed text-charcoal/70">
+                <p className="mx-auto mt-4 max-w-xs flex-1 text-sm leading-relaxed text-charcoal/70">
                   {t.sub}
                 </p>
-                <span className="btn-pill mx-auto mt-5 !px-6 !py-2.5 text-base group-hover:-translate-y-0.5">
+                <span className="btn-pill mx-auto mt-6 !px-6 !py-2.5 text-base group-hover:-translate-y-0.5">
                   {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
                 </span>
               </Link>
             ))}
           </div>
 
-          <p className="mt-6 text-center text-charcoal/75">
+          <p className="mt-8 text-center text-charcoal/75">
             Rather talk it through?{" "}
             <a href={BUSINESS.phoneHref} className="font-bold text-forest">
               Call {BUSINESS.phone}

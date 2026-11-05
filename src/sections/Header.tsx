@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { BUSINESS } from "@contracts/rates";
 import logo from "@/assets/logo.png";
@@ -8,13 +8,35 @@ import iconRug from "@/assets/icons/rug-pickup.png";
 import iconPrices from "@/assets/icons/prices.png";
 import iconAreas from "@/assets/icons/areas.png";
 
-type NavItem = { icon?: string; emoji?: string; label: string; sub?: string; to: string; urgent?: boolean };
+type NavItem = { icon?: string; emoji?: string; svg?: ReactNode; label: string; sub?: string; to: string; urgent?: boolean };
+
+/** Flooded house — drawn, not an emoji, so it renders the same everywhere. */
+function FloodIcon() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.8"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="h-full w-full"
+      aria-hidden="true"
+    >
+      <path d="M4 10.5 12 3l8 7.5" />
+      <path d="M6 8.8V15h12V8.8" />
+      <path d="M9.5 15v-3h5v3" />
+      <path d="M2.5 18.5c1.5-1.5 3-1.5 4.5 0s3 1.5 4.5 0 3-1.5 4.5 0 3 1.5 4.5 0" />
+      <path d="M5 21.5c1.5-1.5 3-1.5 4.5 0s3 1.5 4.5 0 3-1.5 4.5 0" opacity="0.55" />
+    </svg>
+  );
+}
 
 const MAIN_NAV: NavItem[] = [
   { icon: iconCarpet, label: "Carpet cleaning", sub: "quote", to: "/quote" },
   { icon: iconRug, label: "Rug pick-up", sub: "& clean", to: "/rugs" },
   { icon: iconLounge, label: "Lounge & mattress", sub: "& upholstery", to: "/lounge" },
-  { emoji: "🚨", label: "Emergency flood", sub: "24/7 help", to: "/flood", urgent: true },
+  { svg: <FloodIcon />, label: "Emergency flood", sub: "24/7 help", to: "/flood", urgent: true },
 ];
 
 const MORE_NAV: NavItem[] = [
@@ -34,6 +56,12 @@ function NavIcon({ item, size }: { item: NavItem; size: string }) {
         className={`inline-block ${size} object-contain align-middle`}
       />
     );
+  if (item.svg)
+    return (
+      <span aria-hidden="true" className={`inline-block ${size}`}>
+        {item.svg}
+      </span>
+    );
   return <span aria-hidden="true">{item.emoji}</span>;
 }
 
@@ -43,72 +71,76 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b-[1.5px] border-charcoal bg-background/95 backdrop-blur">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 pl-1 pr-4 md:pl-2 md:pr-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 pl-0 pr-4 md:pl-1 md:pr-6">
         <Link to="/" className="shrink-0 no-underline" aria-label="Marshall's Carpet Cleaning — home">
           <img
             src={logo}
             alt="Marshall's Carpet Cleaning"
-            className="h-20 w-auto md:h-28"
+            className="h-24 w-auto md:h-36"
           />
         </Link>
 
-        <nav className="hidden flex-1 items-center justify-evenly xl:flex" aria-label="Main">
-          {MAIN_NAV.map((item) => (
-            <Link
-              key={item.to + item.label}
-              to={item.to}
-              className={`whitespace-nowrap text-center text-lg font-bold leading-tight no-underline hover:text-forest ${
-                item.urgent ? "text-[#B91C1C]" : "text-charcoal"
-              }`}
-            >
-              <span className="mb-1 block">
-                <NavIcon item={item} size="h-9 w-9" />
-              </span>
-              {item.label}
-              {item.sub && (
-                <span className={`block text-sm font-bold ${item.urgent ? "text-[#B91C1C]" : "text-charcoal"}`}>{item.sub}</span>
-              )}
-            </Link>
-          ))}
-
-          {/* Everything else lives under More */}
-          <div
-            className="relative"
-            onMouseEnter={() => setMoreOpen(true)}
-            onMouseLeave={() => setMoreOpen(false)}
-          >
-            <button
-              type="button"
-              onClick={() => setMoreOpen((v) => !v)}
-              aria-expanded={moreOpen}
-              className="flex items-center gap-1.5 py-2 text-lg font-bold text-charcoal hover:text-forest"
-            >
-              <span aria-hidden="true">➕</span> More
-              <span className={`inline-block text-sm transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true">▾</span>
-            </button>
-            {moreOpen && (
-              <div className="absolute left-1/2 top-full z-50 w-56 -translate-x-1/2 border-[1.5px] border-charcoal bg-background py-2 shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)]">
-                {MORE_NAV.map((item) => (
-                  <Link
-                    key={item.to}
-                    to={item.to}
-                    onClick={() => setMoreOpen(false)}
-                    className="flex items-center gap-3 px-5 py-2.5 text-base font-bold text-charcoal no-underline hover:bg-mintlight"
-                  >
-                    <NavIcon item={item} size="h-7 w-7" />
-                    {item.label}
-                  </Link>
-                ))}
-              </div>
-            )}
+        <nav className="hidden flex-1 items-center xl:flex" aria-label="Main">
+          <div className="flex flex-1 items-center justify-evenly">
+            {MAIN_NAV.map((item) => (
+              <Link
+                key={item.to + item.label}
+                to={item.to}
+                className={`whitespace-nowrap text-center text-lg font-bold leading-tight no-underline hover:text-forest ${
+                  item.urgent ? "text-[#B91C1C]" : "text-charcoal"
+                }`}
+              >
+                <span className="mb-1 block">
+                  <NavIcon item={item} size="h-9 w-9" />
+                </span>
+                {item.label}
+                {item.sub && (
+                  <span className={`block text-sm font-bold ${item.urgent ? "text-[#B91C1C]" : "text-charcoal"}`}>{item.sub}</span>
+                )}
+              </Link>
+            ))}
           </div>
 
-          <Link
-            to="/contact"
-            className="text-lg font-bold text-charcoal no-underline hover:text-forest"
-          >
-            <span className="mr-1.5" aria-hidden="true">📞</span>Contact
-          </Link>
+          {/* More + Contact sit together at the right end of the nav */}
+          <div className="flex items-center gap-8">
+            <div
+              className="relative"
+              onMouseEnter={() => setMoreOpen(true)}
+              onMouseLeave={() => setMoreOpen(false)}
+            >
+              <button
+                type="button"
+                onClick={() => setMoreOpen((v) => !v)}
+                aria-expanded={moreOpen}
+                className="flex items-center gap-1.5 py-2 text-lg font-bold text-charcoal hover:text-forest"
+              >
+                <span aria-hidden="true">➕</span> More
+                <span className={`inline-block text-sm transition-transform ${moreOpen ? "rotate-180" : ""}`} aria-hidden="true">▾</span>
+              </button>
+              {moreOpen && (
+                <div className="absolute right-0 top-full z-50 w-56 border-[1.5px] border-charcoal bg-background py-2 shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)]">
+                  {MORE_NAV.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMoreOpen(false)}
+                      className="flex items-center gap-3 px-5 py-2.5 text-base font-bold text-charcoal no-underline hover:bg-mintlight"
+                    >
+                      <NavIcon item={item} size="h-7 w-7" />
+                      {item.label}
+                    </Link>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <Link
+              to="/contact"
+              className="text-lg font-bold text-charcoal no-underline hover:text-forest"
+            >
+              <span className="mr-1.5" aria-hidden="true">📞</span>Contact
+            </Link>
+          </div>
         </nav>
 
         <div className="flex shrink-0 items-center gap-3">
@@ -118,12 +150,6 @@ export default function Header() {
           >
             {BUSINESS.phone}
           </a>
-          <Link
-            to="/quote"
-            className="whitespace-nowrap rounded-xl bg-mint px-8 py-3 text-center text-sm font-bold text-background no-underline transition-colors hover:bg-forest md:px-12 md:py-3.5 md:text-lg"
-          >
-            Get my quote
-          </Link>
           <button
             type="button"
             className="flex h-11 w-11 items-center justify-center border-[1.5px] border-charcoal xl:hidden"
