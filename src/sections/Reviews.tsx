@@ -2,11 +2,12 @@
 // official Places API and cached server-side (the cache refreshes weekly, so
 // the stars and count tick up on their own). The whole section hides politely
 // until the Google key is saved in Admin → Settings.
+import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 
 /** Google-style gold stars with a fractional fill (e.g. 4.8 shows 80% of the
  *  5th star) — gold on grey, the way Google itself renders them. */
-function Stars({ rating, className = "h-5 w-5" }: { rating: number; className?: string }) {
+export function Stars({ rating, className = "h-5 w-5" }: { rating: number; className?: string }) {
   const pct = Math.max(0, Math.min(100, (rating / 5) * 100));
   const row = (color: string) => (
     <div className="flex gap-0.5">
@@ -27,12 +28,34 @@ function Stars({ rating, className = "h-5 w-5" }: { rating: number; className?: 
   );
 }
 
+/** Compact live rating badge — stars + score + count, links to /reviews.
+ *  Sits at the top of the homepage; hides itself only if Google has no data. */
+export function RatingBadge() {
+  const q = trpc.public.googleReviews.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
+  const data = q.data;
+  if (!data || data.userRatingCount === 0) return null;
+  return (
+    <Link
+      to="/reviews"
+      className="inline-flex flex-wrap items-center gap-x-3 gap-y-2 border-[1.5px] border-charcoal bg-background px-4 py-3 no-underline transition-transform hover:-translate-y-0.5"
+    >
+      <Stars rating={data.rating} className="h-6 w-6" />
+      <span className="font-display text-xl font-black text-charcoal">
+        {data.rating.toFixed(1)}
+      </span>
+      <span className="text-sm font-bold text-charcoal/70">
+        {data.userRatingCount} Google review{data.userRatingCount === 1 ? "" : "s"} — see them all →
+      </span>
+    </Link>
+  );
+}
+
 export default function Reviews() {
   const q = trpc.public.googleReviews.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
   const data = q.data;
 
   // Nothing to show until Google is connected (or the fetch has never
-  // succeeded) — the homepage simply skips the section.
+  // succeeded) — the page simply skips the section.
   if (!data || data.userRatingCount === 0) return null;
 
   const reviews = data.reviews.slice(0, 5);

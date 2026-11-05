@@ -39,6 +39,7 @@ const MAIN_NAV: NavItem[] = [
 ];
 
 const MORE_NAV: NavItem[] = [
+  { emoji: "★", label: "Reviews", to: "/reviews" },
   { emoji: "📸", label: "Our work", to: "/work" },
   { icon: iconAreas, label: "Areas we cover", to: "/areas" },
   { emoji: "❔", label: "FAQ", to: "/faq" },

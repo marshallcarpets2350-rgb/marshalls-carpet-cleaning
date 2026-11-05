@@ -15,6 +15,7 @@ import Services from './sections/Services'
 import Areas from './sections/Areas'
 import Faq from './sections/Faq'
 import Gallery from './sections/Gallery'
+import Reviews from './sections/Reviews'
 
 // Old /furnishings links keep working: rug entries go to /rugs, the rest to /lounge.
 function FurnishingsRedirect() {
@@ -48,6 +49,7 @@ export default function App() {
       <Route path="/furnishings" element={<FurnishingsRedirect />} />
       <Route path="/services" element={<SectionPage><Services /></SectionPage>} />
       <Route path="/work" element={<SectionPage><Gallery /></SectionPage>} />
+      <Route path="/reviews" element={<SectionPage><Reviews /></SectionPage>} />
       <Route path="/areas" element={<SectionPage><Areas /></SectionPage>} />
       <Route path="/carpet-cleaning-uralla" element={<TownPage slug="carpet-cleaning-uralla" />} />
       <Route path="/carpet-cleaning-guyra" element={<TownPage slug="carpet-cleaning-guyra" />} />
