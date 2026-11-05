@@ -12,7 +12,6 @@ import { SectionPage, ContactPage } from './pages/sections'
 import { TownPage } from './pages/seo/TownPage'
 import { EndOfLeasePage, PetUrinePage } from './pages/seo/IntentPages'
 import Services from './sections/Services'
-import Pricing from './sections/Pricing'
 import Areas from './sections/Areas'
 import Faq from './sections/Faq'
 import Gallery from './sections/Gallery'
@@ -48,7 +47,6 @@ export default function App() {
       <Route path="/lounge" element={<Lounge />} />
       <Route path="/furnishings" element={<FurnishingsRedirect />} />
       <Route path="/services" element={<SectionPage><Services /></SectionPage>} />
-      <Route path="/prices" element={<SectionPage><Pricing /></SectionPage>} />
       <Route path="/work" element={<SectionPage><Gallery /></SectionPage>} />
       <Route path="/areas" element={<SectionPage><Areas /></SectionPage>} />
       <Route path="/carpet-cleaning-uralla" element={<TownPage slug="carpet-cleaning-uralla" />} />

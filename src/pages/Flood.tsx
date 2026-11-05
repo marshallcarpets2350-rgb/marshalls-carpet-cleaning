@@ -4,7 +4,7 @@ import Footer from "@/sections/Footer";
 import FlowArt from "@/components/FlowArt";
 import { Field, PillGroup } from "@/components/wizard/ui";
 import { trpc } from "@/providers/trpc";
-import { BUSINESS, BFYB_MODEL, floodPrices, money } from "@contracts/rates";
+import { BUSINESS } from "@contracts/rates";
 
 const STEPS: { title: string; body: string }[] = [
   {
@@ -48,9 +48,6 @@ const YES_NO = [
 ];
 
 export default function Flood() {
-  const bfybQ = trpc.public.bfybChecked.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
-  const prices = floodPrices(bfybQ.data?.model ?? BFYB_MODEL);
-
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -164,22 +161,23 @@ export default function Flood() {
           </div>
         </section>
 
-        {/* ============ published prices ============ */}
+        {/* ============ how flood pricing works ============ */}
         <section className="border-t-[1.5px] border-charcoal py-14 md:py-20">
           <div className="mx-auto max-w-6xl px-4 md:px-6">
-            <p className="text-sm font-bold uppercase tracking-widest text-forest">Published prices</p>
+            <p className="text-sm font-bold uppercase tracking-widest text-forest">How pricing works</p>
             <h2 className="mt-2 font-display text-3xl font-black text-charcoal md:text-5xl">
               No panic pricing.
             </h2>
             <p className="mt-3 max-w-2xl text-charcoal/75">
-              Most flood work is quoted from a clipboard after the fact. Ours
-              is published — the number you see here is the number on the
-              invoice.
+              Flood work is priced off a fixed rate card — inspection, hourly
+              extraction and drying, and per-fan equipment hire — never by how
+              stressed you sound on the phone. We scope the job, you get the
+              full price in writing before we start, and that number doesn't
+              move. Your insurer gets the same figures in the report.
             </p>
             <div className="mt-8 grid gap-5 md:grid-cols-3">
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Inspection &amp; assessment</p>
-                <p className="mt-2 font-display text-4xl font-black text-forest">{money(prices.inspection)}</p>
                 <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
                   <li>• Thermal imaging &amp; moisture readings</li>
                   <li>• Scope of works within 24 hours</li>
@@ -187,22 +185,15 @@ export default function Flood() {
                 </ul>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
-                <p className="font-bold text-charcoal">Extraction &amp; drying labour</p>
-                <p className="mt-2 font-display text-4xl font-black text-forest">
-                  {money(prices.labourPerHour)}<span className="text-xl">/hour</span>
-                </p>
+                <p className="font-bold text-charcoal">Extraction &amp; drying</p>
                 <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
-                  <li>• Per technician, standard hours</li>
-                  <li>• After-hours (7 PM – 7 AM): {money(prices.labourAfterHours)}/hour</li>
-                  <li>• Most extractions run 1–3 hours</li>
                   <li>• High-powered portable extraction — units &amp; tight access are fine</li>
+                  <li>• Most extractions run 1–3 hours</li>
+                  <li>• After-hours rates apply 7 PM – 7 AM, stated up front</li>
                 </ul>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Drying equipment</p>
-                <p className="mt-2 font-display text-4xl font-black text-forest">
-                  {money(prices.fanPerDay)}<span className="text-xl">/day per fan</span>
-                </p>
                 <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
                   <li>• Most jobs need 2–4 fans for 1–3 days</li>
                   <li>• Quoted from the scope, in writing</li>

@@ -5,7 +5,6 @@ import logo from "@/assets/logo.png";
 import iconCarpet from "@/assets/icons/carpet-cleaning.png";
 import iconLounge from "@/assets/icons/lounge.png";
 import iconRug from "@/assets/icons/rug-pickup.png";
-import iconPrices from "@/assets/icons/prices.png";
 import iconAreas from "@/assets/icons/areas.png";
 
 type NavItem = { icon?: string; emoji?: string; svg?: ReactNode; label: string; sub?: string; to: string; urgent?: boolean };
@@ -35,12 +34,11 @@ function FloodIcon() {
 const MAIN_NAV: NavItem[] = [
   { icon: iconCarpet, label: "Carpet cleaning", sub: "quote", to: "/quote" },
   { icon: iconRug, label: "Rug pick-up", sub: "& clean", to: "/rugs" },
-  { icon: iconLounge, label: "Lounge & mattress", sub: "& upholstery", to: "/lounge" },
+  { icon: iconLounge, label: "Lounge, mattress", sub: "and upholstery", to: "/lounge" },
   { svg: <FloodIcon />, label: "Emergency flood", sub: "24/7 help", to: "/flood", urgent: true },
 ];
 
 const MORE_NAV: NavItem[] = [
-  { icon: iconPrices, label: "Prices", to: "/prices" },
   { emoji: "📸", label: "Our work", to: "/work" },
   { icon: iconAreas, label: "Areas we cover", to: "/areas" },
   { emoji: "❔", label: "FAQ", to: "/faq" },

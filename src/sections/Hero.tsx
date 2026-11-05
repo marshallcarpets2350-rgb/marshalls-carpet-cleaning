@@ -45,8 +45,8 @@ export default function Hero() {
 
         <dl className="mt-14 grid max-w-2xl grid-cols-3 gap-px border-[1.5px] border-charcoal bg-charcoal">
           {[
-            { k: "$4.00/m²", v: "flat rate carpet" },
-            { k: "$150", v: "minimum charge" },
+            { k: "5.0★", v: "Google rating" },
+            { k: "Free", v: "drying fans with every clean" },
             { k: "60 sec", v: "to your price" },
           ].map((s) => (
             <div key={s.v} className="bg-background px-4 py-5">

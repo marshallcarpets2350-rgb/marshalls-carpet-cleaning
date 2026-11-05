@@ -17,15 +17,15 @@ const TILES: { title: string; under?: string; sub: string; to: string }[] = [
     to: "/rugs",
   },
   {
-    title: "Lounge & mattress",
-    under: "& upholstery",
+    title: "Lounge, mattress",
+    under: "and upholstery",
     sub: "Priced per seat with three soiling levels.",
     to: "/lounge",
   },
   {
     title: "Flood & water damage",
     under: "24/7 emergency",
-    sub: "Extraction, structural drying, insurer-ready reports — published prices.",
+    sub: "Extraction, structural drying, insurer-ready reports — price in writing before we start.",
     to: "/flood",
   },
 ];
