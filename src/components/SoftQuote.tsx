@@ -13,6 +13,7 @@ import Footer from "@/sections/Footer";
 import type { TravelResult } from "@/components/AddressField";
 import NewsletterForm from "@/components/NewsletterForm";
 import { trpc } from "@/providers/trpc";
+import { track } from "@/lib/track";
 import { useRates } from "@/lib/useRates";
 import { competitorEstimates } from "@/lib/competitors";
 import {
@@ -141,6 +142,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const utils = trpc.useUtils();
   const submitLead = trpc.public.submitLead.useMutation({
     onSuccess: (r) => {
+      track("lead_submitted", { reference: r.reference, total: r.total, currency: "AUD" });
       if (r.checkoutUrl) {
         window.location.href = r.checkoutUrl;
         return;
@@ -159,6 +161,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const verifyPayment = trpc.public.verifyPayment.useMutation({
     onSuccess: (r) => {
       if (r.paid && r.reference && r.total !== undefined) {
+        track("purchase", { reference: r.reference, total: r.total, currency: "AUD" });
         setPaidResult({ reference: r.reference, total: r.total });
         window.scrollTo({ top: 0 });
       }

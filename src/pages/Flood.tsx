@@ -4,6 +4,7 @@ import Footer from "@/sections/Footer";
 import FlowArt from "@/components/FlowArt";
 import { Field, PillGroup } from "@/components/wizard/ui";
 import { trpc } from "@/providers/trpc";
+import { track } from "@/lib/track";
 import { BUSINESS } from "@contracts/rates";
 
 const STEPS: { title: string; body: string }[] = [
@@ -339,7 +340,10 @@ function NumberGate() {
   const [ref, setRef] = useState<string | null>(null);
 
   const unlock = trpc.public.floodUnlock.useMutation({
-    onSuccess: (r) => setRef(r.reference),
+    onSuccess: (r) => {
+      track("flood_unlock", { reference: r.reference });
+      setRef(r.reference);
+    },
     // Even if the save hiccups, don't stand between them and help.
     onError: () => setRef(""),
   });

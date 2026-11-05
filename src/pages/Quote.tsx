@@ -8,6 +8,7 @@ import Footer from "@/sections/Footer";
 import type { TravelResult } from "@/components/AddressField";
 import NewsletterForm from "@/components/NewsletterForm";
 import { competitorEstimates } from "@/lib/competitors";
+import { track } from "@/lib/track";
 import { trpc } from "@/providers/trpc";
 import { useRates } from "@/lib/useRates";
 import {
@@ -117,6 +118,7 @@ export default function Quote() {
   const utils = trpc.useUtils();
   const submitLead = trpc.public.submitLead.useMutation({
     onSuccess: (r) => {
+      track("lead_submitted", { reference: r.reference, total: r.total, currency: "AUD" });
       if (r.checkoutUrl) {
         // "Pay now" → straight to Stripe's hosted checkout for the full amount
         window.location.href = r.checkoutUrl;
@@ -137,6 +139,7 @@ export default function Quote() {
   const verifyPayment = trpc.public.verifyPayment.useMutation({
     onSuccess: (r) => {
       if (r.paid && r.reference && r.total !== undefined) {
+        track("purchase", { reference: r.reference, total: r.total, currency: "AUD" });
         setPaidResult({ reference: r.reference, total: r.total });
         window.scrollTo({ top: 0 });
       }
