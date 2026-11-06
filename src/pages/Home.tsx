@@ -87,8 +87,9 @@ export default function Home() {
             fitScale < 1
               ? {
                   transform: `scale(${fitScale})`,
-                  transformOrigin: "top center",
+                  transformOrigin: "center center",
                   width: `${100 / fitScale}%`,
+                  marginLeft: `calc((100% - ${100 / fitScale}%) / 2)`,
                 }
               : undefined
           }
