@@ -5,8 +5,9 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, type ServiceKind } from "@contracts/rates";
-import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY } from "./queries/settings";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, computeQuote, travelFeeForTown, type QuoteInput, type ServiceKind } from "@contracts/rates";
+import { quoteInputSchema } from "./publicRouter";
+import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY, loadRates } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
 import { sendInvoiceFor } from "./invoices";
@@ -271,6 +272,56 @@ export const adminRouter = createRouter({
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
       return { ok: true as const, id, reference: `MCC-${String(id).padStart(4, "0")}` };
+    }),
+
+  // ── Quote-only leads ──────────────────────────────────────────────
+  // Ben prices a job for someone (over the phone, on site, wherever) and
+  // saves it WITHOUT a booking date. No calendar slot is blocked, no
+  // automated emails fire — it's just a saved price, ready to convert to a
+  // booking when the customer says yes.
+  saveQuote: adminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().max(40).optional().or(z.literal("")),
+        email: z.string().trim().toLowerCase().email().max(320).optional().or(z.literal("")),
+        address: z.string().trim().max(500).optional().or(z.literal("")),
+        suburb: z.string().trim().max(255).optional().or(z.literal("")),
+        town: z.string().trim().max(100).optional().or(z.literal("")),
+        notes: z.string().trim().max(2000).optional().or(z.literal("")),
+        quote: quoteInputSchema,
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const rates = await loadRates();
+      const town = input.town || input.suburb || "";
+      const quote: QuoteInput = {
+        ...input.quote,
+        travelFee: travelFeeForTown(town || null, 0, rates),
+        discountPercent: 0,
+      };
+      const breakdown = computeQuote(quote, rates, await loadBfybModel());
+      const result = await db.insert(leads).values({
+        name: input.name,
+        email: input.email || "",
+        phone: input.phone || "",
+        address: input.address || null,
+        suburb: input.suburb || town || null,
+        distanceKm: null,
+        travelFee: breakdown.travelFee,
+        total: breakdown.total,
+        quoteJson: JSON.stringify({
+          input: quote,
+          breakdown,
+          quoteOnly: true,
+          notes: input.notes || undefined,
+        }),
+        bookingJson: null,
+        status: "new",
+      });
+      const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
+      return { ok: true as const, id, reference: `MCC-${String(id).padStart(4, "0")}`, total: breakdown.total };
     }),
 
   // ── Flood job reports ─────────────────────────────────────────────

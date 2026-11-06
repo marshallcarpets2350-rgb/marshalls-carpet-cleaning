@@ -38,7 +38,7 @@ import {
   type QuoteInput,
 } from "@contracts/rates";
 
-const quoteInputSchema = z.object({
+export const quoteInputSchema = z.object({
   carpetAreaM2: z.number().min(0).max(10000),
   carpetDirtiness: z.enum(["light", "medium", "heavy"]),
   maintenance: z.enum(["none", "two"]),

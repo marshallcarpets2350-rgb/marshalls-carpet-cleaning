@@ -2,6 +2,7 @@ import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import FloodReports from "@/pages/admin/FloodReports";
+import NewQuote from "@/pages/admin/NewQuote";
 import {
   BUSINESS,
   money,
@@ -72,12 +73,13 @@ function DotLegend() {
 
 const TOKEN_KEY = "mcc_admin_token";
 
-type Tab = "overview" | "runsheet" | "leads" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
+type Tab = "overview" | "runsheet" | "leads" | "newquote" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "runsheet", label: "Run sheet" },
   { key: "leads", label: "Jobs" },
+  { key: "newquote", label: "New quote" },
   { key: "finished", label: "Finished jobs" },
   { key: "clients", label: "Clients" },
   { key: "flood", label: "Flood reports" },
@@ -250,6 +252,7 @@ export default function Admin() {
         {tab === "overview" && <Overview onGo={setTab} />}
         {tab === "runsheet" && <RunSheet />}
         {tab === "leads" && <Leads />}
+        {tab === "newquote" && <NewQuote />}
         {tab === "finished" && <FinishedJobs />}
         {tab === "clients" && <Clients />}
         {tab === "flood" && <FloodReports />}
@@ -773,7 +776,7 @@ export default function Admin() {
                                   ? TIME_SLOTS[booking.preferredSlot]
                                   : "time to arrange"
                             } · ${booking.town || r.suburb || ""}`
-                          : `${r.suburb || "Suburb n/a"} · sent ${new Date(r.createdAt).toLocaleDateString("en-AU")}`}
+                          : `${r.suburb || "Suburb n/a"} · quoted ${new Date(r.createdAt).toLocaleDateString("en-AU")}`}
                       </span>
                       {r.address && (
                         <span className="block text-sm text-charcoal/60">📍 {r.address}</span>
@@ -783,6 +786,11 @@ export default function Admin() {
                       </span>
                     </span>
                     <span className="flex items-center gap-4">
+                      {!when && (
+                        <span className="border border-[#1A6FD1] bg-[#1A6FD1] px-2 py-0.5 text-xs font-bold uppercase text-background">
+                          Quote only
+                        </span>
+                      )}
                       {needsTickOff(r) && (
                         <span className="border border-[#B91C1C] bg-[#B91C1C] px-2 py-0.5 text-xs font-bold uppercase text-background">
                           Tick off
