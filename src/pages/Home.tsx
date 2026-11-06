@@ -3,7 +3,7 @@ import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
 import { Snowfall } from "@/components/Seasonal";
 import { RatingBadge } from "@/sections/Reviews";
-import { BUSINESS, christmasOn, seasonalPromoFor } from "@contracts/rates";
+import { BUSINESS, christmasOn, seasonWindowFor } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
 
 const TILES: { title: string; under?: string; sub: string; to: string }[] = [
@@ -32,7 +32,9 @@ const TILES: { title: string; under?: string; sub: string; to: string }[] = [
 ];
 
 export default function Home() {
-  const promo = seasonalPromoFor();
+  const win = seasonWindowFor();
+  const promo = win?.season.promo ?? null;
+  const promoEnd = win?.end.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <Header />
@@ -53,7 +55,7 @@ export default function Home() {
               )}
               {promo && (
                 <p className="ml-0 mt-3 inline-block border-[1.5px] border-charcoal bg-[#FEF2F2] px-3 py-1.5 text-sm font-bold text-[#B91C1C] md:ml-2">
-                  🏷️ {promo.label} — {promo.percent}% off right now
+                  🏷️ {promo.label} — {promo.percent}% off, ends {promoEnd}
                 </p>
               )}
               <h1 className="mt-3 font-display text-4xl font-black leading-[1.05] text-charcoal md:text-5xl">
@@ -143,7 +145,7 @@ export default function Home() {
           to="/quote"
           className="flex items-center justify-center gap-2 py-3.5 text-center text-base font-bold text-white no-underline"
         >
-          {promo ? `🏷️ ${promo.percent}% off right now — book your clean →` : "Book your clean — 60-second price →"}
+          {promo ? `🏷️ ${promo.percent}% off until ${promoEnd} — book your clean →` : "Book your clean — 60-second price →"}
         </Link>
       </div>
     </div>

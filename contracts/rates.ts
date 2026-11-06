@@ -579,8 +579,6 @@ function isoDay(d: Date): string {
 
 export interface SeasonDef {
   id: string;
-  /** glyphs that drift down the page gutters (first one repeats most) */
-  art: string[];
   /** header strip text when there's no promo (promos show their own strip) */
   banner: string | null;
   /** footer sign-off while the season runs */
@@ -592,63 +590,60 @@ export interface SeasonDef {
 const SEASONS: Record<string, SeasonDef> = {
   christmas: {
     id: "christmas",
-    art: ["🎄", "🦌", "🎁", "⭐", "❄️", "🔔"],
     banner: "🎄🦌 Pre-Christmas cleans now booking — December spots fill fast.",
     footer: "🎄🦌 Merry Christmas from the Marshall's team — and thanks for backing a local business this year.",
     promo: null,
   },
+  boxingday: {
+    id: "boxingday",
+    banner: null,
+    footer: "🎁 Happy Boxing Day — Australia's biggest sale day, and we're in.",
+    promo: { percent: 10, label: "Boxing Day sale" },
+  },
   newyear: {
     id: "newyear",
-    art: ["🎆", "✨", "🥂", "🎉", "🎇"],
     banner: null,
     footer: "🎆 Happy New Year — thanks for backing a local business.",
     promo: { percent: 10, label: "New Year freshen-up" },
   },
   summer: {
     id: "summer",
-    art: ["☀️", "🌊", "🍉", "🕶️", "💦"],
     banner: null,
     footer: null,
     promo: null,
   },
   easter: {
     id: "easter",
-    art: ["🐰", "🥚", "🌷", "🐣", "🍫"],
     banner: null,
     footer: "🐰 Happy Easter from the Marshall's team.",
     promo: { percent: 10, label: "Easter refresh" },
   },
   autumn: {
     id: "autumn",
-    art: ["🍂", "🍁", "🌰", "🍄"],
     banner: null,
     footer: null,
     promo: null,
   },
   winter: {
     id: "winter",
-    art: ["❄️", "☃️", "🧣", "🌧️", "☕"],
     banner: null,
     footer: null,
     promo: { percent: 10, label: "Winter warm-up" },
   },
   latewinter: {
     id: "latewinter",
-    art: ["🌧️", "❄️", "🌬️", "☕"],
     banner: null,
     footer: null,
     promo: null,
   },
   spring: {
     id: "spring",
-    art: ["🌸", "🌼", "🌷", "🐝", "☀️"],
     banner: null,
     footer: null,
     promo: { percent: 10, label: "Spring clean" },
   },
   latespring: {
     id: "latespring",
-    art: ["🌸", "☀️", "🌻", "🦋"],
     banner: null,
     footer: null,
     promo: null,
@@ -684,8 +679,9 @@ function seasonWindows(year: number): { season: SeasonDef; start: Date; end: Dat
   const easterEnd = new Date(easter);
   easterEnd.setDate(easterEnd.getDate() + 2); // through Easter Monday
   return [
-    { season: SEASONS.christmas, start: NOON(year, 11, 6), end: NOON(year, 12, 27) },
-    { season: SEASONS.newyear, start: NOON(year, 12, 27), end: NOON(year + 1, 2, 1) },
+    { season: SEASONS.christmas, start: NOON(year, 11, 6), end: NOON(year, 12, 26) },
+    { season: SEASONS.boxingday, start: NOON(year, 12, 26), end: NOON(year + 1, 1, 1) },
+    { season: SEASONS.newyear, start: NOON(year + 1, 1, 1), end: NOON(year + 1, 2, 1) },
     { season: SEASONS.easter, start: easterStart, end: easterEnd },
     { season: SEASONS.spring, start: NOON(year, 9, 1), end: NOON(year, 10, 16) },
     { season: SEASONS.winter, start: NOON(year, 6, 1), end: NOON(year, 8, 1) },
@@ -696,15 +692,22 @@ function seasonWindows(year: number): { season: SeasonDef; start: Date; end: Dat
   ];
 }
 
-/** The season a Sydney date falls in (null only if the table has a gap). */
-export function seasonFor(at: Date = sydneyToday()): SeasonDef | null {
+/** The season window a Sydney date falls in (null only if the table has a gap). */
+export function seasonWindowFor(
+  at: Date = sydneyToday(),
+): { season: SeasonDef; start: Date; end: Date } | null {
   const y = at.getFullYear();
   for (const year of [y, y - 1]) {
     for (const w of seasonWindows(year)) {
-      if (at >= w.start && at < w.end) return w.season;
+      if (at >= w.start && at < w.end) return w;
     }
   }
   return null;
+}
+
+/** The season a Sydney date falls in (null only if the table has a gap). */
+export function seasonFor(at: Date = sydneyToday()): SeasonDef | null {
+  return seasonWindowFor(at)?.season ?? null;
 }
 
 /** The automatic seasonal promo running right now, if any. */
