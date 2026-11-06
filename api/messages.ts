@@ -16,6 +16,7 @@ import {
   serviceSummary,
   serviceKinds,
   rugReturnDay,
+  paymentDueDay,
   type QuoteInput,
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
@@ -93,7 +94,7 @@ function paymentLine(b: BookingDetails, lead: LeadRow): string {
   if (lead.paidOnline) return "Paid in full online — thank you";
   if (b.payment === "pay-now") return "Paying online — we'll send the secure link if it hasn't reached you";
   if (b.payment === "invoice")
-    return `Invoice after the job (7-day terms) — pay by PayID to ${BUSINESS.payId}, by bank transfer or by card. Put ${ref} in the payment description so it lands straight against your job`;
+    return `Invoice after the job (5-day terms) — pay by PayID to ${BUSINESS.payId}, by bank transfer or by card. Put ${ref} in the payment description so it lands straight against your job`;
   return `Pay on the day — cash, or instant bank transfer to our PayID: ${BUSINESS.payId} (put ${ref} in the description)`;
 }
 
@@ -567,7 +568,7 @@ export function receiptEmail(lead: LeadRow): { subject: string; text: string } {
       : b?.payment === "pay-now"
         ? "Paid in full online by card"
         : b?.payment === "invoice"
-          ? "On invoice — 7-day terms"
+          ? "On invoice — 5-day terms"
           : "Paid on the day";
   return {
     subject: `Receipt — ${BUSINESS.legalName} (${ref})`,
@@ -604,12 +605,9 @@ export function invoiceEmail(
   const b = parseBooking(lead);
   const input = parseQuote(lead);
   const jobIso = b?.preferredDate ?? null;
-  const due = jobIso
-    ? new Date(`${jobIso}T12:00:00`)
-    : null;
-  if (due) due.setDate(due.getDate() + 7); // 7-day terms from the job day
-  const dueLabel = due
-    ? due.toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+  const dueIso = b ? paymentDueDay(b) : null; // 5-day terms — rugs: 5 days from the Monday return
+  const dueLabel = dueIso
+    ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
   const cardBlock = payUrl ? `• Card: pay securely online — ${payUrl}\n` : "";
   const reviewBlock = reviewUrl
@@ -623,7 +621,7 @@ Thanks for having us${jobIso ? ` on ${longDateLabel(jobIso)}` : ""} — your inv
 
 INVOICE ${ref}
 • What was done: ${serviceSummary(input, b?.rugPickup ?? false)}
-• Total due: ${money(lead.total)} — 7-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
+• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
 
 HOW TO PAY
 ${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
@@ -642,7 +640,7 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
 
 export function invoiceSms(lead: LeadRow): string {
   const ref = bookingReference(lead);
-  return `${BUSINESS.name}: thanks for having us — invoice ${ref} for ${money(lead.total)} is in your email (7-day terms). PayID ${BUSINESS.payId}, put ${ref} in the description. Questions? Call ${BUSINESS.phone}.`;
+  return `${BUSINESS.name}: thanks for having us — invoice ${ref} for ${money(lead.total)} is in your email (5-day terms). PayID ${BUSINESS.payId}, put ${ref} in the description. Questions? Call ${BUSINESS.phone}.`;
 }
 
 // ---------------------------------------------------------------------------

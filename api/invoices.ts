@@ -44,7 +44,7 @@ async function cardPayLink(leadId: number, email: string, total: number, ref: st
             unit_amount: Math.round(total * 100),
             product_data: {
               name: `Marshall's Carpet Cleaning — invoice ${ref}`,
-              description: "Balance due on completed clean (7-day terms)",
+              description: "Balance due on completed clean (5-day terms)",
             },
           },
         },
@@ -79,10 +79,14 @@ export async function sendInvoiceFor(leadId: number): Promise<InvoiceResult> {
     const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
     const pdf = await invoicePdfBuffer(lead);
     const em = invoiceEmail(lead, payUrl, reviewUrl);
+    // The reference is what customers quote when paying by PayID/bank — make
+    // it big, red and underlined everywhere it appears in the email body.
+    const refHtml = `<span style="font-size:1.25em;font-weight:800;color:#B91C1C;text-decoration:underline">${ref}</span>`;
+    const html = brandedEmailHtml(em.text).split(ref).join(refHtml);
     await sendMail(smtp, lead.email, em.subject, em.text, [
       { filename: `Invoice-${ref}.pdf`, content: pdf, contentType: "application/pdf" },
       { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
-    ], brandedEmailHtml(em.text));
+    ], html);
     await db.update(leads).set({ invoiceSentAt: new Date() }).where(eq(leads.id, leadId));
     return {
       sent: true,

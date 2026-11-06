@@ -63,7 +63,7 @@ function paymentLineOf(lead: ReceiptLead): string {
   try {
     const p = lead.bookingJson ? (JSON.parse(lead.bookingJson) as { payment?: string }).payment : undefined;
     if (p === "pay-now") return "Paid in full online by card — thank you";
-    if (p === "invoice") return "Payment on invoice — 7-day terms";
+    if (p === "invoice") return "Payment on invoice — 5-day terms";
   } catch { /* fall through */ }
   return "Paid on the day — cash or card";
 }

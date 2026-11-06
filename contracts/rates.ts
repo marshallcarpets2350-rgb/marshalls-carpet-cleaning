@@ -541,6 +541,16 @@ export function rugReturnDay(pickupIso: string): string {
   return isoDay(d);
 }
 
+/** Invoice terms: payment is due 5 days after the job's done — for rug
+ *  runs, 5 days after the Monday return (owner call 6 Nov 2026, was 7). */
+export function paymentDueDay(b: { preferredDate: string | null; rugPickup?: boolean }): string | null {
+  if (!b.preferredDate) return null;
+  const base = b.rugPickup ? rugReturnDay(b.preferredDate) : b.preferredDate;
+  const d = new Date(base + "T12:00:00");
+  d.setDate(d.getDate() + 5);
+  return isoDay(d);
+}
+
 // Sydney-local date helpers (shared by client + server so pickup days and
 // booking windows line up exactly).
 function sydneyToday(): Date {

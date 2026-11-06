@@ -75,7 +75,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
         bullets: [
           "Pay now by card — a secure online payment for the full amount at the time of booking;",
           "Pay on the day — card, bank transfer or cash on completion of the job;",
-          "Invoice after the job — payment due within 7 days of the invoice date.",
+          "Invoice after the job — payment due within 5 days of the job date.",
         ],
       },
       "5.2 Card payments are processed securely by our payment provider; we never see or store your card details.",

@@ -9,7 +9,7 @@
  * esbuild bundle banner. node_modules is present wherever the server runs.
  */
 import type PDFDocumentT from "pdfkit";
-import { BUSINESS } from "@contracts/rates";
+import { BUSINESS, rugReturnDay } from "@contracts/rates";
 import { bookingReference, type LeadRow } from "./messages";
 import { BRAND, brandLogo, brandVan } from "./brand";
 
@@ -168,10 +168,16 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
       y = doc.y + 4;
     }
     y += 4;
-    doc.font("Helvetica").fontSize(10).fillColor(BRAND.charcoal)
-      .text(`Please put ${ref} in the payment description so it lands straight against your job.`, MARGIN, y, { width: CONTENT_W });
-    y = doc.y + 8;
-    row("Terms", `7 days — due ${auDate(invoiceDueDate(lead))}`, { bold: true });
+    // Loud payment reference — customers paying by PayID/bank quote this in
+    // the description, so it has to be unmissable: big, red, underlined.
+    doc.rect(MARGIN, y, CONTENT_W, 48).fill("#FEF2F2");
+    doc.rect(MARGIN, y, 3, 48).fill("#B91C1C");
+    doc.font("Helvetica-Bold").fontSize(9).fillColor(BRAND.grey)
+      .text("PAYMENT REFERENCE — PUT THIS IN THE PAYMENT DESCRIPTION", MARGIN + 14, y + 8, { width: CONTENT_W - 28, lineBreak: false });
+    doc.font("Helvetica-Bold").fontSize(19).fillColor("#B91C1C")
+      .text(ref, MARGIN + 14, y + 21, { width: CONTENT_W - 28, lineBreak: false, underline: true });
+    y += 48 + 10;
+    row("Terms", `5 days — due ${auDate(invoiceDueDate(lead))}`, { bold: true });
     y += 10;
     doc.font("Helvetica").fontSize(9).fillColor(BRAND.grey)
       .text("No GST has been charged — not registered for GST.", MARGIN, y, { width: CONTENT_W });

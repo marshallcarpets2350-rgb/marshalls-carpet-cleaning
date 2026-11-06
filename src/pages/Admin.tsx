@@ -19,6 +19,7 @@ import {
   driveMinutesFor,
   slotsNeededFor,
   rugReturnDay,
+  paymentDueDay,
   resolveRates,
   DEFAULT_RATES,
   RUG_SIZES,
@@ -669,8 +670,11 @@ export default function Admin() {
     const rows = (leads.data ?? []).filter((r) => !r.finishedAt);
     type Row = (typeof rows)[number];
 
-    // One list, latest booked first — the job date when there is one,
-    // otherwise the day the quote came in.
+    // One list, newest bookings at the top (owner call 6 Nov 2026 — order by
+    // when the job came in, not the day it's booked for).
+    const sorted = rows
+      .slice()
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime() || b.id - a.id);
     const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
     const whenOf = (r: Row) => {
       const b = parseBooking(r.bookingJson);
@@ -681,10 +685,6 @@ export default function Admin() {
           : 480;
       return { date: b.preferredDate, sort: `${b.preferredDate}T${String(slotMin).padStart(4, "0")}` };
     };
-    const sortKey = (r: Row) => whenOf(r)?.sort ?? new Date(r.createdAt).toISOString();
-    const sorted = rows
-      .slice()
-      .sort((a, b) => sortKey(b).localeCompare(sortKey(a)) || b.id - a.id);
     // Rug jobs tick off twice: Friday's pickup first, then the Monday
     // return is the real "job finished".
     const rugStage = (r: Row) => {
@@ -697,6 +697,17 @@ export default function Admin() {
     // Needs the owner's attention: the job day's been (or 5pm marked it done)
     // and it hasn't been finished yet. Rug jobs pin on their pickup day for
     // the pickup tick, then again on the Monday for the return tick.
+    // Money alert: the job day's been and there's no payment yet. Red badge —
+    // OVERDUE once the 5-day terms run out.
+    const unpaidAlert = (r: Row) => {
+      if (r.paidOnline || r.paidOfflineAt) return null;
+      const b = parseBooking(r.bookingJson);
+      if (!b?.preferredDate) return null;
+      const doneDay = b.rugPickup ? rugReturnDay(b.preferredDate) : b.preferredDate;
+      if (doneDay > todayIso) return null;
+      const dueIso = paymentDueDay(b);
+      return { dueIso, overdue: !!dueIso && dueIso < todayIso };
+    };
     const needsTickOff = (r: Row) => {
       if (r.status === "completed") return true;
       const rug = rugStage(r);
@@ -837,6 +848,11 @@ export default function Admin() {
                       {!r.paidOnline && r.paidOfflineAt && (
                         <span className="border border-forest bg-mintlight px-2 py-0.5 text-xs font-bold uppercase text-forest">
                           Paid ✓
+                        </span>
+                      )}
+                      {unpaidAlert(r) && (
+                        <span className={`border px-2 py-0.5 text-xs font-bold uppercase ${unpaidAlert(r)!.overdue ? "border-[#7F1D1D] bg-[#7F1D1D] text-background" : "border-[#B91C1C] bg-[#B91C1C] text-background"}`}>
+                          {unpaidAlert(r)!.overdue ? `Overdue — ${money(r.total)}` : `Unpaid — ${money(r.total)}`}
                         </span>
                       )}
                       <span className="font-display text-xl font-black text-forest">{money(r.total)}</span>
@@ -1104,6 +1120,27 @@ export default function Admin() {
                                     ? `Invoice terms — watch Hnry/the bank for ${money(r.total)} with reference MCC-${String(r.id).padStart(4, "0")} (the invoice asks them to quote it).`
                                     : `Pay on the day — cash or PayID to ${BUSINESS.payId}, reference MCC-${String(r.id).padStart(4, "0")}.`}
                           </p>
+                          {(() => {
+                            if (!booking?.preferredDate || r.paidOnline || r.paidOfflineAt) return null;
+                            const doneDay = booking.rugPickup ? rugReturnDay(booking.preferredDate) : booking.preferredDate;
+                            if (doneDay > todayIso && !r.invoiceSentAt) return null; // job hasn't happened yet
+                            const dueIso = paymentDueDay(booking);
+                            if (!dueIso) return null;
+                            const days = Math.round(
+                              (new Date(dueIso + "T12:00:00").getTime() - new Date(todayIso + "T12:00:00").getTime()) / 86400000,
+                            );
+                            return (
+                              <p className={`mt-1 text-sm font-bold ${days < 0 ? "text-[#B91C1C]" : "text-charcoal/70"}`}>
+                                Due by {new Date(dueIso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+                                {days < 0
+                                  ? ` — ${-days} day${days === -1 ? "" : "s"} OVERDUE`
+                                  : days === 0
+                                    ? " — today"
+                                    : ` — ${days} day${days === 1 ? "" : "s"} left`}
+                                {!r.invoiceSentAt && " (no invoice sent yet)"}
+                              </p>
+                            );
+                          })()}
                           {!r.paidOnline && (
                             <button
                               type="button"
