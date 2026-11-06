@@ -1,6 +1,7 @@
 import { Link } from "react-router";
 import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
+import { Snowfall, christmasOn } from "@/components/Christmas";
 import { RatingBadge } from "@/sections/Reviews";
 import { BUSINESS } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
@@ -34,11 +35,12 @@ export default function Home() {
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <Header />
+      <Snowfall />
       <Link
         to="/quote"
         className="block border-b-[1.5px] border-charcoal bg-[#1A6FD1] px-4 py-2 text-center text-sm font-bold text-white transition-colors hover:bg-[#1E5FB8]"
       >
-        🎄 Pre-Christmas cleans now booking — December spots fill fast.{" "}
+        🎄🦌 Pre-Christmas cleans now booking — December spots fill fast.{" "}
         <span className="underline underline-offset-2">Book your clean</span>
       </Link>
       <FlowArt />
@@ -50,6 +52,11 @@ export default function Home() {
               <p className="inline-block border-[1.5px] border-charcoal bg-background px-3 py-1 text-xs font-bold uppercase tracking-widest text-charcoal">
                 Armidale · Uralla · Guyra · Walcha
               </p>
+              {christmasOn() && (
+                <p className="mt-3 inline-block border-[1.5px] border-charcoal bg-background px-3 py-1.5 text-sm font-bold text-charcoal">
+                  🎄 Booked in before Christmas? December is nearly full — grab a spot while there's room 🦌
+                </p>
+              )}
               <h1 className="mt-3 font-display text-4xl font-black leading-[1.05] text-charcoal md:text-5xl">
                 Your price, before we knock on the door.
               </h1>

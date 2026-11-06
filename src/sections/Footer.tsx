@@ -1,5 +1,6 @@
 import { BUSINESS } from "@contracts/rates";
 import NewsletterForm from "@/components/NewsletterForm";
+import { ChristmasFooterLine } from "@/components/Christmas";
 import logo from "@/assets/logo.png";
 
 export default function Footer() {
@@ -62,6 +63,7 @@ export default function Footer() {
 
         <div className="mt-14 flex flex-wrap items-center justify-between gap-4 border-t border-background/20 pt-8 text-sm text-background/60">
           <p>© {new Date().getFullYear()} Marshall's Carpet Cleaning, Armidale NSW.</p>
+          <ChristmasFooterLine />
           <p>
             Quotes are calculated, not estimated —{" "}
             <a href="/quote" className="text-mint no-underline hover:underline">
