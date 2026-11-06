@@ -72,13 +72,13 @@ export default function Header() {
   return (
     <header className="sticky top-0 z-40 border-b-[1.5px] border-charcoal bg-background/95 backdrop-blur">
       <SeasonalStyles />
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 pl-0 pr-4 md:pl-1 md:pr-6">
+      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 pl-0 pr-4 md:pl-1 md:pr-6 lg:py-1">
         <Link to="/" className="relative shrink-0 no-underline" aria-label="Marshall's Carpet Cleaning — home">
           <SantaHat />
           <img
             src={logo}
             alt="Marshall's Carpet Cleaning"
-            className="h-24 w-auto md:h-36"
+            className="h-24 w-auto md:h-32 lg:h-24 xl:h-28"
           />
         </Link>
 
@@ -152,6 +152,12 @@ export default function Header() {
           >
             {BUSINESS.phone}
           </a>
+          <Link
+            to="/admin"
+            className="text-xs font-semibold uppercase tracking-widest text-charcoal/35 no-underline hover:text-charcoal"
+          >
+            Admin
+          </Link>
           <button
             type="button"
             className="flex h-11 w-11 items-center justify-center border-[1.5px] border-charcoal xl:hidden"

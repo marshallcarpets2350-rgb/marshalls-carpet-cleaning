@@ -73,9 +73,6 @@ export default function Footer() {
             <a href="/terms" className="ml-3 text-background/60 no-underline hover:text-mint">
               Terms &amp; conditions
             </a>
-            <a href="/admin" className="ml-3 text-background/40 no-underline hover:text-mint">
-              Admin
-            </a>
           </p>
         </div>
       </div>
