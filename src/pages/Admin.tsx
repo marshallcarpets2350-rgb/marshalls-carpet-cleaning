@@ -1692,11 +1692,11 @@ export default function Admin() {
         ]},
         { title: "Rugs — pick-up & clean", rows: [
           ...RUG_SIZES.map((s) => [`${s.label} (${s.area})`, money(r.rugPrices[s.id])] as [string, string]),
-          ["When 5 or more rugs", `${r.rug.bulkPercentOff}% off`],
+          ["When 3 or more rugs", `${r.rug.bulkPercentOff}% off`],
         ]},
         { title: "Automatic discounts", rows: [
           ["$ off…", money(r.volumeDiscount.off)],
-          ["…for every full $ of the clean", money(r.volumeDiscount.every)],
+          ["…for every full $ of the clean (not rugs)", money(r.volumeDiscount.every)],
           ["2-cleans-a-year plan", `${Math.round(r.maintenance.two * 100)}% off every clean`],
         ]},
       ];

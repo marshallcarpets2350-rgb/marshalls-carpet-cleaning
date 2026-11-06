@@ -818,9 +818,12 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   const codeDiscount = round(afterMaintenance * (input.discountPercent / 100));
 
   // $10 off every full $150 — stacks with any discount code.
+  // Rugs are EXCLUDED: they're set prices, and the only rug discount is
+  // 10% off for 3+ rugs (owner call 5 Nov 2026).
   const afterCode = afterMaintenance - codeDiscount;
+  const volumeBase = Math.max(0, afterCode - (rugSubtotal - rugDiscount));
   const volumeDiscount =
-    Math.floor(afterCode / rates.volumeDiscount.every) * rates.volumeDiscount.off;
+    Math.floor(volumeBase / rates.volumeDiscount.every) * rates.volumeDiscount.off;
 
   let cleaningTotal = afterCode - volumeDiscount;
   let minimumApplied = false;
