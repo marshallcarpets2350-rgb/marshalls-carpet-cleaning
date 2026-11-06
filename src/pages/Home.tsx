@@ -36,7 +36,7 @@ export default function Home() {
   const promo = win?.season.promo ?? null;
   const promoEnd = win?.end.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   return (
-    <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
+    <div className="flex min-h-dvh flex-col">
       <Header />
       <Snowfall />
       <FlowArt />
