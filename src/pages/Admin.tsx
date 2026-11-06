@@ -2,7 +2,7 @@ import { useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import FloodReports from "@/pages/admin/FloodReports";
-import NewQuote from "@/pages/admin/NewQuote";
+import Quote from "@/pages/Quote";
 import {
   BUSINESS,
   money,
@@ -147,6 +147,9 @@ export default function Admin() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [password, setPassword] = useState("");
   const [tab, setTab] = useState<Tab>("overview");
+  // Remount key for the quote-only calculator — bumps when Ben finishes one
+  // quote and starts the next.
+  const [quoteKey, setQuoteKey] = useState(0);
   const utils = trpc.useUtils();
 
   const login = trpc.admin.login.useMutation({
@@ -252,7 +255,9 @@ export default function Admin() {
         {tab === "overview" && <Overview onGo={setTab} />}
         {tab === "runsheet" && <RunSheet />}
         {tab === "leads" && <Leads />}
-        {tab === "newquote" && <NewQuote />}
+        {tab === "newquote" && (
+          <Quote adminMode key={quoteKey} onStartOver={() => setQuoteKey((k) => k + 1)} />
+        )}
         {tab === "finished" && <FinishedJobs />}
         {tab === "clients" && <Clients />}
         {tab === "flood" && <FloodReports />}

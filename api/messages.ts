@@ -317,6 +317,42 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
 }
 
+/** The quote-only email — sent when Ben prices a job in admin and ticks
+ *  "email it to them". No date, no payment talk: here's your price, call us
+ *  when you're ready to lock in a day. */
+export function quoteEmailForCustomer(d: {
+  name: string;
+  reference: string;
+  lines: { label: string; detail?: string; amount: number }[];
+  total: number;
+  travelFee: number;
+  town?: string | null;
+}): { subject: string; text: string } {
+  const jobLines = d.lines
+    .map((l) => `• ${l.label}${l.detail ? ` — ${l.detail}` : ""} — ${l.amount < 0 ? `−${money(-l.amount)}` : money(l.amount)}`)
+    .join("\n");
+  return {
+    subject: `Your quote — ${BUSINESS.name} (${d.reference})`,
+    text: `Hi ${firstName(d.name)},
+
+Thanks for chatting with us — here's your price in writing.
+
+YOUR QUOTE
+${jobLines}
+${d.travelFee > 0 ? `• Travel — ${money(d.travelFee)}\n` : ""}
+Total: ${money(d.total)}
+Reference: ${d.reference}
+
+No date is locked in yet — this is just your price, held for 30 days. When you're ready, call or text ${BUSINESS.phone} (or just reply to this email) with your reference and we'll find a day that suits.
+
+Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises.
+
+Talk soon,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
 export async function notifyOwner(lead: LeadRow): Promise<void> {
   try {
     const smtp = await loadSmtpConfig();

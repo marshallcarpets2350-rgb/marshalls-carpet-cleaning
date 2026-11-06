@@ -290,6 +290,7 @@ export const adminRouter = createRouter({
         town: z.string().trim().max(100).optional().or(z.literal("")),
         notes: z.string().trim().max(2000).optional().or(z.literal("")),
         quote: quoteInputSchema,
+        sendEmail: z.boolean().optional(),
       }),
     )
     .mutation(async ({ input }) => {
@@ -321,7 +322,32 @@ export const adminRouter = createRouter({
         status: "new",
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
-      return { ok: true as const, id, reference: `MCC-${String(id).padStart(4, "0")}`, total: breakdown.total };
+      const reference = `MCC-${String(id).padStart(4, "0")}`;
+
+      // Optional: email the quote to the customer straight away. A hiccup
+      // here must never lose the saved quote — it's already in the system.
+      let emailed = false;
+      if (input.sendEmail && input.email) {
+        try {
+          const { quoteEmailForCustomer } = await import("./messages");
+          const smtp = await loadSmtpConfig();
+          if (isSmtpConfigured(smtp)) {
+            const msg = quoteEmailForCustomer({
+              name: input.name,
+              reference,
+              lines: breakdown.lines,
+              total: breakdown.total,
+              travelFee: breakdown.travelFee,
+              town,
+            });
+            await sendMail(smtp, input.email, msg.subject, msg.text, undefined, brandedEmailHtml(msg.text));
+            emailed = true;
+          }
+        } catch (err) {
+          console.error("Quote email failed:", err);
+        }
+      }
+      return { ok: true as const, id, reference, total: breakdown.total, emailed };
     }),
 
   // ── Flood job reports ─────────────────────────────────────────────

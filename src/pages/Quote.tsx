@@ -61,7 +61,16 @@ const MISSING_LABELS = [
   "how you'd like to pay",
 ];
 
-export default function Quote() {
+export default function Quote({
+  adminMode = false,
+  onStartOver,
+}: {
+  /** Admin → New quote: the exact customer calculator, minus the date and
+   *  payment steps — saves a quote-only lead, optionally emailed to them. */
+  adminMode?: boolean;
+  /** Called from the saved panel to start a fresh quote (Admin remounts). */
+  onStartOver?: () => void;
+} = {}) {
   const rates = useRates();
   // The competitor model our 17%-under check prices from — kept current by the
   // daily price watch; falls back to the shipped model until the query lands.
@@ -108,7 +117,7 @@ export default function Quote() {
   const [codeError, setCodeError] = useState("");
   const [slotConflict, setSlotConflict] = useState(false);
 
-  const [submitted, setSubmitted] = useState<{ reference: string; total: number } | null>(null);
+  const [submitted, setSubmitted] = useState<{ reference: string; total: number; emailed?: boolean } | null>(null);
   const [paidResult, setPaidResult] = useState<{ reference: string; total: number } | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
@@ -116,6 +125,14 @@ export default function Quote() {
   const paymentCancelled = searchParams.get("payment") === "cancelled";
 
   const utils = trpc.useUtils();
+  const [sendQuoteEmail, setSendQuoteEmail] = useState(true);
+  const saveQuote = trpc.admin.saveQuote.useMutation({
+    onSuccess: async (r) => {
+      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      await utils.admin.listLeads.invalidate();
+    },
+  });
   const submitLead = trpc.public.submitLead.useMutation({
     onSuccess: (r) => {
       track("lead_submitted", { reference: r.reference, total: r.total, currency: "AUD" });
@@ -276,8 +293,8 @@ export default function Quote() {
     carpetAreaM2 === 0 || conditionComplete(condition),
     true,
     true, // soft furnishings are optional — nothing to validate
-    whenFlexible || (whenDate !== null && whenSlot !== null),
-    payment !== null,
+    whenFlexible || (whenDate !== null && whenSlot !== null) || adminMode,
+    payment !== null || adminMode,
   ];
   const allValid = coreValid.every(Boolean);
   const missing = MISSING_LABELS.filter((l, i) => l && !coreValid[i]);
@@ -318,6 +335,21 @@ export default function Quote() {
   };
 
   const handleSubmit = () => {
+    if (adminMode) {
+      if (saveQuote.isPending || !coreValid.every(Boolean)) return;
+      saveQuote.mutate({
+        name: contact.name.trim(),
+        phone: contact.phone.trim(),
+        email: contact.email.trim(),
+        address: travel?.addressLabel ?? "",
+        suburb: travel?.suburb ?? "",
+        town: travel?.suburb ?? "",
+        notes: notes.trim(),
+        quote: quoteInput,
+        sendEmail: sendQuoteEmail,
+      });
+      return;
+    }
     if (submitLead.isPending || !coreValid.every(Boolean)) return;
     setSlotConflict(false);
     const booking: BookingDetails = {
@@ -421,6 +453,28 @@ export default function Quote() {
   }
 
   // ===================== success screen =====================
+  if (submitted && adminMode) {
+    return (
+      <div className="border-[1.5px] border-charcoal bg-creamlight p-8 text-center">
+        <p className="text-sm font-bold uppercase tracking-widest text-forest">Quote saved</p>
+        <p className="mt-3 font-display text-4xl font-black text-charcoal">
+          {submitted.reference} — {money(submitted.total)}
+        </p>
+        <p className="mt-3 text-charcoal/75">
+          No date set, no calendar blocked — it's in Jobs with a "Quote only" badge.
+        </p>
+        <p className="mt-1 text-sm font-semibold text-charcoal/60">
+          {submitted.emailed
+            ? `Emailed to ${contact.email} ✓`
+            : "Not emailed — their inbox is untouched."}
+        </p>
+        <button type="button" className="btn-pill mt-6" onClick={() => onStartOver?.()}>
+          Price another one
+        </button>
+      </div>
+    );
+  }
+
   if (submitted) {
     const fmtLong = (iso: string) =>
       new Date(iso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
@@ -478,23 +532,27 @@ export default function Quote() {
 
   // ===================== wizard =====================
   return (
-    <div className="min-h-dvh">
-      <Header />
-      <FlowArt />
-      <main className="bg-creamlight py-12 pb-28 md:py-16 lg:pb-16">
-        <div className="mx-auto max-w-6xl px-4 md:px-6">
+    <div className={adminMode ? "" : "min-h-dvh"}>
+      {!adminMode && <Header />}
+      {!adminMode && <FlowArt />}
+      <main className={adminMode ? "" : "bg-creamlight py-12 pb-28 md:py-16 lg:pb-16"}>
+        <div className={adminMode ? "" : "mx-auto max-w-6xl px-4 md:px-6"}>
           <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">
-            Book your clean.
+            {adminMode ? "Price a job." : "Book your clean."}
           </h1>
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
-            One page — answer your way down and the price moves as you go. The
-            Continue button at the bottom takes you to the review &amp; send page.
-            Lounges and mattresses can join this same visit (10% off, a few
-            questions down). Rugs are their own{" "}
-            <Link to="/rugs" className="font-bold text-forest underline-offset-4 hover:underline">
-              Friday pick-up &amp; clean
-            </Link>
-            . Nothing is booked or charged until we confirm it with you.
+            {adminMode
+              ? "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
+              : "One page — answer your way down and the price moves as you go. The Continue button at the bottom takes you to the review & send page. Lounges and mattresses can join this same visit (10% off, a few questions down). Nothing is booked or charged until we confirm it with you."}
+            {!adminMode && (
+              <>
+                {" "}Rugs are their own{" "}
+                <Link to="/rugs" className="font-bold text-forest underline-offset-4 hover:underline">
+                  Friday pick-up &amp; clean
+                </Link>
+                .
+              </>
+            )}
           </p>
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_22rem]">
@@ -552,21 +610,25 @@ export default function Quote() {
                         sub="Same crew, same day, one booking. Anything you add here is cleaned while we're already at your place, so the added pieces come in 10% under their usual price. Rugs are different — they're a Friday pick-up & clean, with their own quote."
                       />
                     </section>
-                    <section id="q-when">
-                      <StepWhen
-                        date={whenDate} slot={whenSlot} flexible={whenFlexible}
-                        town={travel?.suburb ?? ""}
-                        jobMinutes={jobMinutes}
-                        rugsOnly={false}
-                        onPick={(d, s) => {
-                          if (d === null) { setWhenFlexible(true); setWhenDate(null); setWhenSlot(null); }
-                          else { setWhenFlexible(false); setWhenDate(d); setWhenSlot(s); }
-                        }}
-                      />
-                    </section>
-                    <section id="q-payment">
-                      <StepPayment payment={payment} setPayment={setPayment} />
-                    </section>
+                    {!adminMode && (
+                      <section id="q-when">
+                        <StepWhen
+                          date={whenDate} slot={whenSlot} flexible={whenFlexible}
+                          town={travel?.suburb ?? ""}
+                          jobMinutes={jobMinutes}
+                          rugsOnly={false}
+                          onPick={(d, s) => {
+                            if (d === null) { setWhenFlexible(true); setWhenDate(null); setWhenSlot(null); }
+                            else { setWhenFlexible(false); setWhenDate(d); setWhenSlot(s); }
+                          }}
+                        />
+                      </section>
+                    )}
+                    {!adminMode && (
+                      <section id="q-payment">
+                        <StepPayment payment={payment} setPayment={setPayment} />
+                      </section>
+                    )}
                   </div>
 
                   {/* The one and only Continue — opens the review & send page */}
@@ -577,7 +639,7 @@ export default function Quote() {
                       disabled={!allValid}
                       className="btn-pill px-10 py-4 text-xl disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      Continue → check it &amp; send
+                      {adminMode ? "Continue → check it & save the quote" : "Continue → check it & send"}
                     </button>
                     {!allValid && (
                       <p className="mx-auto mt-3 max-w-md text-sm text-charcoal/60">
@@ -605,17 +667,47 @@ export default function Quote() {
                   payment={payment}
                   date={whenFlexible ? null : whenDate} slot={whenFlexible ? null : whenSlot}
                   rugsOnly={false} hasCarpet={carpetAreaM2 > 0} jobMinutes={jobMinutes}
-                  kicker="Nearly done · review & send"
+                  kicker={adminMode ? "Review & save the quote" : "Nearly done · review & send"}
                   stepOf={{ where: 0, job: 1, carpet: 2, extras: 3, when: 5, payment: 6 }}
                   notes={notes} setNotes={setNotes}
                   codeInput={codeInput} setCodeInput={setCodeInput}
                   appliedCode={appliedCode} codeError={codeError} applyCode={applyCode}
-                  submitting={submitLead.isPending}
-                  submitError={submitLead.isError && !slotConflict ? `Couldn't send just now — try again, or call ${BUSINESS.phone}.` : null}
+                  submitting={adminMode ? saveQuote.isPending : submitLead.isPending}
+                  submitError={
+                    adminMode
+                      ? saveQuote.isError
+                        ? `Couldn't save just now — ${saveQuote.error.message}`
+                        : null
+                      : submitLead.isError && !slotConflict
+                        ? `Couldn't send just now — try again, or call ${BUSINESS.phone}.`
+                        : null
+                  }
                   slotConflict={slotConflict}
                   canSubmit={allValid}
                   onSubmit={handleSubmit}
                   onGoToStep={backToForm}
+                  submitLabel={adminMode ? `Save quote — ${money(breakdown.total)}` : undefined}
+                  submitNote={
+                    adminMode ? (
+                      <p className="mt-3 text-sm text-charcoal/60">
+                        Saves as quote-only: no date blocked, nothing booked in. It's in Jobs
+                        with a "Quote only" badge — book the day in when they say yes.
+                      </p>
+                    ) : undefined
+                  }
+                  aboveSubmit={
+                    adminMode ? (
+                      <label className="mb-4 flex items-center gap-3 border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm font-bold text-charcoal">
+                        <input
+                          type="checkbox"
+                          checked={sendQuoteEmail}
+                          onChange={(e) => setSendQuoteEmail(e.target.checked)}
+                          className="h-5 w-5"
+                        />
+                        Email this quote to {contact.email || "them"} when I save it
+                      </label>
+                    ) : undefined
+                  }
                 />
                 </>
               )}
@@ -831,7 +923,7 @@ export default function Quote() {
         </div>
       </div>
 
-      <Footer />
+      {!adminMode && <Footer />}
     </div>
   );
 }

@@ -1,6 +1,7 @@
 // Final step — review & send: full recap, notes, discount code, submit.
 // Shared by all three quote pages (/quote, /rugs, /lounge); `stepOf` tells
 // the "Change" links where each section lives on the page.
+import type { ReactNode } from "react";
 import type { ConditionAnswers, Dirtiness, PaymentChoice, QuoteBreakdown, ConfirmBy } from "@contracts/rates";
 import { CONFIRM_LABELS, PAYMENT_LABELS, PURPOSE_LABELS, RATES, TIME_SLOTS, SLOT_MINUTES, money, rugReturnDay } from "@contracts/rates";
 import type { TravelResult } from "@/components/AddressField";
@@ -60,6 +61,7 @@ export function StepReview({
   notes, setNotes,
   codeInput, setCodeInput, appliedCode, codeError, applyCode,
   submitting, submitError, slotConflict, canSubmit, onSubmit, onGoToStep,
+  submitLabel, submitNote, aboveSubmit,
 }: {
   contact: Contact;
   confirmBy: ConfirmBy;
@@ -95,6 +97,11 @@ export function StepReview({
   canSubmit: boolean;
   onSubmit: () => void;
   onGoToStep: (n: number) => void;
+  /** Overrides for the submit button + its footnote (admin quote mode). */
+  submitLabel?: string;
+  submitNote?: ReactNode;
+  /** Extra content rendered just above the submit button. */
+  aboveSubmit?: ReactNode;
 }) {
   const fmtDay = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
@@ -165,13 +172,14 @@ export function StepReview({
       </div>
 
       <div>
+        {aboveSubmit}
         <button
           type="button"
           onClick={onSubmit}
           disabled={submitting || !canSubmit}
           className="btn-pill w-full text-lg disabled:cursor-not-allowed disabled:opacity-40 sm:w-auto"
         >
-          {submitting ? "Sending…" : `Send my booking — ${money(breakdown.total)}`}
+          {submitting ? "Sending…" : (submitLabel ?? `Send my booking — ${money(breakdown.total)}`)}
         </button>
         {slotConflict && (
           <p className="mt-3 border-[1.5px] border-destructive bg-background px-4 py-3 font-semibold text-destructive" role="alert">
@@ -183,14 +191,16 @@ export function StepReview({
         {submitError && !slotConflict && (
           <p className="mt-3 font-semibold text-destructive" role="alert">{submitError}</p>
         )}
-        <p className="mt-3 text-sm text-charcoal/60">
-          Sending doesn't charge anything — we confirm the day, the price and the payment with you
-          first. By booking you agree to our{" "}
-          <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-forest underline underline-offset-2">
-            terms &amp; conditions
-          </a>{" "}
-          — a copy comes attached to your confirmation email, too.
-        </p>
+        {submitNote ?? (
+          <p className="mt-3 text-sm text-charcoal/60">
+            Sending doesn't charge anything — we confirm the day, the price and the payment with you
+            first. By booking you agree to our{" "}
+            <a href="/terms" target="_blank" rel="noreferrer" className="font-semibold text-forest underline underline-offset-2">
+              terms &amp; conditions
+            </a>{" "}
+            — a copy comes attached to your confirmation email, too.
+          </p>
+        )}
       </div>
     </div>
   );
