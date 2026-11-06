@@ -4,8 +4,8 @@
 // there's no takedown job in January.
 import type { CSSProperties } from "react";
 
-// Season window (local time): switch on 7 Nov, off after Boxing Day.
-const SEASON_START = new Date("2026-11-07T00:00:00");
+// Season window (local time): switch on 6 Nov, off after Boxing Day.
+const SEASON_START = new Date("2026-11-06T00:00:00");
 const SEASON_END = new Date("2026-12-27T00:00:00"); // exclusive
 
 export function christmasOn(): boolean {
