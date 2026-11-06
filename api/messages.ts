@@ -15,6 +15,7 @@ import {
   slotsNeededFor,
   serviceSummary,
   serviceKinds,
+  rugReturnDay,
   type QuoteInput,
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
@@ -444,6 +445,44 @@ export function reminderSms(lead: LeadRow): string {
         : longDateLabel(b.preferredDate)
     : "tomorrow";
   return `${BUSINESS.name}: reminder — we're in tomorrow (${when}). Total ${money(lead.total)}, ref ${ref}. Anything changed, call ${BUSINESS.phone}.`;
+}
+
+// ---------------------------------------------------------------------------
+// Rug pickup tick — "we've got them, back Monday". Sent from the admin board
+// when the owner marks the rugs collected (stage 1 of the rug tick-off).
+// ---------------------------------------------------------------------------
+
+export function rugPickedUpEmail(lead: LeadRow): { subject: string; text: string } {
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const ref = bookingReference(lead);
+  const back = b?.preferredDate ? longDateLabel(rugReturnDay(b.preferredDate)) : "Monday";
+  const what = serviceSummary(input, false).toLowerCase();
+  const paid = lead.paidOnline || lead.paidOfflineAt;
+  return {
+    subject: `We've got your rugs — back ${back} (${ref})`,
+    text: `Hi ${firstName(lead.name)},
+
+Just a quick one — we've picked up your ${what} and they're in for their wash.
+
+BACK TO YOU
+• ${back}, in the afternoon — we'll let you know when we're on the way
+• ${paid ? "All paid — nothing to do on the day" : `Total: ${money(lead.total)} — pay on return (cash, or instant bank transfer to our PayID: ${BUSINESS.payId} — put ${ref} in the description)`}
+• Reference: ${ref}
+
+Anything in the meantime, call or text ${BUSINESS.phone}.
+
+Cheers,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
+export function rugPickedUpSms(lead: LeadRow): string {
+  const b = parseBooking(lead);
+  const ref = bookingReference(lead);
+  const back = b?.preferredDate ? longDateLabel(rugReturnDay(b.preferredDate)) : "Monday";
+  return `${BUSINESS.name}: we've got your rugs — back to you ${back} arvo. Total ${money(lead.total)}, ref ${ref}. Anything, call ${BUSINESS.phone}.`;
 }
 
 // ---------------------------------------------------------------------------

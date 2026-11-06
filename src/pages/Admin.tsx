@@ -18,6 +18,7 @@ import {
   SLOT_START_MINUTES,
   driveMinutesFor,
   slotsNeededFor,
+  rugReturnDay,
   resolveRates,
   DEFAULT_RATES,
   RUG_SIZES,
@@ -642,7 +643,19 @@ export default function Admin() {
     });
     const finish = trpc.admin.finishLead.useMutation({
       onSuccess: (r, v) => {
-        setMsgNote((m) => ({ ...m, [v.id]: "Ticked off — it's in Finished jobs now ✓" }));
+        setMsgNote((m) => ({ ...m, [v.id]: `Ticked off — it's in Finished jobs now ✓${r.thankYou ? ` · ${r.thankYou}` : ""}` }));
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
+    });
+    const markPickedUp = trpc.admin.markRugPickedUp.useMutation({
+      onSuccess: (r, v) => {
+        setMsgNote((m) => ({
+          ...m,
+          [v.id]: v.pickedUp
+            ? `Picked up ✓ — "we've got your rugs" ${r.sent?.emailSent ? "emailed" : r.sent?.smsSent ? "texted" : `couldn't send (${r.sent?.detail || "no contact channel"})`} to the customer`
+            : "Unmarked — back to waiting on the pickup",
+        }));
         utils.admin.listLeads.invalidate();
       },
       onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
@@ -672,16 +685,31 @@ export default function Admin() {
     const sorted = rows
       .slice()
       .sort((a, b) => sortKey(b).localeCompare(sortKey(a)) || b.id - a.id);
-    // Needs the owner's tick-off: the job day's been (or 5pm marked it done)
-    // and it hasn't been finished yet. These pin to the top.
+    // Rug jobs tick off twice: Friday's pickup first, then the Monday
+    // return is the real "job finished".
+    const rugStage = (r: Row) => {
+      const b = parseBooking(r.bookingJson);
+      if (!b?.rugPickup || !b.preferredDate) return null;
+      return r.pickedUpAt
+        ? { stage: "return" as const, due: rugReturnDay(b.preferredDate) }
+        : { stage: "pickup" as const, due: b.preferredDate };
+    };
+    // Needs the owner's attention: the job day's been (or 5pm marked it done)
+    // and it hasn't been finished yet. Rug jobs pin on their pickup day for
+    // the pickup tick, then again on the Monday for the return tick.
     const needsTickOff = (r: Row) => {
+      if (r.status === "completed") return true;
+      const rug = rugStage(r);
+      if (rug) return rug.due <= todayIso;
       const w = whenOf(r);
-      return r.status === "completed" || (!!w && w.date < todayIso);
+      return !!w && w.date < todayIso;
     };
     const tickOff = sorted.filter(needsTickOff);
     const rest = sorted.filter((r) => !needsTickOff(r));
     const todoCount = tickOff.filter(
-      (r) => !r.paidOnline && !r.paidOfflineAt && !r.invoiceSentAt,
+      (r) =>
+        rugStage(r)?.stage !== "pickup" &&
+        !r.paidOnline && !r.paidOfflineAt && !r.invoiceSentAt,
     ).length;
 
     return (
@@ -776,7 +804,7 @@ export default function Admin() {
                         {when && booking
                           ? `${new Date(when.date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })} · ${
                               booking.rugPickup
-                                ? "3–5 PM rug run"
+                                ? `3–5 PM rug run → back ${new Date(rugReturnDay(booking.preferredDate!) + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}${r.pickedUpAt ? " · picked up ✓" : ""}`
                                 : booking.preferredSlot !== null && booking.preferredSlot !== undefined
                                   ? TIME_SLOTS[booking.preferredSlot]
                                   : "time to arrange"
@@ -798,7 +826,7 @@ export default function Admin() {
                       )}
                       {needsTickOff(r) && (
                         <span className="border border-[#B91C1C] bg-[#B91C1C] px-2 py-0.5 text-xs font-bold uppercase text-background">
-                          Tick off
+                          {rugStage(r)?.stage === "pickup" ? "Picked up?" : "Tick off"}
                         </span>
                       )}
                       {r.paidOnline && (
@@ -825,10 +853,35 @@ export default function Admin() {
                   </button>
                   {openId === r.id && (
                     <div className="border-t-[1.5px] border-charcoal/20 p-4">
-                      {needsTickOff(r) && (
+                      {needsTickOff(r) && rugStage(r)?.stage === "pickup" && (
                         <div className="mb-4 border-[1.5px] border-[#B91C1C] bg-background p-4 text-sm">
                           <p className="font-display text-lg font-black text-[#B91C1C]">
-                            Job done? Finalise it here.
+                            Rugs in the van?
+                          </p>
+                          <p className="mt-1 text-charcoal/80">
+                            Tick the pickup once they're loaded — the customer gets a quick
+                            "we've got your rugs" message. They're due back{" "}
+                            <strong>
+                              {new Date(rugReturnDay(parseBooking(r.bookingJson)!.preferredDate!) + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
+                            </strong>{" "}
+                            arvo — the final tick-off (payment + returned) happens then.
+                          </p>
+                          <div className="mt-3 flex flex-wrap gap-2">
+                            <button
+                              type="button"
+                              className="btn-pill-dark !px-5 !py-2 text-sm"
+                              disabled={markPickedUp.isPending}
+                              onClick={() => markPickedUp.mutate({ id: r.id, pickedUp: true })}
+                            >
+                              {markPickedUp.isPending ? "Saving…" : "Rugs picked up ✓"}
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                      {needsTickOff(r) && rugStage(r)?.stage !== "pickup" && (
+                        <div className="mb-4 border-[1.5px] border-[#B91C1C] bg-background p-4 text-sm">
+                          <p className="font-display text-lg font-black text-[#B91C1C]">
+                            {rugStage(r)?.stage === "return" ? "Rugs returned? Finalise it here." : "Job done? Finalise it here."}
                           </p>
                           <ul className="mt-2 space-y-1.5 text-charcoal/80">
                             <li>
@@ -877,12 +930,18 @@ export default function Admin() {
                               disabled={finish.isPending}
                               onClick={() => finish.mutate({ id: r.id })}
                             >
-                              {finish.isPending ? "Ticking off…" : "Tick off — job finished ✓"}
+                              {finish.isPending
+                                ? "Ticking off…"
+                                : rugStage(r)?.stage === "return"
+                                  ? "Tick off — rugs returned ✓"
+                                  : "Tick off — job finished ✓"}
                             </button>
                           </div>
                           <p className="mt-2 text-xs text-charcoal/60">
                             Tick-off moves it to Finished jobs. It only works once the job's
                             paid or an invoice has gone out — so nothing slips through unpaid.
+                            {rugStage(r)?.stage === "return" &&
+                              " The customer's thank-you + review ask goes out when you tick it off."}
                           </p>
                         </div>
                       )}
@@ -966,7 +1025,8 @@ export default function Admin() {
                               <li>
                                 <strong>Rug pickup:</strong>{" "}
                                 {new Date(booking.preferredDate + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
-                                {" · 3:00 – 5:00 PM → back Monday"}
+                                {" · 3:00 – 5:00 PM → back "}
+                                {new Date(rugReturnDay(booking.preferredDate) + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" })}
                               </li>
                             ) : booking.preferredDate && booking.preferredSlot !== null && booking.preferredSlot !== undefined ? (
                               <li>
@@ -976,6 +1036,23 @@ export default function Admin() {
                               </li>
                             ) : (
                               <li><strong>Requested:</strong> call to arrange a time</li>
+                            )}
+                            {booking.rugPickup && booking.preferredDate && (
+                              <li>
+                                <strong>Picked up:</strong>{" "}
+                                {r.pickedUpAt
+                                  ? `${new Date(r.pickedUpAt).toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })} ✓`
+                                  : "not yet — tick it off on the day"}
+                                {!!r.pickedUpAt && (
+                                  <button
+                                    type="button"
+                                    className="ml-2 text-charcoal/50 underline"
+                                    onClick={() => markPickedUp.mutate({ id: r.id, pickedUp: false })}
+                                  >
+                                    undo
+                                  </button>
+                                )}
+                              </li>
                             )}
                             {!!booking.jobMinutes && !booking.rugPickup && (
                               <li>
@@ -1053,7 +1130,9 @@ export default function Admin() {
                               <strong>Job-done thanks + review ask:</strong>{" "}
                               {r.followUpSentAt
                                 ? `sent ${new Date(r.followUpSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
-                                : "goes automatically at 5:00 PM on the day"}
+                                : booking.rugPickup
+                                  ? "goes when you tick off the Monday return"
+                                  : "goes automatically at 5:00 PM on the day"}
                             </li>
                             {!r.paidOnline && !r.paidOfflineAt && (
                               <li>

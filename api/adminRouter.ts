@@ -24,6 +24,8 @@ import {
   confirmationSms,
   followUpEmail,
   followUpSms,
+  rugPickedUpEmail,
+  rugPickedUpSms,
   floodReportEmail,
   deliver,
 } from "./messages";
@@ -190,6 +192,34 @@ export const adminRouter = createRouter({
       return { ok: true as const, invoice };
     }),
 
+  // Rug jobs tick off in two stages — Friday's "picked up" (this one) and
+  // the Monday return (finishLead). Stamping the pickup also tells the
+  // customer their rugs are in the wash and when they're back.
+  markRugPickedUp: adminProcedure
+    .input(z.object({ id: z.number(), pickedUp: z.boolean() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      const b = parseBooking(row as never);
+      if (!b?.rugPickup) {
+        throw new TRPCError({
+          code: "BAD_REQUEST",
+          message: "That's not a rug pickup job — only rug runs get a pickup tick.",
+        });
+      }
+      await db
+        .update(leads)
+        .set({ pickedUpAt: input.pickedUp ? new Date() : null })
+        .where(eq(leads.id, input.id));
+      let sent: { emailSent: boolean; smsSent: boolean; detail: string } | null = null;
+      if (input.pickedUp) {
+        const lead = row as never as Parameters<typeof rugPickedUpEmail>[0];
+        sent = await deliver(lead, rugPickedUpEmail(lead), rugPickedUpSms(lead));
+      }
+      return { ok: true as const, sent };
+    }),
+
   // Tick-off: the job's done, the money side is sorted (paid, or at least
   // invoiced), and it moves off the Jobs board into Finished jobs.
   finishLead: adminProcedure
@@ -198,6 +228,15 @@ export const adminRouter = createRouter({
       const db = getDb();
       const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      const b = parseBooking(row as never);
+      // Rug runs: the pickup tick (stage 1) has to happen first — the final
+      // tick means "rugs returned", which can't be before they're collected.
+      if (b?.rugPickup && !row.pickedUpAt) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "Not ready — tick the rugs as picked up first (the Friday run). The final tick is for the Monday return.",
+        });
+      }
       const paid = row.paidOnline || row.paidOfflineAt;
       if (!paid && !row.invoiceSentAt) {
         throw new TRPCError({
@@ -209,7 +248,21 @@ export const adminRouter = createRouter({
         .update(leads)
         .set({ finishedAt: new Date(), status: "completed" })
         .where(eq(leads.id, input.id));
-      return { ok: true as const };
+      // Rug jobs: the 5pm cron skips them (their done moment is the return,
+      // not the pickup), so the final tick sends the thank-you + review ask.
+      let thankYou: string | null = null;
+      if (b?.rugPickup && paid && !row.followUpSentAt) {
+        const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
+        const lead = row as never as Parameters<typeof followUpEmail>[0];
+        const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+        await db.update(leads).set({ followUpSentAt: new Date() }).where(eq(leads.id, input.id));
+        thankYou = sent.emailSent
+          ? "thank-you emailed"
+          : sent.smsSent
+            ? "thank-you texted"
+            : `thank-you not sent${sent.detail ? ` — ${sent.detail}` : ""}`;
+      }
+      return { ok: true as const, thankYou };
     }),
 
   // A flood job phoned in — Ben takes the details over the phone and starts

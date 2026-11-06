@@ -45,6 +45,7 @@ export const leads = mysqlTable("leads", {
   nudgeSentAt: timestamp("nudge_sent_at"), // 6-month freshen-up nudge
   receiptSentAt: timestamp("receipt_sent_at"), // payment receipt email + PDF
   invoiceSentAt: timestamp("invoice_sent_at"), // invoice email + PDF (unpaid jobs, 5pm batch)
+  pickedUpAt: timestamp("picked_up_at"), // rug runs: stage-1 tick (Fri pickup) — the final tick is the Mon return
   finishedAt: timestamp("finished_at"), // owner ticked the job off — moves it to Finished jobs
   status: mysqlEnum("status", ["new", "contacted", "booked", "completed"])
     .notNull()
