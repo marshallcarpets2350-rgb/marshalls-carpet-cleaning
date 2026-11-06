@@ -9,7 +9,7 @@
  * esbuild bundle banner. node_modules is present wherever the server runs.
  */
 import type PDFDocumentT from "pdfkit";
-import { BUSINESS, rugReturnDay } from "@contracts/rates";
+import { BUSINESS, paymentDueDay, rugReturnDay } from "@contracts/rates";
 import { bookingReference, type LeadRow } from "./messages";
 import { BRAND, brandLogo, brandVan } from "./brand";
 
@@ -42,6 +42,8 @@ interface Breakdown {
   rugDiscount?: number;
   maintenanceDiscount?: number;
   codeDiscount?: number;
+  seasonalDiscount?: number;
+  seasonalPromo?: { percent: number; label: string } | null;
   volumeDiscount?: number;
   undercutDiscount?: number;
 }
@@ -63,8 +65,16 @@ function auDate(d: Date): string {
 }
 
 export function invoiceDueDate(lead: InvoiceLead): Date {
+  // 5-day terms (owner call 6 Nov 2026, was 7) — rug runs: 5 days from the
+  // Monday return, via the shared paymentDueDay helper.
+  let b: { preferredDate: string | null; rugPickup?: boolean } | null = null;
+  try {
+    if (lead.bookingJson) b = JSON.parse(lead.bookingJson) as typeof b;
+  } catch { /* fall through */ }
+  const iso = b ? paymentDueDay(b) : null;
+  if (iso) return new Date(`${iso}T12:00:00`);
   const d = jobDateOf(lead);
-  d.setDate(d.getDate() + 7); // 7-day terms, from the day the job was done
+  d.setDate(d.getDate() + 5);
   return d;
 }
 
@@ -86,6 +96,7 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
   if (breakdown.rugDiscount) lines.push({ label: "Bulk rug discount", amount: -breakdown.rugDiscount });
   if (breakdown.maintenanceDiscount) lines.push({ label: "2-cleans-a-year plan discount", amount: -breakdown.maintenanceDiscount });
   if (breakdown.codeDiscount) lines.push({ label: "Discount code", amount: -breakdown.codeDiscount });
+  if (breakdown.seasonalDiscount) lines.push({ label: `${breakdown.seasonalPromo?.label ?? "Seasonal deal"} — ${breakdown.seasonalPromo?.percent ?? ""}% off`.replace(" — %", ""), amount: -breakdown.seasonalDiscount });
   if (breakdown.volumeDiscount) lines.push({ label: "Volume discount ($10 off every $150)", amount: -breakdown.volumeDiscount });
   if (breakdown.undercutDiscount) lines.push({ label: "Price-beat discount", amount: -breakdown.undercutDiscount });
   // If the minimum charge lifted the total past the listed lines, show the

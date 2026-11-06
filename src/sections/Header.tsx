@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { BUSINESS } from "@contracts/rates";
 import logo from "@/assets/logo.png";
-import { ChristmasStyles, FairyLights, SantaHat } from "@/components/Christmas";
+import { FairyLights, SantaHat, SeasonBanner, SeasonalStyles } from "@/components/Seasonal";
 import iconCarpet from "@/assets/icons/carpet-cleaning.png";
 import iconLounge from "@/assets/icons/lounge.png";
 import iconRug from "@/assets/icons/rug-pickup.png";
@@ -71,7 +71,7 @@ export default function Header() {
 
   return (
     <header className="sticky top-0 z-40 border-b-[1.5px] border-charcoal bg-background/95 backdrop-blur">
-      <ChristmasStyles />
+      <SeasonalStyles />
       <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 py-2 pl-0 pr-4 md:pl-1 md:pr-6">
         <Link to="/" className="relative shrink-0 no-underline" aria-label="Marshall's Carpet Cleaning — home">
           <SantaHat />
@@ -229,6 +229,7 @@ export default function Header() {
         </nav>
       )}
       <FairyLights />
+      <SeasonBanner />
     </header>
   );
 }

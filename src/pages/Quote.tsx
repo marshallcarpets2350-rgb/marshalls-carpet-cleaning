@@ -740,6 +740,7 @@ export default function Quote({
                       {(breakdown.rugDiscount > 0 ||
                         breakdown.maintenanceDiscount > 0 ||
                         breakdown.codeDiscount > 0 ||
+                        breakdown.seasonalDiscount > 0 ||
                         breakdown.volumeDiscount > 0 ||
                         breakdown.undercutDiscount > 0) && (
                         <ul className="mt-3 space-y-2 border-t-[1.5px] border-charcoal/20 pt-3 text-sm">
@@ -763,6 +764,12 @@ export default function Quote({
                                   : "Discount code"}
                               </span>
                               <span className="whitespace-nowrap">−{money(breakdown.codeDiscount)}</span>
+                            </li>
+                          )}
+                          {breakdown.seasonalDiscount > 0 && breakdown.seasonalPromo && (
+                            <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
+                              <span>🏷️ {breakdown.seasonalPromo.label} — {breakdown.seasonalPromo.percent}% off</span>
+                              <span className="whitespace-nowrap">−{money(breakdown.seasonalDiscount)}</span>
                             </li>
                           )}
                           {breakdown.volumeDiscount > 0 && (
@@ -809,6 +816,12 @@ export default function Quote({
                       </div>
 
                       <div className="mt-5 border-t-[1.5px] border-charcoal pt-4">
+                        {breakdown.seasonalDiscount > 0 && breakdown.seasonalPromo && (
+                          <p className="text-sm font-semibold text-charcoal/60">
+                            Was <span className="line-through">{money(breakdown.total + breakdown.seasonalDiscount)}</span>
+                            {" "}— {breakdown.seasonalPromo.label} is on
+                          </p>
+                        )}
                         <p
                           key={breakdown.total}
                           className="total-pop font-display text-5xl font-black text-forest"

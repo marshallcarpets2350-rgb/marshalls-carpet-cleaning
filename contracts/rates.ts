@@ -16,22 +16,28 @@ export const RATES = {
     // (same structure as BFYB's ×1.30 / ×2.11, just gentler), and the
     // restoration rate undercuts them hardest on the expensive specialised
     // work (launch pricing, first 6 months).
+    // Stepped standard rate (like tax brackets — each band prices only the
+    // metres in it, so a quote never jumps backwards). Deep and restoration
+    // stay multipliers on the stepped figure.
+    // 6 Nov 2026: 5% price rise across the board (owner call) — the old
+    // $4.00/$3.80/$3.60/$3.40 ladder becomes $4.20/$4.00/$3.80/$3.60.
+    // Seasonal promos (below) then take 10% off at the quiet times of year.
     tiers: [
-      { upTo: 40, perM2: 4.0 },
-      { upTo: 60, perM2: 3.8 },
-      { upTo: 80, perM2: 3.6 },
-      { upTo: Infinity, perM2: 3.4 },
+      { upTo: 40, perM2: 4.2 },
+      { upTo: 60, perM2: 4.0 },
+      { upTo: 80, perM2: 3.8 },
+      { upTo: Infinity, perM2: 3.6 },
     ] as { upTo: number; perM2: number }[],
-    perM2: { light: 4.0, medium: 4.4, heavy: 7.4 } as Record<Dirtiness, number>, // display only
+    perM2: { light: 4.2, medium: 4.6, heavy: 7.8 } as Record<Dirtiness, number>, // display only
     multiplier: { light: 1, medium: 1.1, heavy: 1.85 } as Record<Dirtiness, number>,
   },
   minimumCharge: 150, // BFYB's minimum callout is $289
   lounge: {
-    perSeat: { light: 60, medium: 66, heavy: 75 } as Record<Dirtiness, number>, // BFYB: $97/seat flat
-    reclinerPerSeat: 15,
+    perSeat: { light: 63, medium: 69, heavy: 79 } as Record<Dirtiness, number>, // BFYB: $97/seat flat
+    reclinerPerSeat: 16,
   },
   mattress: {
-    base: { single: 60, double: 80, queen: 90, king: 110 } as Record<
+    base: { single: 63, double: 84, queen: 95, king: 116 } as Record<
       MattressSize,
       number
     >,
@@ -46,16 +52,16 @@ export const RATES = {
   // least. Priced for the toughest stain ticked; each extra type half price.
   // On a Restoration Clean all of this is already included — no charge.
   stainCauseFee: {
-    "pet-urine": 69,
-    "food-drink": 45,
-    "mud-traffic": 29,
-    "not-sure": 45,
+    "pet-urine": 72,
+    "food-drink": 47,
+    "mud-traffic": 30,
+    "not-sure": 47,
   } as Record<StainType, number>,
   extras: {
     // Kept for the BFYB comparison maths (their calculator still sells these
     // as add-ons; ours are either included free or priced into the quote).
-    stainPackage: 30, // BFYB extra stain removal product $39/job
-    enzymePreSpray: 37, // BFYB anti-microbial treatment $39/job
+    stainPackage: 32, // BFYB extra stain removal product $39/job
+    enzymePreSpray: 39, // BFYB anti-microbial treatment $39/job
     preVacuumPerRoom: 10, // BFYB pre-vacuum $17/room — ours is FREE on every clean
   },
   rug: {
@@ -73,7 +79,7 @@ export const RATES = {
     // Flat travel for the towns priced by hand — all under BFYB's flat
     // surcharges (Uralla $57, Guyra $91, Walcha $143). Armidale itself is
     // free; everywhere else stays per-km.
-    flatByTown: { armidale: 0, uralla: 30, guyra: 46, walcha: 120 } as Record<string, number>,
+    flatByTown: { armidale: 0, uralla: 32, guyra: 48, walcha: 126 } as Record<string, number>,
   },
   // $10 off every full $150 of the clean — stacks with other discounts.
   volumeDiscount: { every: 150, off: 10 },
@@ -372,11 +378,11 @@ export const RUG_SIZES: {
   area: string;
   price: number;
 }[] = [
-  { id: "xs", label: "Extra Small", area: "up to 1.5 m²", price: 35 },
-  { id: "s", label: "Small", area: "up to 2.5 m²", price: 45 },
-  { id: "m", label: "Medium", area: "up to 4 m²", price: 65 },
-  { id: "l", label: "Large", area: "up to 6 m²", price: 85 },
-  { id: "xl", label: "Extra Large", area: "over 6 m²", price: 100 },
+  { id: "xs", label: "Extra Small", area: "up to 1.5 m²", price: 37 },
+  { id: "s", label: "Small", area: "up to 2.5 m²", price: 47 },
+  { id: "m", label: "Medium", area: "up to 4 m²", price: 68 },
+  { id: "l", label: "Large", area: "up to 6 m²", price: 89 },
+  { id: "xl", label: "Extra Large", area: "over 6 m²", price: 105 },
 ];
 
 // ---------------------------------------------------------------------------
@@ -561,6 +567,156 @@ function isoDay(d: Date): string {
   return d.toLocaleDateString("en-CA");
 }
 
+// ---------------------------------------------------------------------------
+// The site's seasonal calendar — one table drives everything: the falling
+// page art in the gutters, the header strip, the footer line, and the
+// automatic promo discount in computeQuote. No promo at Christmas (December
+// sells itself — we sell scarcity); the 10% deals fire in the quiet windows
+// (owner call 6 Nov 2026, with the 5% price rise so a 10% promo still lands
+// above the old prices' margin). All dates Sydney time; Easter is computed,
+// so the calendar never needs touching.
+// ---------------------------------------------------------------------------
+
+export interface SeasonDef {
+  id: string;
+  /** glyphs that drift down the page gutters (first one repeats most) */
+  art: string[];
+  /** header strip text when there's no promo (promos show their own strip) */
+  banner: string | null;
+  /** footer sign-off while the season runs */
+  footer: string | null;
+  /** automatic discount while the season runs (the clean only, never rugs) */
+  promo: { percent: number; label: string } | null;
+}
+
+const SEASONS: Record<string, SeasonDef> = {
+  christmas: {
+    id: "christmas",
+    art: ["🎄", "🦌", "🎁", "⭐", "❄️", "🔔"],
+    banner: "🎄🦌 Pre-Christmas cleans now booking — December spots fill fast.",
+    footer: "🎄🦌 Merry Christmas from the Marshall's team — and thanks for backing a local business this year.",
+    promo: null,
+  },
+  newyear: {
+    id: "newyear",
+    art: ["🎆", "✨", "🥂", "🎉", "🎇"],
+    banner: null,
+    footer: "🎆 Happy New Year — thanks for backing a local business.",
+    promo: { percent: 10, label: "New Year freshen-up" },
+  },
+  summer: {
+    id: "summer",
+    art: ["☀️", "🌊", "🍉", "🕶️", "💦"],
+    banner: null,
+    footer: null,
+    promo: null,
+  },
+  easter: {
+    id: "easter",
+    art: ["🐰", "🥚", "🌷", "🐣", "🍫"],
+    banner: null,
+    footer: "🐰 Happy Easter from the Marshall's team.",
+    promo: { percent: 10, label: "Easter refresh" },
+  },
+  autumn: {
+    id: "autumn",
+    art: ["🍂", "🍁", "🌰", "🍄"],
+    banner: null,
+    footer: null,
+    promo: null,
+  },
+  winter: {
+    id: "winter",
+    art: ["❄️", "☃️", "🧣", "🌧️", "☕"],
+    banner: null,
+    footer: null,
+    promo: { percent: 10, label: "Winter warm-up" },
+  },
+  latewinter: {
+    id: "latewinter",
+    art: ["🌧️", "❄️", "🌬️", "☕"],
+    banner: null,
+    footer: null,
+    promo: null,
+  },
+  spring: {
+    id: "spring",
+    art: ["🌸", "🌼", "🌷", "🐝", "☀️"],
+    banner: null,
+    footer: null,
+    promo: { percent: 10, label: "Spring clean" },
+  },
+  latespring: {
+    id: "latespring",
+    art: ["🌸", "☀️", "🌻", "🦋"],
+    banner: null,
+    footer: null,
+    promo: null,
+  },
+};
+
+/** Easter Sunday (Gregorian computus) — keeps the Easter window right forever. */
+function easterSunday(year: number): Date {
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31); // 3 = March, 4 = April
+  const day = ((h + l - 7 * m + 114) % 31) + 1;
+  return new Date(year, month - 1, day, 12);
+}
+
+const NOON = (y: number, m: number, d: number) => new Date(y, m - 1, d, 12);
+
+/** The year's season windows, in priority order (first match wins). */
+function seasonWindows(year: number): { season: SeasonDef; start: Date; end: Date }[] {
+  const easter = easterSunday(year);
+  const easterStart = new Date(easter);
+  easterStart.setDate(easterStart.getDate() - 10); // ~1½ weeks out
+  const easterEnd = new Date(easter);
+  easterEnd.setDate(easterEnd.getDate() + 2); // through Easter Monday
+  return [
+    { season: SEASONS.christmas, start: NOON(year, 11, 6), end: NOON(year, 12, 27) },
+    { season: SEASONS.newyear, start: NOON(year, 12, 27), end: NOON(year + 1, 2, 1) },
+    { season: SEASONS.easter, start: easterStart, end: easterEnd },
+    { season: SEASONS.spring, start: NOON(year, 9, 1), end: NOON(year, 10, 16) },
+    { season: SEASONS.winter, start: NOON(year, 6, 1), end: NOON(year, 8, 1) },
+    { season: SEASONS.latewinter, start: NOON(year, 8, 1), end: NOON(year, 9, 1) },
+    { season: SEASONS.latespring, start: NOON(year, 10, 16), end: NOON(year, 11, 6) },
+    { season: SEASONS.summer, start: NOON(year, 2, 1), end: easterStart },
+    { season: SEASONS.autumn, start: easterEnd, end: NOON(year, 6, 1) },
+  ];
+}
+
+/** The season a Sydney date falls in (null only if the table has a gap). */
+export function seasonFor(at: Date = sydneyToday()): SeasonDef | null {
+  const y = at.getFullYear();
+  for (const year of [y, y - 1]) {
+    for (const w of seasonWindows(year)) {
+      if (at >= w.start && at < w.end) return w.season;
+    }
+  }
+  return null;
+}
+
+/** The automatic seasonal promo running right now, if any. */
+export function seasonalPromoFor(at: Date = sydneyToday()): { percent: number; label: string } | null {
+  return seasonFor(at)?.promo ?? null;
+}
+
+/** Christmas window check — kept for the fairy lights, Santa hat and snow. */
+export function christmasOn(at: Date = sydneyToday()): boolean {
+  return seasonFor(at)?.id === "christmas";
+}
+
 export interface QuoteInput {
   carpetAreaM2: number;
   carpetDirtiness: Dirtiness;
@@ -595,6 +751,8 @@ export interface QuoteBreakdown {
   rugDiscount: number;
   maintenanceDiscount: number;
   codeDiscount: number;
+  seasonalDiscount: number; // the automatic seasonal promo, when one's running
+  seasonalPromo: { percent: number; label: string } | null; // what fired (for labels on quotes, invoices)
   crossSellDiscount: number; // 10% off services added at checkout
   volumeDiscount: number; // $10 off every full $150
   undercutDiscount: number; // the 17%-under-BFYB backstop, when it fires
@@ -679,7 +837,7 @@ export function stainTreatmentFee(
   return fees[0] + Math.round(fees.slice(1).reduce((sum, f) => sum + f, 0) / 2);
 }
 
-export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bfybModel: BfybModel = BFYB_MODEL): QuoteBreakdown {
+export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bfybModel: BfybModel = BFYB_MODEL, at?: Date): QuoteBreakdown {
   const lines: QuoteLine[] = [];
 
   // Carpet — tiered standard figure × the clean-level multiplier.
@@ -827,15 +985,25 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   const afterMaintenance = cleaningSubtotal - maintenanceDiscount;
   const codeDiscount = round(afterMaintenance * (input.discountPercent / 100));
 
+  // Seasonal promo — automatic, straight off the site calendar (New Year,
+  // Easter, winter, spring clean). Never touches the rugs: set prices, and
+  // their only discount is the 3+ bulk deal (same rule as volume below).
+  const afterCode = afterMaintenance - codeDiscount;
+  const rugNet = rugSubtotal - rugDiscount;
+  const seasonalPromo = seasonalPromoFor(at);
+  const seasonalBase = Math.max(0, afterCode - rugNet);
+  const seasonalDiscount =
+    seasonalPromo && seasonalBase > 0 ? round(seasonalBase * (seasonalPromo.percent / 100)) : 0;
+
   // $10 off every full $150 — stacks with any discount code.
   // Rugs are EXCLUDED: they're set prices, and the only rug discount is
   // 10% off for 3+ rugs (owner call 5 Nov 2026).
-  const afterCode = afterMaintenance - codeDiscount;
-  const volumeBase = Math.max(0, afterCode - (rugSubtotal - rugDiscount));
+  const afterSeasonal = afterCode - seasonalDiscount;
+  const volumeBase = Math.max(0, afterSeasonal - rugNet);
   const volumeDiscount =
     Math.floor(volumeBase / rates.volumeDiscount.every) * rates.volumeDiscount.off;
 
-  let cleaningTotal = afterCode - volumeDiscount;
+  let cleaningTotal = afterSeasonal - volumeDiscount;
   let minimumApplied = false;
   if (!isEmpty && onsiteWork && cleaningTotal < rates.minimumCharge) {
     cleaningTotal = rates.minimumCharge;
@@ -870,6 +1038,8 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
     rugDiscount,
     maintenanceDiscount,
     codeDiscount,
+    seasonalDiscount,
+    seasonalPromo: seasonalDiscount > 0 ? seasonalPromo : null,
     crossSellDiscount,
     volumeDiscount,
     undercutDiscount,

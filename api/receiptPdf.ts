@@ -41,6 +41,8 @@ interface Breakdown {
   rugDiscount?: number;
   maintenanceDiscount?: number;
   codeDiscount?: number;
+  seasonalDiscount?: number;
+  seasonalPromo?: { percent: number; label: string } | null;
   volumeDiscount?: number;
   undercutDiscount?: number;
 }
@@ -86,6 +88,7 @@ export async function receiptPdfBuffer(lead: ReceiptLead): Promise<Buffer> {
   if (breakdown.rugDiscount) lines.push({ label: "Bulk rug discount", amount: -breakdown.rugDiscount });
   if (breakdown.maintenanceDiscount) lines.push({ label: "2-cleans-a-year plan discount", amount: -breakdown.maintenanceDiscount });
   if (breakdown.codeDiscount) lines.push({ label: "Discount code", amount: -breakdown.codeDiscount });
+  if (breakdown.seasonalDiscount) lines.push({ label: `${breakdown.seasonalPromo?.label ?? "Seasonal deal"} — ${breakdown.seasonalPromo?.percent ?? ""}% off`.replace(" — %", ""), amount: -breakdown.seasonalDiscount });
   if (breakdown.volumeDiscount) lines.push({ label: "Volume discount ($10 off every $150)", amount: -breakdown.volumeDiscount });
   if (breakdown.undercutDiscount) lines.push({ label: "Price-beat discount", amount: -breakdown.undercutDiscount });
   // If the minimum charge lifted the total past the listed lines, show the
