@@ -66,9 +66,9 @@ export default function Reviews() {
         <div className="flex flex-wrap items-end justify-between gap-6">
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-forest">Word of mouth</p>
-            <h2 className="mt-3 font-display text-4xl font-black text-charcoal md:text-5xl">
+            <h1 className="mt-3 font-display text-4xl font-black text-charcoal md:text-5xl">
               {data.rating.toFixed(1)} stars on Google.
-            </h2>
+            </h1>
             <p className="mt-3 max-w-xl text-lg text-charcoal/80">
               From {data.userRatingCount} Google review{data.userRatingCount === 1 ? "" : "s"}
               {data.live === false ? " — rated by the locals we clean for." : " — checked and updated weekly, straight from Google."}

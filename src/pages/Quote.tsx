@@ -555,6 +555,22 @@ export default function Quote({
             )}
           </p>
 
+          {!adminMode && (
+            <div className="mt-8 grid gap-4 border-[1.5px] border-charcoal bg-background p-5 sm:grid-cols-2 lg:grid-cols-4">
+              {[
+                ["1 · We arrive in your slot", "We walk the job with you first and confirm the price matches your quote — no surprises on the day."],
+                ["2 · Pre-spray & spots", "Traffic lanes and spots get a pre-treatment so the deep clean can do its best work."],
+                ["3 · The deep clean", "Hot water extraction flushes the pile and pulls the dirt straight back out."],
+                ["4 · Groomed & drying", "Most carpets dry in 4–6 hours. If something's not right once it's dry, we come back and put it right."],
+              ].map(([title, body]) => (
+                <div key={title}>
+                  <p className="text-sm font-bold uppercase tracking-widest text-forest">{title}</p>
+                  <p className="mt-1.5 text-sm leading-relaxed text-charcoal/75">{body}</p>
+                </div>
+              ))}
+            </div>
+          )}
+
           <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_22rem]">
             {/* ============ LEFT: the one-page form ============ */}
             <div>

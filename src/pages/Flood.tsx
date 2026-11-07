@@ -92,7 +92,7 @@ export default function Flood() {
           </p>
           <a
             href="#emergency-number"
-            className="whitespace-nowrap font-display text-xl font-black no-underline md:text-2xl"
+            className="whitespace-nowrap font-display text-xl font-black text-background no-underline md:text-2xl"
           >
             Get the 24/7 emergency number →
           </a>

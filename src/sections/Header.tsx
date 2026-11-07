@@ -154,7 +154,7 @@ export default function Header() {
           </a>
           <Link
             to="/admin"
-            className="text-xs font-semibold uppercase tracking-widest text-charcoal/35 no-underline hover:text-charcoal"
+            className="hidden text-xs font-semibold uppercase tracking-widest text-charcoal/35 no-underline hover:text-charcoal md:inline"
           >
             Admin
           </Link>

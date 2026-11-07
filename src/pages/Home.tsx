@@ -4,8 +4,35 @@ import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
 import { Snowfall } from "@/components/Seasonal";
 import { RatingBadge } from "@/sections/Reviews";
+import { trpc } from "@/providers/trpc";
 import { BUSINESS, christmasOn, seasonWindowFor } from "@contracts/rates";
 import vanImg from "@/assets/van.jpg";
+
+/** Keeps the aggregateRating in the homepage's LocalBusiness schema in step
+ *  with the live Google numbers — the static value in index.html is just the
+ *  baseline until this lands (it's what earns the ★ stars in search results). */
+function useLiveRatingSchema() {
+  const q = trpc.public.googleReviews.useQuery(undefined, { staleTime: 60 * 60 * 1000, retry: 1 });
+  const rating = q.data?.rating;
+  const count = q.data?.userRatingCount;
+  useEffect(() => {
+    if (!rating || !count) return;
+    const el = document.head.querySelector<HTMLScriptElement>('script[type="application/ld+json"]');
+    if (!el) return;
+    try {
+      const data = JSON.parse(el.textContent || "{}");
+      if (data["@type"] !== "LocalBusiness") return;
+      data.aggregateRating = {
+        "@type": "AggregateRating",
+        ratingValue: rating.toFixed(1),
+        reviewCount: String(count),
+      };
+      el.textContent = JSON.stringify(data);
+    } catch {
+      /* malformed schema — leave it as-is */
+    }
+  }, [rating, count]);
+}
 
 /** Desktop only: if the one-screen homepage is taller than the viewport, gently
  *  scale the content down so everything (incl. the service buttons) always fits. */
@@ -73,6 +100,7 @@ export default function Home() {
   const promo = win?.season.promo ?? null;
   const promoEnd = win?.end.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   const { ref: fitRef, scale: fitScale } = useFitToScreen();
+  useLiveRatingSchema();
   return (
     <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
       <Header />
@@ -168,6 +196,9 @@ export default function Home() {
               Call {BUSINESS.phone}
             </a>{" "}
             — you'll talk to the person who'll be doing the clean.
+          </p>
+          <p className="mt-2 text-center text-xs text-charcoal/60 md:text-sm lg:mt-1.5">
+            Every clean is backed by our fix-it promise — if something's not right once it's dry, we come back and put it right, free.
           </p>
         </div>
         </div>

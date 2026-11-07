@@ -16,9 +16,9 @@ export default function Areas() {
       <div className="mx-auto max-w-6xl px-4 md:px-6">
         <div className="grid gap-12 lg:grid-cols-2">
           <div>
-            <h2 className="font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
+            <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
               Based in Armidale. On the road across the New England.
-            </h2>
+            </h1>
             <p className="mt-5 text-lg leading-relaxed text-charcoal/80">
               Travel is priced by road distance, not by town name and not by mood —
               free in Armidale, then {money(RATES.travel.perKmEachWay)} per kilometre

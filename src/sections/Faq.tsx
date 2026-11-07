@@ -36,9 +36,9 @@ export default function Faq() {
   return (
     <section id="faq" className="bg-background py-20 md:py-28">
       <div className="mx-auto max-w-3xl px-4 md:px-6">
-        <h2 className="text-center font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
+        <h1 className="text-center font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
           Asked every week
-        </h2>
+        </h1>
         <Accordion type="single" collapsible className="mt-10">
           {FAQS.map((f, i) => (
             <AccordionItem

@@ -49,9 +49,9 @@ export default function Services() {
   return (
     <section id="services" className="bg-creamlight py-20 md:py-28">
       <div className="mx-auto max-w-6xl px-4 md:px-6">
-        <h2 className="max-w-2xl font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
+        <h1 className="max-w-2xl font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
           Everything on the floor, and most things on it.
-        </h2>
+        </h1>
         <p className="mt-4 max-w-xl text-lg text-charcoal/75">
           Carpet gets its own quote — rugs have their own pick-up run, and
           lounges and mattresses are priced per piece. Same day, same visit.
