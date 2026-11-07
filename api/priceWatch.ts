@@ -261,7 +261,13 @@ export async function loadBfybModel(): Promise<BfybModel> {
   return model;
 }
 
-/** Their calculator's total from the LIVE config for a room-based job. */
+/** Their calculator's total from the LIVE config for a room-based job.
+ *  Their extras are never in their DISPLAYED price (their booking flow only
+ *  recommends them and auto-ticks nothing), so the comparison panel and the
+ *  variation sweep pass extraIds=[] — but the margin reference jobs pass the
+ *  extras a same-job customer would actually pay for, so the 17% promise is
+ *  checked like-for-like (fixed 7 Nov 2026: our side was charged for extras
+ *  while theirs wasn't, which false-alarmed after our 5% rise). */
 function liveBfybTotal(
   carpetSvc: any,
   rooms: Record<string, number>,
@@ -274,16 +280,14 @@ function liveBfybTotal(
     const room = carpetSvc.rooms.find((r: any) => r.id === id);
     return s + (room?.price ?? 0) * n;
   }, 0);
-  // CRM rule (re-verified 19/10/2026): floor rooms + service fee at the
-  // minimum, then scale by the condition multiplier. Their extras (pre-vacuum,
-  // stain, anti-microbial, fans) are NEVER in their displayed price — their
-  // booking flow only recommends them and auto-ticks nothing — so extraIds is
-  // kept for call-site compatibility but deliberately ignored.
-  void extraIds;
   const baseCleaning = carpetSvc.serviceFee + roomSum;
   const standardTotal =
     baseCleaning < carpetSvc.minimum ? carpetSvc.minimum : baseCleaning;
-  return Math.round(standardTotal * mult);
+  const extrasTotal = extraIds.reduce(
+    (s, id) => s + (carpetSvc.extras.find((e: any) => e.id === id)?.price ?? 0),
+    0,
+  );
+  return Math.round(standardTotal * mult) + extrasTotal;
 }
 
 export async function runPriceWatch(): Promise<PriceWatchReport> {
@@ -659,10 +663,20 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     }
   }
 
+  // Field-level drifts mean BFYB actually moved a price; margin drifts are
+  // OUR price landing too close to theirs (often after our own rate moves) —
+  // keep them separate so the owner email never cries "they changed prices"
+  // when they didn't (happened 7 Nov 2026 after our 5% rise).
+  const isMarginDrift = (d: string) =>
+    d.includes("needs a rates review") || d.includes("under the 17% rule");
+  const isRefusal = (d: string) => d.includes("Auto-update refused");
+  const priceDrifts = drifts.filter((d) => !isMarginDrift(d) && !isRefusal(d));
+  const marginDrifts = drifts.filter(isMarginDrift);
+
   const report: PriceWatchReport = {
     checkedAt,
     fetchOk: true,
-    modelMatches: drifts.filter((d) => !d.includes("under the 17% rule") && !d.includes("Auto-update refused")).length === 0,
+    modelMatches: priceDrifts.length === 0 && !drifts.some(isRefusal),
     undercutHolds,
     drifts,
     margins,
@@ -677,13 +691,27 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     try {
       const smtp = await loadSmtpConfig();
       if (isSmtpConfigured(smtp)) {
+        const sections: string[] = [];
+        if (priceDrifts.length > 0)
+          sections.push(
+            `BFYB moved ${priceDrifts.length} price${priceDrifts.length > 1 ? "s" : ""}:\n\n` +
+              priceDrifts.map((d) => `• ${d}`).join("\n"),
+          );
+        if (marginDrifts.length > 0)
+          sections.push(
+            `Margin check — our price vs theirs (NOT a BFYB price change):\n\n` +
+              marginDrifts.map((d) => `• ${d}`).join("\n"),
+          );
+        if (drifts.some(isRefusal))
+          sections.push(drifts.filter(isRefusal).map((d) => `• ${d}`).join("\n"));
         await sendMail(
           smtp,
           BUSINESS.email,
-          `BFYB price watch — ${drifts.length} change${drifts.length > 1 ? "s" : ""} spotted`,
-          `The daily check of Bang For Ya Buck's live prices found changes:\n\n` +
-            drifts.map((d) => `• ${d}`).join("\n") +
-            (modelUpdated
+          priceDrifts.length > 0
+            ? `BFYB price watch — ${priceDrifts.length} price change${priceDrifts.length > 1 ? "s" : ""} on their site`
+            : `Price watch — margin check needs a look (BFYB prices unchanged)`,
+          sections.join("\n\n") +
+            (modelUpdated && priceDrifts.length > 0
               ? `\n\nNo action needed — the quote calculator and the comparison table now price off their new numbers automatically, so every quote still lands at least ${BFYB_UNDERCUT_PERCENT}% under theirs.`
               : "") +
             `\n\nChecked ${checkedAt}.\nOpen the admin dashboard → Price watch for the full report.`,
