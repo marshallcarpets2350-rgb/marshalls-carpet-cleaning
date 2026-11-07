@@ -122,7 +122,8 @@ export const TERMS_SECTIONS: TermsSection[] = [
       "10.1 We carry public liability insurance and treat your home with care.",
       "10.2 Please tell us before we start about pre-existing damage, loose fittings, or items of particular value or fragility in the work area.",
       "10.3 Some fibres carry inherent risks (shrinkage, colour bleed or texture change in certain natural fibres and older carpets). We test where appropriate, but the Client accepts these inherent risks where materials are not suited to hot water extraction — we'll flag this before starting if we see it.",
-      "10.4 To the extent permitted by law, our liability for any claim is limited to the cost of the Services supplied, or re-supply of the Services. Nothing in these Terms excludes your rights under the Australian Consumer Law.",
+      "10.4 Carpet that was loosely fitted at installation (not fully power-stretched) can show ripples or buckling while it's damp after a hot water extraction clean. This is a pre-existing installation condition that cleaning makes visible — not damage caused by cleaning — and in most cases the carpet settles flat again as it fully dries. Where ripples remain once the carpet is completely dry, re-stretching by a carpet layer may be needed and is the Client's responsibility to arrange; we're always happy to point you to someone.",
+      "10.5 To the extent permitted by law, our liability for any claim is limited to the cost of the Services supplied, or re-supply of the Services. Nothing in these Terms excludes your rights under the Australian Consumer Law.",
     ],
   },
   {
