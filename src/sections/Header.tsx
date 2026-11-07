@@ -231,6 +231,17 @@ export default function Header() {
                 Call {BUSINESS.phone}
               </a>
             </li>
+            {/* Owner-only entry — tiny and low-contrast at the very bottom of
+                the mobile menu so customers never notice it. */}
+            <li className="pt-2 text-center">
+              <Link
+                to="/admin"
+                className="text-xs font-semibold uppercase tracking-widest text-charcoal/25 no-underline"
+                onClick={() => setOpen(false)}
+              >
+                Admin
+              </Link>
+            </li>
           </ul>
         </nav>
       )}
