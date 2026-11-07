@@ -214,11 +214,16 @@ export function bfybComparableTotal(q: QuoteInput, model: BfybModel = BFYB_MODEL
   return total;
 }
 
-/** Our side of the same comparable scope (used by the comparison panel). */
+/** Our side of the same comparable scope (used by the comparison panel).
+ *  Pass includeExtras=false for the price-beat check: BFYB's displayed price
+ *  never includes their add-ons (their calculator deliberately ticks nothing),
+ *  so ours stay out of the comparison too — otherwise an add-on would be
+ *  swallowed by a bigger price-beat discount instead of adding to the total. */
 export function comparableSubtotal(
   q: QuoteInput,
   carpetSubtotal: number,
   rates: Rates = DEFAULT_RATES,
+  includeExtras = true,
 ): number {
   let ours = carpetSubtotal;
   for (const l of q.lounges) {
@@ -228,9 +233,11 @@ export function comparableSubtotal(
         l.reclinerSeats * rates.lounge.reclinerPerSeat,
     );
   }
-  ours += stainTreatmentFee(q, rates);
-  if (q.stainPackage) ours += rates.extras.stainPackage; // legacy fabric add-on
-  if (q.enzymePreSpray) ours += rates.extras.enzymePreSpray;
+  if (includeExtras) {
+    ours += stainTreatmentFee(q, rates);
+    if (q.stainPackage) ours += rates.extras.stainPackage; // legacy fabric add-on
+    if (q.enzymePreSpray) ours += rates.extras.enzymePreSpray;
+  }
   // Pre-vacuum is FREE with every clean — nothing to add on our side.
   return ours;
 }
@@ -1015,13 +1022,18 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
 
   // The 17%-under-BFYB check, run live on every quote: if their comparable
   // total exists and ours isn't at least 17% under it after our own
-  // discounts, the difference comes off automatically.
+  // discounts, the difference comes off automatically. The comparison is
+  // CORE CLEAN ONLY (carpet + lounges): their displayed price never includes
+  // their add-ons, so our add-ons (enzyme, stain treatment) stay out too —
+  // they stack on top at full price instead of being eaten by a bigger
+  // price-beat discount (bug found 7 Nov 2026: 100m² + pet stains + enzyme
+  // totalled $424 with or without the $39 enzyme).
   const bfybTotal = isEmpty ? null : bfybComparableTotal(input, bfybModel);
   let undercutDiscount = 0;
   if (bfybTotal !== null && cleaningSubtotal > 0) {
     const discountRatio = cleaningTotal / cleaningSubtotal;
     const oursComparable = round(
-      comparableSubtotal(input, carpetSubtotal, rates) * discountRatio,
+      comparableSubtotal(input, carpetSubtotal, rates, false) * discountRatio,
     );
     const target = Math.floor(bfybTotal * (1 - BFYB_UNDERCUT_PERCENT / 100));
     if (oursComparable > target) {
