@@ -12,6 +12,9 @@ import FlowArt from "@/components/FlowArt";
 import { usePageMeta } from "@/lib/usePageMeta";
 import { BUSINESS, RATES, money } from "@contracts/rates";
 
+// money() rounds to whole dollars — per-m² rates need cents.
+const money2 = (n: number) => `$${n.toFixed(2)}`;
+
 const firstTier = RATES.carpet.tiers[0].perM2;
 const lastTier = RATES.carpet.tiers[RATES.carpet.tiers.length - 1].perM2;
 const maintenancePct = Math.round(RATES.maintenance.two * 100);
@@ -50,14 +53,14 @@ const FAQS = [
   },
   {
     q: "How is pricing worked out?",
-    a: `By the square metre, measured or estimated with you up front: ${money(firstTier)}/m² stepping down to ${money(lastTier)}/m² on large areas, with a ${money(RATES.minimumCharge)} minimum callout. You get the figure in writing before we start — it doesn't change on the day.`,
+    a: `By the square metre, measured or estimated with you up front: ${money2(firstTier)}/m² stepping down to ${money2(lastTier)}/m² on large areas, with a ${money(RATES.minimumCharge)} minimum callout. You get the figure in writing before we start — it doesn't change on the day.`,
   },
 ];
 
 export function CommercialPage() {
   usePageMeta(
     "Commercial Carpet Cleaning Armidale — Offices, Motels & Real Estates | Marshall's",
-    `Commercial carpet cleaning across Armidale & the New England: offices, motels, clubs and real estate work from ${money(firstTier)}/m² with the price in writing before we start. After-hours available, itemised ABN invoices, maintenance plans save ${maintenancePct}%.`,
+    `Commercial carpet cleaning across Armidale & the New England: offices, motels, clubs and real estate work from ${money2(firstTier)}/m² with the price in writing before we start. After-hours available, itemised ABN invoices, maintenance plans save ${maintenancePct}%.`,
     "/commercial-carpet-cleaning-armidale",
     {
       "@context": "https://schema.org",
@@ -91,7 +94,7 @@ export function CommercialPage() {
               Offices, motels, clubs and rental portfolios across Armidale &amp; the New England.
               Hot water extraction priced by the square metre —{" "}
               <strong>
-                {money(firstTier)}/m² stepping down to {money(lastTier)}/m² on large areas
+                {money2(firstTier)}/m² stepping down to {money2(lastTier)}/m² on large areas
               </strong>{" "}
               — with the figure in writing before we start. No callbacks, no surprises on the invoice.
             </p>
