@@ -525,6 +525,16 @@ export function rugCount(rugs: RugItem[]): number {
 export const RUG_PICKUP_DAYS = [5]; // getDay(): 5=Fri
 export const RUG_PICKUP_LABEL = "3:00 – 5:00 PM";
 
+/** Christmas closure: owner away 16 Dec 2026 – 8 Jan 2027 inclusive
+ *  (back in town 3 Jan, blocking through the second week of January).
+ *  On-site cleans in this window are closed via availability_blocks rows;
+ *  rug-pickup Fridays don't consult those, so they're excluded here. */
+export const CLOSURE_START = "2026-12-16";
+export const CLOSURE_END = "2027-01-08";
+export function isClosureDay(iso: string): boolean {
+  return iso >= CLOSURE_START && iso <= CLOSURE_END;
+}
+
 /** All Thu/Fri dates in the booking window that can take a rug pickup. */
 export function rugPickupDays(): string[] {
   const out: string[] = [];
@@ -537,7 +547,9 @@ export function rugPickupDays(): string[] {
     const diff = Math.round((d.getTime() - start.getTime()) / 86400000);
     if (diff > BOOKING_DAYS_AHEAD) break;
     if (diff >= BOOKING_NOTICE_DAYS && RUG_PICKUP_DAYS.includes(d.getDay())) {
-      out.push(isoDay(d));
+      const iso = isoDay(d);
+      if (isClosureDay(iso)) continue;
+      out.push(iso);
     }
   }
   return out;
