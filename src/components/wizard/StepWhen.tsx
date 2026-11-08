@@ -333,6 +333,26 @@ export function StepWhen({
         </p>
       )}
 
+      {/* Christmas closure notice — shows through the lead-up and the break,
+          then quietly disappears once we're back (11 Jan 2027). */}
+      {new Date() < new Date(2027, 0, 11) && (
+        <p className="border-[1.5px] border-charcoal bg-creamlight px-4 py-3 text-sm text-charcoal/80">
+          {rugsOnly ? (
+            <>
+              🎄 <strong>Booked out over Christmas</strong> — the last rug pickup is
+              Friday 11 December (back to you Monday 14th), and pickups start again
+              Friday 15 January.
+            </>
+          ) : (
+            <>
+              🎄 <strong>Booked out over Christmas</strong> — we're cleaning right up
+              to Friday 18 December, then we're back Monday 11 January. Any day you
+              can still pick below is genuinely free, but December fills fast.
+            </>
+          )}
+        </p>
+      )}
+
       <div className="space-y-4">
         <SlidingCalendar
           enabled={cal.enabled}
