@@ -1408,7 +1408,7 @@ export function longDateLabel(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export const TIME_MODEL = {
-  averageHouseMinutes: 120, // operator anchor: a typical house, start to packed up
+  averageHouseMinutes: 195, // what a 3-bed + living + hall standard clean actually blocks, including the free pre-vacuum (raised from an effective 150 on 8 Nov 2026 — jobs were being under-timed)
   arriveSetupMinutes: 20, // machine out, hoses run, pre-spray bottles filled
   packUpMinutes: 15, // pack down and load up
   // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
@@ -1494,17 +1494,21 @@ export function estimateJobMinutes(q: QuoteInput): number {
   }
   const rugs = rugCount(q.rugs);
   if (rugs > 0) m += onsite ? TIME_MODEL.rugLoad : TIME_MODEL.rugPickupStop;
-  // Owner calibration 4 Nov 2026: anchor the day on a 2-hour average house.
-  // The reference house (3 bed + living + hall, standard clean) is derived
-  // from the room times above, then every estimate scales so that reference
-  // lands exactly on the anchor (minimum 30 min stays).
+  // Owner calibration: anchor the day on the average house. The reference
+  // house (3 bed + living + hall, standard clean, incl. the free pre-vacuum
+  // pass real bookings always carry) is derived from the room times above,
+  // then every estimate scales so that reference lands exactly on the anchor
+  // (minimum 30 min stays). Anchor set to 195 min on 8 Nov 2026 — the old
+  // calibration excluded pre-vacuum, so the effective average was ~150 min
+  // and real jobs were running longer than the site allowed.
   const t = TIME_MODEL;
   const referenceHouseRaw =
     t.arriveSetupMinutes +
     t.packUpMinutes +
     3 * (t.roomMinutes.bed.pre + t.roomMinutes.bed.clean) +
     (t.roomMinutes.living.pre + t.roomMinutes.living.clean) +
-    (t.roomMinutes.hall.pre + t.roomMinutes.hall.clean);
+    (t.roomMinutes.hall.pre + t.roomMinutes.hall.clean) +
+    5 * t.preVacuumPerRoom;
   const scaled = m * (t.averageHouseMinutes / referenceHouseRaw);
   const rounded = Math.max(30, Math.ceil(scaled / 15) * 15);
   // Never longer than one working day — jobs are done in a single day, so a
