@@ -541,7 +541,7 @@ export const publicRouter = createRouter({
       // so this is best-effort and the outcome lands on the lead for the admin.
       if (input.booking) {
         try {
-          const { confirmationEmail, confirmationSms, deliver, notifyOwner } = await import("./messages");
+          const { confirmationEmail, confirmationEmailHtml, confirmationSms, deliver, notifyOwner } = await import("./messages");
           const leadRow = {
             id: leadId,
             name: input.name,
@@ -553,8 +553,9 @@ export const publicRouter = createRouter({
             quoteJson: JSON.stringify({ input: quote, breakdown }),
             bookingJson: JSON.stringify({ ...input.booking, town, jobMinutes: estimateJobMinutes(quote) }),
             paidOnline: false,
+            createdAt: new Date(),
           };
-          const sent = await deliver(leadRow, confirmationEmail(leadRow), confirmationSms(leadRow), { attachTerms: true });
+          const sent = await deliver(leadRow, confirmationEmail(leadRow), confirmationSms(leadRow), { attachTerms: true, html: confirmationEmailHtml(leadRow) });
           const channel = [sent.emailSent && "email", sent.smsSent && "SMS"]
             .filter(Boolean)
             .join(" + ");

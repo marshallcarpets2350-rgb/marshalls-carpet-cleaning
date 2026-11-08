@@ -21,6 +21,7 @@ import {
   parseBooking,
   bookingReference,
   confirmationEmail,
+  confirmationEmailHtml,
   confirmationSms,
   followUpEmail,
   followUpSms,
@@ -383,17 +384,31 @@ export const adminRouter = createRouter({
       if (input.sendEmail && input.email) {
         try {
           const { quoteEmailForCustomer } = await import("./messages");
+          const { quoteEmailHtmlForCustomer } = await import("./emailTemplate");
           const smtp = await loadSmtpConfig();
           if (isSmtpConfigured(smtp)) {
-            const msg = quoteEmailForCustomer({
+            const discounts: { label: string; amount: number }[] = [];
+            if (breakdown.volumeDiscount > 0) discounts.push({ label: "Volume discount", amount: breakdown.volumeDiscount });
+            if (breakdown.maintenanceDiscount > 0) discounts.push({ label: "Maintenance plan", amount: breakdown.maintenanceDiscount });
+            if (breakdown.codeDiscount > 0) discounts.push({ label: "Discount code", amount: breakdown.codeDiscount });
+            if ((breakdown.seasonalDiscount ?? 0) > 0)
+              discounts.push({ label: breakdown.seasonalPromo?.label ?? "Seasonal offer", amount: breakdown.seasonalDiscount ?? 0 });
+            if (breakdown.rugDiscount > 0) discounts.push({ label: "3+ rugs discount", amount: breakdown.rugDiscount });
+            if (breakdown.undercutDiscount > 0) discounts.push({ label: "Local price-beat guarantee", amount: breakdown.undercutDiscount });
+            const quoteMail = {
               name: input.name,
               reference,
               lines: breakdown.lines,
+              discounts,
               total: breakdown.total,
               travelFee: breakdown.travelFee,
               town,
-            });
-            await sendMail(smtp, input.email, msg.subject, msg.text, undefined, brandedEmailHtml(msg.text));
+              address: input.address || null,
+              suburb: input.suburb || town || null,
+              issuedAt: new Date(),
+            };
+            const msg = quoteEmailForCustomer(quoteMail);
+            await sendMail(smtp, input.email, msg.subject, msg.text, undefined, quoteEmailHtmlForCustomer(quoteMail));
             emailed = true;
           }
         } catch (err) {
@@ -1077,7 +1092,7 @@ export const adminRouter = createRouter({
       const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
       const lead = row as never as Parameters<typeof confirmationEmail>[0];
-      const sent = await deliver(lead, confirmationEmail(lead), confirmationSms(lead), { attachTerms: true });
+      const sent = await deliver(lead, confirmationEmail(lead), confirmationSms(lead), { attachTerms: true, html: confirmationEmailHtml(lead) });
       const channel = [sent.emailSent && "email", sent.smsSent && "SMS"].filter(Boolean).join(" + ");
       await db
         .update(leads)

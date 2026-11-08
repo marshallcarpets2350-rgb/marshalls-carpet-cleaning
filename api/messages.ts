@@ -21,8 +21,8 @@ import {
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
 import { termsPdfBuffer } from "./termsPdf";
-import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
-import { brandLogo } from "./brand";
+import { brandedEmailHtml, emailFrame, esc, EMAIL_CID, shortAddress, type QuoteEmailData } from "./emailTemplate";
+import { brandLogo, BRAND } from "./brand";
 import { getSettings } from "./queries/settings";
 
 export interface LeadRow {
@@ -106,34 +106,48 @@ export function bookingReference(lead: LeadRow): string {
 // Booking confirmation
 // ---------------------------------------------------------------------------
 
-export function confirmationEmail(lead: LeadRow): { subject: string; text: string } {
+/** Shared pieces for the confirmation email (text + rich HTML versions). */
+function confirmationParts(lead: LeadRow) {
   const b = parseBooking(lead);
   const input = parseQuote(lead);
   const ref = bookingReference(lead);
   const where = [lead.address, lead.suburb].filter(Boolean).join(", ") || "your place";
-  const big =
-    b && slotsNeededFor(b.jobMinutes) >= TIME_SLOTS.length
-      ? `\nThis is a big one — a full day on the tools, starting at 8:00 AM sharp. The whole day is yours.\n`
-      : "";
+  const fullDay = !!(b && slotsNeededFor(b.jobMinutes) >= TIME_SLOTS.length);
   const collection = b?.rugPickup
-    ? `\n• Collection: ${
-        b.access?.method === "leave-out"
-          ? `rugs left out — ${b.access.spot || "where we discussed"}. We'll grab them between 3:00 and 5:00 PM`
-          : "someone will be home between 3:00 and 5:00 PM to hand them over"
-      }`
-    : "";
+    ? b.access?.method === "leave-out"
+      ? `Rugs left out — ${b.access.spot || "where we discussed"}; we'll grab them between 3:00 and 5:00 PM`
+      : "Someone home between 3:00 and 5:00 PM to hand them over"
+    : null;
   return {
-    subject: `Booking confirmed — ${BUSINESS.name} (${ref})`,
+    b,
+    ref,
+    where,
+    fullDay,
+    collection,
+    summary: serviceSummary(input, b?.rugPickup ?? false),
+    when: b ? whenLine(b) : "Time to be confirmed — we'll call you",
+    payment: b ? paymentLine(b, lead) : "pay on the day",
+  };
+}
+
+export function confirmationEmail(lead: LeadRow): { subject: string; text: string } {
+  const pt = confirmationParts(lead);
+  const big = pt.fullDay
+    ? `\nThis is a big one — a full day on the tools, starting at 8:00 AM sharp. The whole day is yours.\n`
+    : "";
+  const collection = pt.collection ? `\n• Collection: ${pt.collection}` : "";
+  return {
+    subject: `Booking confirmed — ${BUSINESS.name} (${pt.ref})`,
     text: `Hi ${firstName(lead.name)},
 
 Beauty — you're booked in with ${BUSINESS.name}.
 
 YOUR BOOKING
-• ${serviceSummary(input, b?.rugPickup ?? false)}
-• When: ${b ? whenLine(b) : "Time to be confirmed — we'll call you"}
-• Where: ${where}${collection}
-• Total: ${money(lead.total)} — ${b ? paymentLine(b, lead) : "pay on the day"}
-• Reference: ${ref}
+• ${pt.summary}
+• When: ${pt.when}
+• Where: ${pt.where}${collection}
+• Total: ${money(lead.total)} — ${pt.payment}
+• Reference: ${pt.ref}
 ${big}
 Every clean includes a commercial pre-vacuum and pre-spray. We'll call or text the day before to confirm the exact arrival time. Anything change? Call or text ${BUSINESS.phone} and we'll sort it.
 
@@ -143,6 +157,72 @@ See you soon,
 The ${BUSINESS.name} team
 ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
+}
+
+/** Rich HTML twin of the confirmation email (9 Nov 2026 — same formal,
+ *  spaced-out standard as the quotation email: boxed details, big total,
+ *  blue borders, clear next steps). */
+export function confirmationEmailHtml(lead: LeadRow): string {
+  const pt = confirmationParts(lead);
+  const row = (k: string, v: string) => `<tr>
+      <td style="font-size:12px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};width:120px;vertical-align:top;padding:6px 0">${k}</td>
+      <td style="font-size:14.5px;line-height:1.5;color:${BRAND.charcoal};vertical-align:top;padding:4px 0">${v}</td>
+    </tr>`;
+  const bookedOn = lead.createdAt
+    ? new Date(lead.createdAt).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Sydney" })
+    : null;
+  return emailFrame(`
+  <div style="font-size:22px;font-weight:bold;letter-spacing:2px;color:${BRAND.charcoal}">✔ BOOKING CONFIRMED</div>
+  <div style="font-size:13px;color:${BRAND.grey};margin:4px 0 18px">
+    Reference <strong>${esc(pt.ref)}</strong>${bookedOn ? ` &nbsp;·&nbsp; Booked ${bookedOn}` : ""}
+  </div>
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Beauty — you're booked in with ${esc(BUSINESS.name)}. Here are your booking details:</p>
+
+  <div style="background:${BRAND.light};border-radius:8px;padding:12px 16px;margin:0 0 16px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${row("THE JOB", `<strong>${esc(pt.summary)}</strong>`)}
+      ${row("WHEN", `<strong>${esc(pt.when)}</strong>`)}
+      ${row("WHERE", `<strong>${esc(pt.where)}</strong>`)}
+      ${pt.collection ? row("COLLECTION", esc(pt.collection)) : ""}
+    </table>
+  </div>
+
+  ${
+    pt.fullDay
+      ? `<div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 16px;font-size:14px;line-height:1.55">
+    <strong>This is a big one</strong> — a full day on the tools, starting at 8:00 AM sharp. The whole day is yours.</div>`
+      : ""
+  }
+
+  <div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 20px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.grey};vertical-align:middle">TOTAL</td>
+        <td style="font-size:30px;font-weight:bold;color:${BRAND.charcoal};text-align:right;vertical-align:middle">${money(lead.total)}</td>
+      </tr>
+    </table>
+    <div style="font-size:13px;line-height:1.5;color:${BRAND.grey};margin-top:6px">${esc(pt.payment)}</div>
+  </div>
+
+  <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">WHAT HAPPENS NEXT</div>
+  <ul style="margin:0 0 18px;padding-left:20px">
+    <li style="margin:6px 0;font-size:14px;line-height:1.5">Every clean includes a commercial pre-vacuum and pre-spray.</li>
+    <li style="margin:6px 0;font-size:14px;line-height:1.5">We'll call or text the day before to confirm the exact arrival time.</li>
+    ${pt.b?.rugPickup ? `<li style="margin:6px 0;font-size:14px;line-height:1.5">Your rugs come back washed, dried and ready for the floor on the Monday.</li>` : ""}
+  </ul>
+
+  <div style="background:${BRAND.light};border-radius:8px;padding:14px 16px;margin:0 0 8px">
+    <div style="font-size:14px;line-height:1.6">Anything changed? Call or text
+    <a href="tel:+61423581223" style="color:${BRAND.blue};font-weight:bold">${esc(BUSINESS.phone)}</a>
+    quoting <strong>${esc(pt.ref)}</strong> and we'll sort it.</div>
+  </div>
+
+  <p style="font-size:13px;line-height:1.6;color:${BRAND.grey};margin:18px 0 0">A copy of our Terms &amp; Conditions is attached as a PDF — plain-English, two pages, yours to keep. They're also on our website any time under "Terms &amp; conditions" in the footer.</p>
+
+  <p style="font-size:14px;line-height:1.6;margin:18px 0 0">See you soon,<br>
+  <strong>The ${esc(BUSINESS.name)} team</strong></p>`);
 }
 
 export function confirmationSms(lead: LeadRow): string {
@@ -324,35 +404,50 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
 
 /** The quote-only email — sent when Ben prices a job in admin and ticks
  *  "email it to them". No date, no payment talk: here's your price, call us
- *  when you're ready to lock in a day. */
-export function quoteEmailForCustomer(d: {
-  name: string;
-  reference: string;
-  lines: { label: string; detail?: string; amount: number }[];
-  total: number;
-  travelFee: number;
-  town?: string | null;
-}): { subject: string; text: string } {
+ *  when you're ready to lock in a day. Formal layout: property address up
+ *  top (agents file by address — added 9 Nov 2026 after the Town and Country
+ *  quote went out without it), discounts shown so the maths adds up, and the
+ *  HTML twin (quoteEmailHtmlForCustomer in emailTemplate.ts) boxes each part
+ *  in blue with the recommended package + big total in a green box. */
+export function quoteEmailForCustomer(d: QuoteEmailData): { subject: string; text: string } {
   const jobLines = d.lines
     .map((l) => `• ${l.label}${l.detail ? ` — ${l.detail}` : ""} — ${l.amount < 0 ? `−${money(-l.amount)}` : money(l.amount)}`)
-    .join("\n");
+    .join("\n\n");
+  const issued = d.issuedAt ? new Date(d.issuedAt) : new Date();
+  const fmt = (x: Date) =>
+    x.toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric", timeZone: "Australia/Sydney" });
+  const validTo = new Date(issued.getTime() + 30 * 24 * 60 * 60 * 1000);
+  const addr = d.address?.trim() || [d.suburb, d.town].filter(Boolean).join(", ");
+  const discounts = (d.discounts ?? []).filter((x) => x.amount > 0);
+  const discountLines = discounts.map((x) => `• ${x.label} — −${money(x.amount)}`).join("\n");
+  const recommendation =
+    d.recommendation?.trim() ||
+    "The complete package above — each part priced separately, all done in the one visit.";
+  const greeting = d.name.trim().split(/\s+/).length > 2 ? "Hello" : `Hi ${firstName(d.name)}`;
   return {
-    subject: `Your quote — ${BUSINESS.name} (${d.reference})`,
-    text: `Hi ${firstName(d.name)},
+    subject: addr
+      ? `Quote for ${shortAddress(addr)} — ${BUSINESS.name} (${d.reference})`
+      : `Your quote — ${BUSINESS.name} (${d.reference})`,
+    text: `${greeting},
 
-Thanks for chatting with us — here's your price in writing.
+Thanks for the opportunity to quote${addr ? " this property" : ""} — here it is in writing.
 
+QUOTATION — ${d.reference}
+Issued ${fmt(issued)} · valid to ${fmt(validTo)}
+${addr ? `\nPROPERTY\n${addr}\n` : ""}
 YOUR QUOTE
 ${jobLines}
-${d.travelFee > 0 ? `• Travel — ${money(d.travelFee)}\n` : ""}
-Total: ${money(d.total)}
-Reference: ${d.reference}
+${d.travelFee > 0 ? `\n• Travel${d.town ? ` — ${d.town}` : ""} — return trip, equipment and setup — ${money(d.travelFee)}\n` : ""}${discounts.length ? `\nSAVINGS APPLIED\n${discountLines}\n` : ""}
+RECOMMENDED FOR THIS PROPERTY
+${recommendation}
 
-No date is locked in yet — this is just your price, held for 30 days. When you're ready, call or text ${BUSINESS.phone} (or just reply to this email) with your reference and we'll find a day that suits.
+TOTAL: ${money(d.total)}
 
-Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises.
+Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises. The work is covered by our 7-day fix-it promise: if anything isn't right, we come back and put it right, free.
 
-Talk soon,
+No date is locked in yet. When you're ready, call or text ${BUSINESS.phone} (or just reply to this email) quoting ${d.reference} and we'll find a day that suits.
+
+Kind regards,
 The ${BUSINESS.name} team
 ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
@@ -698,7 +793,7 @@ export async function deliver(
   lead: LeadRow,
   email: { subject: string; text: string },
   sms: string,
-  opts?: { attachTerms?: boolean },
+  opts?: { attachTerms?: boolean; html?: string },
 ): Promise<SendResult> {
   const b = parseBooking(lead);
   const pref = b?.confirmBy ?? "either";
@@ -717,7 +812,7 @@ export async function deliver(
   if (opts?.attachTerms) {
     attachments.push({ filename: "Marshalls-Carpet-Cleaning-Terms-and-Conditions.pdf", content: await termsPdfBuffer(), contentType: "application/pdf" });
   }
-  const html = brandedEmailHtml(email.text);
+  const html = opts?.html ?? brandedEmailHtml(email.text);
 
   if (wantEmail && lead.email) {
     const smtp = await loadSmtpConfig();
