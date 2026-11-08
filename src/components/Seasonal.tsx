@@ -333,15 +333,17 @@ export function FairyLights() {
 }
 
 /** A little Santa hat perched on the corner of the logo, Christmas only.
- *  Hangs off the top-LEFT edge on desktop (md:-left-5) so it clears the
- *  mascot's face — it used to sit at left-4 and cover him (Ben's fix,
- *  8 Nov 2026). */
+ *  Desktop perches ON the top-left corner of the badge (md:text-4xl, barely
+ *  raised) — it must NOT hang off the left edge (md:-left-5 put it off-screen:
+ *  the header logo sits flush against the viewport edge on any window up to
+ *  ~1288px wide, so half the hat was clipped). It used to sit at left-4
+ *  text-5xl and cover the mascot's face (Ben's fix, 8 Nov 2026). */
 export function SantaHat() {
   if (!christmasOn()) return null;
   return (
     <span
       aria-hidden="true"
-      className="mcc-hat pointer-events-none absolute -top-1 left-2 text-3xl md:-left-5 md:-top-3 md:text-5xl"
+      className="mcc-hat pointer-events-none absolute -top-1 left-2 text-3xl md:-top-0.5 md:text-4xl"
       style={{ transform: "rotate(-14deg)", transformOrigin: "bottom left", animation: "mcc-hat-wobble 6s ease-in-out infinite" }}
     >
       🎅
