@@ -7,6 +7,7 @@ import Flood from './pages/Flood'
 import Rugs from './pages/Rugs'
 import Lounge from './pages/Lounge'
 import Admin from './pages/Admin'
+import Thanks from './pages/Thanks'
 import Unsubscribe from './pages/Unsubscribe'
 import Terms from './pages/Terms'
 import { SectionPage, ContactPage } from './pages/sections'
@@ -70,6 +71,7 @@ export default function App() {
       <Route path="/faq" element={<PageMeta title="Carpet Cleaning FAQ — Drying Times, Stains, Travel Fees | Marshall's Armidale" description="The questions Armidale asks every week: how long carpets take to dry, whether steam cleaning voids warranties, pet stains, travel fees and commercial work." path="/faq"><SectionPage><Faq /></SectionPage></PageMeta>} />
       <Route path="/contact" element={<PageMeta title="Contact Marshall's Carpet Cleaning — Armidale NSW | 0423 581 223" description="Call, text or email Marshall's Carpet Cleaning in Armidale — you'll talk to the person who'll be doing the clean, seven days a week." path="/contact"><ContactPage /></PageMeta>} />
       <Route path="/admin" element={<Admin />} />
+      <Route path="/thanks" element={<PageMeta title="Booked In — Thank You | Marshall's Carpet Cleaning" description="Thanks for booking with Marshall's Carpet Cleaning — your clean is in the schedule and the confirmation email is on its way." path="/thanks"><Thanks /></PageMeta>} />
       <Route path="/unsubscribe" element={<Unsubscribe />} />
       <Route path="/terms" element={<PageMeta title="Terms & Conditions | Marshall's Carpet Cleaning Armidale" description="The terms every Marshall's Carpet Cleaning booking works by — pricing, access, drying, stains and liability, in plain English." path="/terms"><Terms /></PageMeta>} />
       <Route path="*" element={<Home />} />

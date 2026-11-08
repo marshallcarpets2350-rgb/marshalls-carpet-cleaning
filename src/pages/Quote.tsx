@@ -6,9 +6,9 @@ import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
 import Footer from "@/sections/Footer";
 import type { TravelResult } from "@/components/AddressField";
-import NewsletterForm from "@/components/NewsletterForm";
 import { competitorEstimates } from "@/lib/competitors";
 import { track } from "@/lib/track";
+import { stashThanks, markThanksPaid } from "@/lib/bookingThanks";
 import { trpc } from "@/providers/trpc";
 import { useRates } from "@/lib/useRates";
 import {
@@ -21,7 +21,6 @@ import {
   estimateJobMinutes,
   emptyCondition,
   emptyAccess,
-  TIME_SLOTS,
   type BookingDetails,
   type CleanPurpose,
   type ConditionAnswers,
@@ -118,7 +117,6 @@ export default function Quote({
   const [slotConflict, setSlotConflict] = useState(false);
 
   const [submitted, setSubmitted] = useState<{ reference: string; total: number; emailed?: boolean } | null>(null);
-  const [paidResult, setPaidResult] = useState<{ reference: string; total: number } | null>(null);
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const paidSession = searchParams.get("paid");
@@ -136,13 +134,24 @@ export default function Quote({
   const submitLead = trpc.public.submitLead.useMutation({
     onSuccess: (r) => {
       track("lead_submitted", { reference: r.reference, total: r.total, currency: "AUD" });
+      // Stash for /thanks BEFORE any redirect — card payers come back from
+      // Stripe to a fresh page load and the page still knows their booking.
+      stashThanks({
+        reference: r.reference,
+        total: r.total,
+        firstName: contact.name.split(" ")[0] || "there",
+        date: whenFlexible ? null : whenDate,
+        slot: whenFlexible ? null : whenSlot,
+        flexible: whenFlexible,
+        rugPickup: false,
+        paid: false,
+      });
       if (r.checkoutUrl) {
         // "Pay now" → straight to Stripe's hosted checkout for the full amount
         window.location.href = r.checkoutUrl;
         return;
       }
-      setSubmitted({ reference: r.reference, total: r.total });
-      window.scrollTo({ top: 0, behavior: "smooth" });
+      navigate("/thanks");
     },
     onError: (e) => {
       if (e.data?.code === "CONFLICT") {
@@ -152,13 +161,14 @@ export default function Quote({
     },
   });
 
-  // Returning from Stripe's checkout — confirm the payment landed.
+  // Returning from Stripe's checkout — confirm the payment landed, then the
+  // thank-you page greets them with the paid banner.
   const verifyPayment = trpc.public.verifyPayment.useMutation({
     onSuccess: (r) => {
       if (r.paid && r.reference && r.total !== undefined) {
         track("purchase", { reference: r.reference, total: r.total, currency: "AUD" });
-        setPaidResult({ reference: r.reference, total: r.total });
-        window.scrollTo({ top: 0 });
+        markThanksPaid();
+        navigate("/thanks");
       }
     },
   });
@@ -383,7 +393,9 @@ export default function Quote({
   };
 
   // ===================== back from Stripe: confirming =====================
-  if (paidSession && !paidResult) {
+  // (success navigates to /thanks — this screen only shows while checking,
+  //  or if the check fails)
+  if (paidSession) {
     return (
       <div className="min-h-dvh">
         <Header />
@@ -420,39 +432,8 @@ export default function Quote({
     );
   }
 
-  // ===================== paid in full online =====================
-  if (paidResult) {
-    return (
-      <div className="min-h-dvh">
-        <Header />
-        <FlowArt />
-        <main className="bg-creamlight py-20">
-          <div className="mx-auto max-w-2xl px-4 md:px-6">
-            <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
-              <p className="text-sm font-bold uppercase tracking-widest text-forest">Paid — booking locked in</p>
-              <h1 className="mt-3 font-display text-4xl font-black text-charcoal md:text-5xl">
-                Done and dusted.
-              </h1>
-              <p className="mt-5 text-lg leading-relaxed text-charcoal/80">
-                Booking <strong className="font-display text-forest">{paidResult.reference}</strong> is
-                paid in full —{" "}
-                <strong className="font-display text-forest">{money(paidResult.total)}</strong>.
-                A receipt is on its way to your email, and we'll confirm your
-                time shortly.
-              </p>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link to="/" className="btn-pill">Back to the site</Link>
-                <a href={BUSINESS.phoneHref} className="btn-pill-dark">Call {BUSINESS.phone}</a>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
-
-  // ===================== success screen =====================
+  // ===================== quote-saved screen (admin only —
+  //  customers land on /thanks now) =====================
   if (submitted && adminMode) {
     return (
       <div className="border-[1.5px] border-charcoal bg-creamlight p-8 text-center">
@@ -475,60 +456,6 @@ export default function Quote({
     );
   }
 
-  if (submitted) {
-    const fmtLong = (iso: string) =>
-      new Date(iso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
-    const whenText = whenFlexible
-      ? "We'll call you to find a day that works"
-      : whenDate && whenSlot !== null
-        ? `You've asked for ${fmtLong(whenDate)}, ${TIME_SLOTS[whenSlot]} — it's in the schedule already, and we'll confirm it`
-        : "We'll call you to lock in a day";
-    return (
-      <div className="min-h-dvh">
-        <Header />
-        <FlowArt />
-        <main className="bg-creamlight py-20">
-          <div className="mx-auto max-w-2xl px-4 md:px-6">
-            <div className="offset-shadow border-[1.5px] border-charcoal bg-background p-8 md:p-12">
-              <p className="text-sm font-bold uppercase tracking-widest text-forest">Booking received</p>
-              <h1 className="mt-3 font-display text-4xl font-black text-charcoal md:text-5xl">
-                Thanks {contact.name.split(" ")[0]} — it's with us.
-              </h1>
-              <p className="mt-5 text-lg leading-relaxed text-charcoal/80">
-                Your reference is{" "}
-                <strong className="font-display text-forest">{submitted.reference}</strong> and
-                your quoted total is{" "}
-                <strong className="font-display text-forest">{money(submitted.total)}</strong>.
-              </p>
-              <p className="mt-3 leading-relaxed text-charcoal/80">
-                {whenText}. {payment === "pay-now"
-                  ? "Once it's confirmed you'll get a secure payment link — nothing is charged before that."
-                  : payment === "invoice"
-                    ? "We'll email your invoice after the job — bank transfer or card, whichever suits."
-                    : "You'll pay cash on the day, and the receipt lands in your email."}
-              </p>
-              <div className="mt-8 border-t-[1.5px] border-charcoal/20 pt-8">
-                <h2 className="font-display text-2xl font-black text-charcoal">
-                  Want the monthly deals too?
-                </h2>
-                <p className="mt-2 text-charcoal/75">
-                  One email a month, subscriber-only discounts. Your call.
-                </p>
-                <div className="mt-4">
-                  <NewsletterForm source="quote-success" />
-                </div>
-              </div>
-              <div className="mt-8 flex flex-wrap gap-4">
-                <Link to="/" className="btn-pill">Back to the site</Link>
-                <a href={BUSINESS.phoneHref} className="btn-pill-dark">Call {BUSINESS.phone}</a>
-              </div>
-            </div>
-          </div>
-        </main>
-        <Footer />
-      </div>
-    );
-  }
 
   // ===================== wizard =====================
   return (
