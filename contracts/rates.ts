@@ -744,7 +744,7 @@ export interface QuoteInput {
   travelFee: number; // computed from the address module
   discountPercent: number; // from a validated discount code (0–100)
   roomCounts?: Record<string, number>; // rooms mode — feeds the BFYB comparison
-  crossSellApplied?: boolean; // customer tacked extra services on at checkout — 10% off those services
+  crossSellApplied?: boolean; // legacy flag from the old same-visit 10% — no discount applies (removed 8 Nov 2026)
 }
 
 export interface QuoteLine {
@@ -763,7 +763,7 @@ export interface QuoteBreakdown {
   codeDiscount: number;
   seasonalDiscount: number; // the automatic seasonal promo, when one's running
   seasonalPromo: { percent: number; label: string } | null; // what fired (for labels on quotes, invoices)
-  crossSellDiscount: number; // 10% off services added at checkout
+  crossSellDiscount: number; // always 0 — added-service discount removed 8 Nov 2026
   volumeDiscount: number; // $10 off every full $150
   undercutDiscount: number; // the 17%-under-BFYB backstop, when it fires
   bfybTotal: number | null; // their comparable total, for the check + panel
@@ -871,7 +871,6 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
 
   // Lounges
   let loungeSubtotal = 0;
-  let crossSellBase = 0; // only items explicitly tacked on via the cross-sell card
   input.lounges.forEach((l, i) => {
     if (l.seats <= 0) return;
     const seatRate = rates.lounge.perSeat[l.dirtiness];
@@ -879,7 +878,6 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
       l.seats * seatRate + l.reclinerSeats * rates.lounge.reclinerPerSeat,
     );
     loungeSubtotal += amount;
-    if (l.added) crossSellBase += amount;
     lines.push({
       label: `Lounge ${input.lounges.length > 1 ? `#${i + 1}` : ""}`.trim(),
       detail: `${l.seats} seat${l.seats > 1 ? "s" : ""} × $${seatRate}/seat (${l.dirtiness})${l.reclinerSeats > 0 ? ` + ${l.reclinerSeats} recliner${l.reclinerSeats > 1 ? "s" : ""} × $${rates.lounge.reclinerPerSeat}` : ""}`,
@@ -895,7 +893,6 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
       rates.mattress.base[m.size] * rates.mattress.dirtinessMultiplier[m.dirtiness],
     );
     mattressSubtotal += each * m.qty;
-    if (m.added) crossSellBase += each * m.qty;
     lines.push({
       label: `${m.size[0].toUpperCase()}${m.size.slice(1)} mattress`,
       detail: `${m.qty} × $${each} (${m.dirtiness})`,
@@ -911,7 +908,6 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
     const price = rates.rugPrices[r.size];
     if (!size || price === undefined) return;
     rugSubtotal += price * r.qty;
-    if (r.added) crossSellBase += price * r.qty;
     lines.push({
       label: `${size.label} rug${r.qty > 1 ? "s" : ""}`,
       detail: `${r.qty} × $${price} · pick-up, clean & dry, back Monday`,
@@ -956,23 +952,10 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   // Pre-vacuum is FREE with every clean — preVacuumRooms now only feeds the
   // on-site time estimate. No charge line.
 
-  // Checkout cross-sell: when the customer tacked extra services onto this
-  // booking, the ADDED items (flagged `added` — never the service they came
-  // for) get 10% off. On the carpet quote every soft-furnishing item arrives
-  // via the cross-sell card unflagged in older bookings, so with no flags at
-  // all we fall back to the whole lounge+mattress+rug subtotal. A negative
-  // line keeps it visible on the quote, the receipt and the admin record.
-  const addOnSubtotal = loungeSubtotal + mattressSubtotal + rugSubtotal;
-  const discountableBase = crossSellBase > 0 ? crossSellBase : addOnSubtotal;
-  const crossSellDiscount =
-    input.crossSellApplied && discountableBase > 0 ? round(discountableBase * 0.1) : 0;
-  if (crossSellDiscount > 0) {
-    lines.push({
-      label: "10% off your added service",
-      detail: "For booking the extra service together with this clean",
-      amount: -crossSellDiscount,
-    });
-  }
+  // No discount on added services (owner call 8 Nov 2026): extra services
+  // tacked onto a booking are full price now. The field stays on the
+  // breakdown (always 0) so stored quotes and receipts keep their shape.
+  const crossSellDiscount = 0;
 
   // The $150 minimum covers the truck and the trip — it exists for on-site
   // work. A rug-only pickup runs with the Friday pickup run, so it

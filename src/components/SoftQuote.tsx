@@ -5,7 +5,7 @@
 // No progress rail, no steps — one page down, Continue at the bottom, then a
 // review & send screen. Same engine, same live calendar, same server as the
 // carpet quote.
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearchParams } from "react-router";
 import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
@@ -194,31 +194,15 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     ? rugCount(rugs) > 0
     : lounges.some((l) => l.seats > 0) || mattresses.some((m) => m.qty > 0);
 
-  // Same-visit bundle: the FIRST kind of item the customer starts with is the
-  // service they came for — full price. If they add the other kind (lounge ↔
-  // mattress) to the same visit, those added pieces get 10% off.
-  const firstKindRef = useRef<"lounge" | "mattress" | null>(null);
-  const hasLounges = lounges.some((l) => l.seats > 0);
-  const hasMattresses = mattresses.some((m) => m.qty > 0);
-  if (firstKindRef.current === null && !isRugs) {
-    if (hasLounges) firstKindRef.current = "lounge";
-    else if (hasMattresses) firstKindRef.current = "mattress";
-  }
-  const bundleActive = !isRugs && hasLounges && hasMattresses;
-
   const quoteInput: QuoteInput = useMemo(
     () => ({
       carpetAreaM2: 0,
       carpetDirtiness: "light",
       maintenance: "none",
-      lounges: isRugs
-        ? []
-        : lounges.map((l) => ({ ...l, added: bundleActive && firstKindRef.current === "mattress" })),
-      mattresses: isRugs
-        ? []
-        : mattresses.map((m) => ({ ...m, added: bundleActive && firstKindRef.current === "lounge" })),
+      lounges: isRugs ? [] : lounges,
+      mattresses: isRugs ? [] : mattresses,
       rugs: [...rugs, ...csRugs],
-      crossSellApplied: bundleActive || csRugs.length > 0,
+      crossSellApplied: false, // added-service discount removed 8 Nov 2026 — extra pieces are full price
       stainPackage: isRugs ? false : stainPackage,
       dirtGum: false,
       enzymePreSpray: isRugs ? false : enzymePreSpray,
@@ -232,7 +216,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
           : (travel?.fee ?? 0),
       discountPercent: appliedCode?.percentOff ?? 0,
     }),
-    [isRugs, lounges, mattresses, rugs, csRugs, stainPackage, enzymePreSpray, travel, appliedCode, bundleActive],
+    [isRugs, lounges, mattresses, rugs, csRugs, stainPackage, enzymePreSpray, travel, appliedCode],
   );
 
   const breakdown = useMemo(() => computeQuote(quoteInput, rates, bfybModel), [quoteInput, rates, bfybModel]);
@@ -526,7 +510,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                         lounges={lounges} setLounges={setLounges}
                         mattresses={mattresses} setMattresses={setMattresses}
                         rugs={rugs} setRugs={setRugs}
-                        sub={isRugs ? undefined : "Lounges are priced per seat with three soiling levels; mattresses by size. Add as many pieces as you like — it all combines into one price. Mix lounges and mattresses in the same visit and the extra pieces come in 10% under their usual price."}
+                        sub={isRugs ? undefined : "Lounges are priced per seat with three soiling levels; mattresses by size. Add as many pieces as you like — it all combines into one price."}
                       />
                     </section>
                     {!isRugs && (

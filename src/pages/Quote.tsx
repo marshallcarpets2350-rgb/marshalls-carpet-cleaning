@@ -89,8 +89,8 @@ export default function Quote({
   const [mode, setMode] = useState<"rooms" | "area">("rooms");
   const [roomCounts, setRoomCounts] = useState<Record<string, number>>({});
   // Same-visit soft furnishings — lounges & mattresses the customer adds to
-  // this booking (10% off the added pieces). Rugs stay on their own page:
-  // they're a Friday pick-up run, never same-day.
+  // this booking (full price — no added-service discount). Rugs stay on their
+  // own page: they're a Friday pick-up run, never same-day.
   const [csLounges, setCsLounges] = useState<LoungeItem[]>([]);
   const [csMattresses, setCsMattresses] = useState<MattressItem[]>([]);
   const [areaInput, setAreaInput] = useState("");
@@ -235,8 +235,8 @@ export default function Quote({
       carpetAreaM2,
       carpetDirtiness,
       maintenance: "none",
-      lounges: csLounges.map((l) => ({ ...l, added: true })),
-      mattresses: csMattresses.map((m) => ({ ...m, added: true })),
+      lounges: csLounges,
+      mattresses: csMattresses,
       rugs: [], // rugs are their own Friday pick-up run — never same-day
       stainPackage: false, // stain treatment is priced from the stain answers now
       dirtGum: false,
@@ -249,7 +249,7 @@ export default function Quote({
       discountPercent: appliedCode?.percentOff ?? 0,
       // room counts let the BFYB comparison model their price exactly
       roomCounts: mode === "rooms" ? roomCounts : undefined,
-      crossSellApplied: csLounges.length + csMattresses.length > 0,
+      crossSellApplied: false, // added-service discount removed 8 Nov 2026 — field kept for the input shape
     }),
     [carpetAreaM2, carpetDirtiness, condition, enzymePreSpray, totalRooms, travel, appliedCode, mode, roomCounts, csLounges, csMattresses],
   );
@@ -543,7 +543,7 @@ export default function Quote({
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
             {adminMode
               ? "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
-              : "One page — answer your way down and the price moves as you go. The Continue button at the bottom takes you to the review & send page. Lounges and mattresses can join this same visit (10% off, a few questions down). Nothing is booked or charged until we confirm it with you."}
+              : "One page — answer your way down and the price moves as you go. The Continue button at the bottom takes you to the review & send page. Lounges and mattresses can join this same visit, a few questions down. Nothing is booked or charged until we confirm it with you."}
             {!adminMode && (
               <>
                 {" "}Rugs are their own{" "}
@@ -622,8 +622,8 @@ export default function Quote({
                         mattresses={csMattresses} setMattresses={setCsMattresses}
                         rugs={[]} setRugs={() => {}}
                         kicker="Optional · same visit"
-                        title="Lounge or mattress too? Add it here — 10% off."
-                        sub="Same crew, same day, one booking. Anything you add here is cleaned while we're already at your place, so the added pieces come in 10% under their usual price. Rugs are different — they're a Friday pick-up & clean, with their own quote."
+                        title="Lounge or mattress too? Add it here."
+                        sub="Same crew, same day, one booking — anything you add here is cleaned while we're already at your place. Rugs are different — they're a Friday pick-up & clean, with their own quote."
                       />
                     </section>
                     {!adminMode && (
