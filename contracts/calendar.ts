@@ -4,6 +4,7 @@
 import {
   BOOKING_DAYS_AHEAD,
   BOOKING_NOTICE_DAYS,
+  BETWEEN_JOBS_MINUTES,
   SAME_DAY_LEAD_MINUTES,
   SLOT_MINUTES,
   SLOT_START_MINUTES,
@@ -128,7 +129,12 @@ export function canStart(
     if (blocked.has(`${date}:${i}`)) return false;
   for (const b of spans) {
     if (b.date !== date) continue;
-    const buffer = Math.ceil(driveBetween(town, b.town) / SLOT_MINUTES);
+    // Same-town pairs get no drive minutes from driveBetween, so floor the
+    // gap at BETWEEN_JOBS_MINUTES — no two jobs ever slam back-to-back.
+    const buffer = Math.ceil(
+      Math.max(driveBetween(town, b.town), BETWEEN_JOBS_MINUTES) /
+        SLOT_MINUTES,
+    );
     const bStart = b.slot - buffer;
     const bEnd = b.slot + b.span - 1 + buffer;
     if (slot <= bEnd && slot + span - 1 >= bStart) return false;

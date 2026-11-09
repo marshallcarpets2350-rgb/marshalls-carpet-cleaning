@@ -1435,7 +1435,11 @@ export function longDateLabel(iso: string): string {
 // ---------------------------------------------------------------------------
 
 export const TIME_MODEL = {
-  averageHouseMinutes: 195, // what a 3-bed + living + hall standard clean actually blocks, including the free pre-vacuum (raised from an effective 150 on 8 Nov 2026 — jobs were being under-timed)
+  // What a 3-bed + living + hall standard clean actually blocks, including
+  // the free pre-vacuum. Operator-measured 9 Nov 2026: clean 3-bed ≈ 2h on
+  // site, dirty ≈ 2½h, restoration ≈ 3h (anchor was 195 min from 8 Nov —
+  // overshot his real times and was burning 4 slots on 2-hour jobs).
+  averageHouseMinutes: 120,
   arriveSetupMinutes: 20, // machine out, hoses run, pre-spray bottles filled
   packUpMinutes: 15, // pack down and load up
   // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
@@ -1525,9 +1529,8 @@ export function estimateJobMinutes(q: QuoteInput): number {
   // house (3 bed + living + hall, standard clean, incl. the free pre-vacuum
   // pass real bookings always carry) is derived from the room times above,
   // then every estimate scales so that reference lands exactly on the anchor
-  // (minimum 30 min stays). Anchor set to 195 min on 8 Nov 2026 — the old
-  // calibration excluded pre-vacuum, so the effective average was ~150 min
-  // and real jobs were running longer than the site allowed.
+  // (minimum 30 min stays). Anchor set to the operator's measured 2 hours
+  // for a clean 3-bed on 9 Nov 2026.
   const t = TIME_MODEL;
   const referenceHouseRaw =
     t.arriveSetupMinutes +
@@ -1537,7 +1540,9 @@ export function estimateJobMinutes(q: QuoteInput): number {
     (t.roomMinutes.hall.pre + t.roomMinutes.hall.clean) +
     5 * t.preVacuumPerRoom;
   const scaled = m * (t.averageHouseMinutes / referenceHouseRaw);
-  const rounded = Math.max(30, Math.ceil(scaled / 15) * 15);
+  // The -0.5 kills float dust so an exact anchor hit (e.g. 120.000…01)
+  // doesn't round up a whole extra quarter-hour.
+  const rounded = Math.max(30, Math.ceil((scaled - 0.5) / 15) * 15);
   // Never longer than one working day — jobs are done in a single day, so a
   // monster quote simply takes the whole day instead of spilling into the next.
   return Math.min(rounded, SLOT_MINUTES * TIME_SLOTS.length);
@@ -1597,6 +1602,12 @@ export function driveBetween(
   if (norm(townA) === norm(townB)) return 0;
   return driveMinutesFor(townA, kmA) + driveMinutesFor(townB, kmB);
 }
+
+/** Minimum breathing room between any two jobs on a day, even same-town
+ *  (cross-town drive, a job running over, packing the van properly). Owner
+ *  call 9 Nov 2026: 20 minutes. The calendar works in whole hourly slots,
+ *  so any value 1–60 lands as one spare slot between bookings. */
+export const BETWEEN_JOBS_MINUTES = 20;
 
 /** Towns this far out are morning-only — the afternoon stays free for the
  *  drive back and any second job in town. (Walcha, and anything further.) */
