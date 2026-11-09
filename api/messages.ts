@@ -21,7 +21,7 @@ import {
 } from "@contracts/rates";
 import { loadSmtpConfig, isSmtpConfigured, sendMail, type MailAttachment } from "./mailer";
 import { termsPdfBuffer } from "./termsPdf";
-import { brandedEmailHtml, emailFrame, esc, EMAIL_CID, shortAddress, type QuoteEmailData } from "./emailTemplate";
+import { brandedEmailHtml, emailFrame, esc, EMAIL_CID, shortAddress, QUOTE_GREEN, QUOTE_GREEN_BG, type QuoteEmailData } from "./emailTemplate";
 import { brandLogo, BRAND } from "./brand";
 import { getSettings } from "./queries/settings";
 
@@ -44,7 +44,7 @@ interface BookingDetails {
   preferredDate: string | null;
   preferredSlot: number | null;
   confirmBy: "either" | "phone" | "email";
-  payment: "pay-now" | "invoice" | "cash" | null;
+  payment: "pay-now" | "payid" | "bank-transfer" | "invoice" | "cash" | null;
   town: string;
   jobMinutes: number;
   rugPickup: boolean;
@@ -93,6 +93,11 @@ function paymentLine(b: BookingDetails, lead: LeadRow): string {
   const ref = bookingReference(lead);
   if (lead.paidOnline) return "Paid in full online — thank you";
   if (b.payment === "pay-now") return "Paying online — we'll send the secure link if it hasn't reached you";
+  if (b.payment === "payid")
+    return `PayID to ${BUSINESS.payId} — instant from your banking app, any time before your clean. Put ${ref} in the description so it lands straight against your job`;
+  if (b.payment === "bank-transfer")
+    return `Bank transfer to our Hnry business account (BSB ${BUSINESS.bankBsb} · account ${BUSINESS.bankAccount}) — any time before your clean. Put ${ref} in the description so it lands straight against your job`;
+  // Legacy choices from before 9 Nov 2026 — kept so their bookings still read right.
   if (b.payment === "invoice")
     return `Invoice after the job (5-day terms) — pay by PayID to ${BUSINESS.payId}, by bank transfer or by card. Put ${ref} in the payment description so it lands straight against your job`;
   return `Pay on the day — cash, or instant bank transfer to our PayID: ${BUSINESS.payId} (put ${ref} in the description)`;
@@ -100,6 +105,69 @@ function paymentLine(b: BookingDetails, lead: LeadRow): string {
 
 export function bookingReference(lead: LeadRow): string {
   return `MCC-${String(lead.id).padStart(4, "0")}`;
+}
+
+// ---------------------------------------------------------------------------
+// Shared HTML email blocks — confirmation, reminder, follow-up, rug pickup,
+// invoice, receipt and nudge are all built from these so the whole customer
+// set matches the formal standard Ben approved on 9 Nov 2026 (boxed details,
+// big total, blue borders, green promise box).
+// ---------------------------------------------------------------------------
+
+function mailHeading(title: string, sub?: string): string {
+  return `<div style="font-size:22px;font-weight:bold;letter-spacing:2px;color:${BRAND.charcoal}">${title}</div>
+  ${sub ? `<div style="font-size:13px;color:${BRAND.grey};margin:4px 0 18px">${sub}</div>` : '<div style="margin-bottom:14px"></div>'}`;
+}
+
+function detailRow(k: string, v: string): string {
+  return `<tr>
+      <td style="font-size:12px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};width:120px;vertical-align:top;padding:6px 0">${k}</td>
+      <td style="font-size:14.5px;line-height:1.5;color:${BRAND.charcoal};vertical-align:top;padding:4px 0">${v}</td>
+    </tr>`;
+}
+
+function detailsBox(rows: string): string {
+  return `<div style="background:${BRAND.light};border-radius:8px;padding:12px 16px;margin:0 0 16px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      ${rows}
+    </table>
+  </div>`;
+}
+
+function totalBox(amount: number, subline: string, label = "TOTAL"): string {
+  return `<div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 20px">
+    <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+      <tr>
+        <td style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.grey};vertical-align:middle">${label}</td>
+        <td style="font-size:30px;font-weight:bold;color:${BRAND.charcoal};text-align:right;vertical-align:middle">${money(amount)}</td>
+      </tr>
+    </table>
+    <div style="font-size:13px;line-height:1.5;color:${BRAND.grey};margin-top:6px">${esc(subline)}</div>
+  </div>`;
+}
+
+function ctaBox(inner: string): string {
+  return `<div style="background:${BRAND.light};border-radius:8px;padding:14px 16px;margin:0 0 8px">
+    <div style="font-size:14px;line-height:1.6">${inner}</div>
+  </div>`;
+}
+
+function promiseBox(): string {
+  return `<div style="border:1.5px solid ${QUOTE_GREEN};border-radius:8px;background:${QUOTE_GREEN_BG};padding:14px 16px;margin:0 0 18px;font-size:14px;line-height:1.55">
+    <strong style="color:${QUOTE_GREEN}">7-day fix-it promise.</strong> If anything at all doesn't look right, call
+    <a href="tel:+61423581223" style="color:${BRAND.blue};font-weight:bold">${esc(BUSINESS.phone)}</a>
+    within 7 days and we'll come back and put it right — free. That's the deal.</div>`;
+}
+
+function bulletList(items: string[]): string {
+  return `<ul style="margin:0 0 18px;padding-left:20px">
+    ${items.map((i) => `<li style="margin:6px 0;font-size:14px;line-height:1.5">${i}</li>`).join("\n    ")}
+  </ul>`;
+}
+
+function signOff(closing: string): string {
+  return `<p style="font-size:14px;line-height:1.6;margin:18px 0 0">${closing},<br>
+  <strong>The ${esc(BUSINESS.name)} team</strong></p>`;
 }
 
 // ---------------------------------------------------------------------------
@@ -314,7 +382,7 @@ ${lines.map((l) => `• ${l.label} — ${money(l.amount)}`).join("\n")}${travel 
 • TOTAL: ${money(lead.total)}${lead.paidOnline ? " — PAID ONLINE ✓" : ""}
 
 DETAILS
-• Payment: ${b?.payment === "pay-now" ? "paying online" : b?.payment === "invoice" ? "invoice after the job" : "on the day"}${b?.access?.method ? `\n• Access: ${{ "be-there": "customer home", agent: "real-estate agent", lockbox: "lockbox", "someone-else": "someone else letting us in", "leave-out": "rugs left out" }[b.access.method]}${b.access.spot ? ` — ${b.access.spot}` : ""}` : ""}${b?.notes ? `\n• Notes: ${b.notes}` : ""}
+• Payment: ${b?.payment === "pay-now" ? "paying online" : b?.payment === "payid" ? "PayID (Hnry)" : b?.payment === "bank-transfer" ? "bank transfer (Hnry)" : b?.payment === "invoice" ? "invoice after the job" : "on the day"}${b?.access?.method ? `\n• Access: ${{ "be-there": "customer home", agent: "real-estate agent", lockbox: "lockbox", "someone-else": "someone else letting us in", "leave-out": "rugs left out" }[b.access.method]}${b.access.spot ? ` — ${b.access.spot}` : ""}` : ""}${b?.notes ? `\n• Notes: ${b.notes}` : ""}
 
 It's in the admin Jobs list — ${ref}.`,
   };
@@ -497,6 +565,37 @@ export function followUpSms(lead: LeadRow, reviewUrl: string | null): string {
   return `${BUSINESS.name}: all done — thanks for having us! Anything not right, call ${BUSINESS.phone} within 7 days and we'll fix it free.${review}`;
 }
 
+/** Rich HTML twin of the 5pm thank-you + review ask. Care notes box for
+ *  carpet jobs, green fix-it promise, review CTA in the light-blue box. */
+export function followUpEmailHtml(lead: LeadRow, reviewUrl: string | null): string {
+  const input = parseQuote(lead);
+  const b = parseBooking(lead);
+  const carpet = (input?.carpetAreaM2 ?? 0) > 0;
+  const what = serviceSummary(input, b?.rugPickup ?? false).toLowerCase();
+  const care = carpet
+    ? `<div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">A COUPLE OF QUICK CARE NOTES</div>
+  ${bulletList([
+    "Try to keep feet off the carpet for the first couple of hours — with the windows cracked or fans on it's usually dry within 2–6 hours.",
+    "Furniture can go back once the carpet's dry to the touch.",
+  ])}`
+    : "";
+  const review = reviewUrl
+    ? ctaBox(`<strong>Happy with the result?</strong> A quick Google review honestly helps our little local business more than anything — it takes about a minute:<br>
+    <a href="${esc(reviewUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Leave a Google review</a>`)
+    : "";
+  return emailFrame(`
+  ${mailHeading("✔ ALL DONE")}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  That's your ${esc(what)} all finished — thanks for choosing ${esc(BUSINESS.name)}.</p>
+
+  ${care}
+  ${promiseBox()}
+  ${review}
+
+  ${signOff("Thanks again")}`);
+}
+
 // ---------------------------------------------------------------------------
 // Day-before reminder — automatic, the afternoon before every booking.
 // ---------------------------------------------------------------------------
@@ -531,6 +630,48 @@ See you tomorrow,
 The ${BUSINESS.name} team
 ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
+}
+
+/** Rich HTML twin of the day-before reminder (same formal standard as the
+ *  confirmation — boxed details, big total, prep list). */
+export function reminderEmailHtml(lead: LeadRow): string {
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const ref = bookingReference(lead);
+  const where = [lead.address, lead.suburb].filter(Boolean).join(", ") || "your place";
+  const pickup = b?.rugPickup ?? false;
+  const prep = pickup
+    ? [
+        "Roll the rugs up near the door if you can — we'll be in and out in a couple of minutes.",
+        "They come back washed, dried and ready for the floor on Monday.",
+      ]
+    : [
+        "A quick pick-up of small things off the floor (toys, shoes, lamps) helps us get straight into it — we shift lounges and light furniture ourselves.",
+        "Cracking a window or two on the day speeds up the drying.",
+        "Parking close to the door is a big help with the equipment.",
+      ];
+  return emailFrame(`
+  ${mailHeading("SEE YOU TOMORROW", `Reference <strong>${esc(ref)}</strong>`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Quick reminder — we're in tomorrow. <strong>${esc(b ? whenLine(b) : "We'll confirm the exact time by text.")}</strong></p>
+
+  ${detailsBox(
+    detailRow("THE JOB", `<strong>${esc(serviceSummary(input, pickup))}</strong>`) +
+      detailRow("WHEN", `<strong>${esc(b ? whenLine(b) : "To be confirmed")}</strong>`) +
+      detailRow("WHERE", `<strong>${esc(where)}</strong>`),
+  )}
+
+  ${totalBox(lead.total, b ? paymentLine(b, lead) : "pay on the day")}
+
+  <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">A COUPLE OF THINGS THAT HELP ON THE DAY</div>
+  ${bulletList(prep.map(esc))}
+
+  ${ctaBox(`Anything changed? Call or text
+    <a href="tel:+61423581223" style="color:${BRAND.blue};font-weight:bold">${esc(BUSINESS.phone)}</a>
+    quoting <strong>${esc(ref)}</strong> and we'll sort it.`)}
+
+  ${signOff("See you tomorrow")}`);
 }
 
 export function reminderSms(lead: LeadRow): string {
@@ -584,6 +725,33 @@ export function rugPickedUpSms(lead: LeadRow): string {
   return `${BUSINESS.name}: we've got your rugs — back to you ${back} arvo. Total ${money(lead.total)}, ref ${ref}. Anything, call ${BUSINESS.phone}.`;
 }
 
+/** Rich HTML twin of the "we've got your rugs" pickup tick. */
+export function rugPickedUpEmailHtml(lead: LeadRow): string {
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const ref = bookingReference(lead);
+  const back = b?.preferredDate ? longDateLabel(rugReturnDay(b.preferredDate)) : "Monday";
+  const what = serviceSummary(input, false).toLowerCase();
+  const paid = lead.paidOnline || lead.paidOfflineAt;
+  return emailFrame(`
+  ${mailHeading("WE'VE GOT YOUR RUGS", `Reference <strong>${esc(ref)}</strong>`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Just a quick one — we've picked up your ${esc(what)} and they're in for their wash.</p>
+
+  ${detailsBox(
+    detailRow("BACK TO YOU", `<strong>${esc(back)}, in the afternoon</strong><br><span style="font-size:13px;color:${BRAND.grey}">We'll let you know when we're on the way.</span>`) +
+      (paid
+        ? detailRow("PAYMENT", `<strong>All paid</strong> — nothing to do on the day`)
+        : detailRow("TOTAL", `<strong>${money(lead.total)}</strong> — pay on return (cash, or instant bank transfer to our PayID: ${esc(BUSINESS.payId)} — put ${esc(ref)} in the description)`)),
+  )}
+
+  ${ctaBox(`Anything in the meantime, call or text
+    <a href="tel:+61423581223" style="color:${BRAND.blue};font-weight:bold">${esc(BUSINESS.phone)}</a>.`)}
+
+  ${signOff("Cheers")}`);
+}
+
 // ---------------------------------------------------------------------------
 // Six-month freshen-up nudge — ties into the 2-cleans-a-year maintenance plan
 // (10% off every clean). Sent once per completed job, email-first.
@@ -616,6 +784,31 @@ P.S. Rather not get these reminders? Call or text ${BUSINESS.phone} and we'll ta
 
 export function nudgeSms(lead: LeadRow): string {
   return `${BUSINESS.name}: it's been about 6 months since your last clean — due a freshen-up? Book the 2-cleans-a-year plan and every clean is 10% off: https://marshallscarpetcleaning.com.au/quote — questions ${BUSINESS.phone}`;
+}
+
+/** Rich HTML twin of the six-month freshen-up nudge. */
+export function nudgeEmailHtml(lead: LeadRow): string {
+  const input = parseQuote(lead);
+  const b = parseBooking(lead);
+  const what = serviceSummary(input, b?.rugPickup ?? false).toLowerCase();
+  const where = lead.suburb ? ` in ${lead.suburb}` : "";
+  return emailFrame(`
+  ${mailHeading("TIME FOR A FRESHEN-UP?")}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  It's been about six months since we cleaned your ${esc(what)}${esc(where)} — that's about how long a clean stays at its best before everyday soil starts working back into the fibres.</p>
+
+  <div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 18px">
+    <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin-bottom:6px">THE CHEAP WAY TO DO IT</div>
+    <div style="font-size:14px;line-height:1.6">Book <strong>two cleans a year</strong> and every clean is <strong>10% off</strong> — no codes, no fine print. Pick the "2 cleans a year" option on the quote and it comes straight off.<br>
+    <a href="https://marshallscarpetcleaning.com.au/quote" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Get my 10%-off quote</a></div>
+  </div>
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Two minutes online and you'll have the exact price before we knock — the price you see is the price you pay.</p>
+
+  ${signOff("Thanks again for having us last time")}
+
+  <p style="font-size:12px;line-height:1.6;color:${BRAND.grey};margin:14px 0 0">P.S. Rather not get these reminders? Call or text ${esc(BUSINESS.phone)} and we'll take you off the list.</p>`);
 }
 
 // ---------------------------------------------------------------------------
@@ -688,6 +881,43 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
 }
 
+/** Rich HTML twin of the receipt email (PDF rides as an attachment). */
+export function receiptEmailHtml(lead: LeadRow): string {
+  const ref = bookingReference(lead);
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const jobDate = b?.preferredDate
+    ? longDateLabel(b.preferredDate)
+    : new Date(lead.createdAt ?? Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+  const payment = lead.paidOnline
+    ? "Paid in full online by card"
+    : lead.paidOfflineAt
+      ? "Paid in full — thank you"
+      : b?.payment === "pay-now"
+        ? "Paid in full online by card"
+        : b?.payment === "invoice"
+          ? "On invoice — 5-day terms"
+          : "Paid — thank you";
+  return emailFrame(`
+  ${mailHeading("RECEIPT", `Reference <strong>${esc(ref)}</strong> &nbsp;·&nbsp; ${esc(jobDate)}`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Thanks again — your receipt is attached as a PDF. Keep it for your records (handy if a real estate or property manager needs proof of the clean).</p>
+
+  ${detailsBox(
+    detailRow("WHAT WAS DONE", `<strong>${esc(serviceSummary(input, b?.rugPickup ?? false))}</strong>`) +
+      detailRow("JOB DATE", esc(jobDate)),
+  )}
+
+  ${totalBox(lead.total, payment, "TOTAL PAID")}
+
+  ${promiseBox()}
+
+  <p style="font-size:12px;line-height:1.6;color:${BRAND.grey};margin:0 0 8px">No GST has been charged — not registered for GST.</p>
+
+  ${signOff("Thanks again")}`);
+}
+
 // ---------------------------------------------------------------------------
 // Invoice — completed job that hasn't been paid. Goes out in the 5pm batch
 // (and from the board's "Send invoice" button). Card link rides in the text;
@@ -708,6 +938,9 @@ export function invoiceEmail(
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
   const cardBlock = payUrl ? `• Card: pay securely online — ${payUrl}\n` : "";
+  const bankBlock = BUSINESS.bankBsb
+    ? `• Bank transfer: BSB ${BUSINESS.bankBsb}, account ${BUSINESS.bankAccount} (${BUSINESS.bankName})\n`
+    : `• Cash or bank transfer: call ${BUSINESS.phone} and we'll sort it\n`;
   const reviewBlock = reviewUrl
     ? `\nHappy with the result? A quick Google review honestly helps our little local business more than anything — it takes about a minute:\n${reviewUrl}\n`
     : "";
@@ -723,8 +956,7 @@ INVOICE ${ref}
 
 HOW TO PAY
 ${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
-• Cash or bank transfer: call ${BUSINESS.phone} and we'll sort it
-Put ${ref} in the payment description so it lands straight against your job.
+${bankBlock}Put ${ref} in the payment description so it lands straight against your job.
 
 No GST has been charged — not registered for GST.
 
@@ -739,6 +971,60 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
 export function invoiceSms(lead: LeadRow): string {
   const ref = bookingReference(lead);
   return `${BUSINESS.name}: thanks for having us — invoice ${ref} for ${money(lead.total)} is in your email (5-day terms). PayID ${BUSINESS.payId}, put ${ref} in the description. Questions? Call ${BUSINESS.phone}.`;
+}
+
+/** Rich HTML twin of the invoice email. The payment reference stays big, red
+ *  and underlined (customers quote it in their transfer), and the card pay
+ *  link becomes a proper button. */
+export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl: string | null): string {
+  const ref = bookingReference(lead);
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const jobIso = b?.preferredDate ?? null;
+  const dueIso = b ? paymentDueDay(b) : null; // 5-day terms — rugs: 5 days from the Monday return
+  const dueLabel = dueIso
+    ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : null;
+  const refHtml = `<span style="font-size:1.2em;font-weight:800;color:#B91C1C;text-decoration:underline">${esc(ref)}</span>`;
+  const cardButton = payUrl
+    ? `<a href="${esc(payUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:12px 20px;border-radius:8px;font-weight:bold;text-decoration:none;margin:4px 0 10px">Pay ${money(lead.total)} by card now</a><br>`
+    : "";
+  const bankLine = BUSINESS.bankBsb
+    ? `<li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>Bank transfer:</strong> BSB ${esc(BUSINESS.bankBsb)} · account ${esc(BUSINESS.bankAccount)} (${esc(BUSINESS.bankName)})</li>`
+    : `<li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>Cash or bank transfer:</strong> call ${esc(BUSINESS.phone)} and we'll sort it</li>`;
+  const review = reviewUrl
+    ? ctaBox(`<strong>Happy with the result?</strong> A quick Google review honestly helps our little local business more than anything — it takes about a minute:<br>
+    <a href="${esc(reviewUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Leave a Google review</a>`)
+    : "";
+  return emailFrame(`
+  ${mailHeading("INVOICE", `Reference ${refHtml} &nbsp;·&nbsp; 5-day terms${dueLabel ? ` — due <strong>${esc(dueLabel)}</strong>` : ""}`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Thanks for having us${jobIso ? ` on ${esc(longDateLabel(jobIso))}` : ""} — your invoice is attached as a PDF.</p>
+
+  ${detailsBox(
+    detailRow("WHAT WAS DONE", `<strong>${esc(serviceSummary(input, b?.rugPickup ?? false))}</strong>`) +
+      (jobIso ? detailRow("JOB DATE", esc(longDateLabel(jobIso))) : ""),
+  )}
+
+  ${totalBox(lead.total, `5-day terms${dueLabel ? ` — due ${dueLabel}` : ""}`, "TOTAL DUE")}
+
+  <div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 18px">
+    <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin-bottom:8px">HOW TO PAY</div>
+    ${cardButton}
+    <ul style="margin:0;padding-left:20px">
+      <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>PayID (instant):</strong> ${esc(BUSINESS.payId)}</li>
+      ${bankLine}
+    </ul>
+    <div style="font-size:13px;line-height:1.5;color:${BRAND.grey};margin-top:8px">Put ${refHtml} in the payment description so it lands straight against your job.</div>
+  </div>
+
+  ${promiseBox()}
+  ${review}
+
+  <p style="font-size:12px;line-height:1.6;color:${BRAND.grey};margin:0 0 8px">No GST has been charged — not registered for GST.</p>
+
+  ${signOff("Thanks again")}`);
 }
 
 // ---------------------------------------------------------------------------

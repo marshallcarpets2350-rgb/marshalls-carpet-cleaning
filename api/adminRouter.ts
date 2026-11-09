@@ -24,8 +24,10 @@ import {
   confirmationEmailHtml,
   confirmationSms,
   followUpEmail,
+  followUpEmailHtml,
   followUpSms,
   rugPickedUpEmail,
+  rugPickedUpEmailHtml,
   rugPickedUpSms,
   floodReportEmail,
   deliver,
@@ -216,7 +218,7 @@ export const adminRouter = createRouter({
       let sent: { emailSent: boolean; smsSent: boolean; detail: string } | null = null;
       if (input.pickedUp) {
         const lead = row as never as Parameters<typeof rugPickedUpEmail>[0];
-        sent = await deliver(lead, rugPickedUpEmail(lead), rugPickedUpSms(lead));
+        sent = await deliver(lead, rugPickedUpEmail(lead), rugPickedUpSms(lead), { html: rugPickedUpEmailHtml(lead) });
       }
       return { ok: true as const, sent };
     }),
@@ -255,7 +257,7 @@ export const adminRouter = createRouter({
       if (b?.rugPickup && paid && !row.followUpSentAt) {
         const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
         const lead = row as never as Parameters<typeof followUpEmail>[0];
-        const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+        const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
         await db.update(leads).set({ followUpSentAt: new Date() }).where(eq(leads.id, input.id));
         thankYou = sent.emailSent
           ? "thank-you emailed"
@@ -1119,7 +1121,7 @@ export const adminRouter = createRouter({
       let receipt: Awaited<ReturnType<typeof sendReceiptFor>> | null = null;
       let invoice: Awaited<ReturnType<typeof sendInvoiceFor>> | null = null;
       if (paid) {
-        sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+        sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
         receipt = await sendReceiptFor(input.id);
       } else {
         // Unpaid — invoice email carries the thank-you + review ask, with

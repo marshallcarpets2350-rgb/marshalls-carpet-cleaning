@@ -65,9 +65,11 @@ function paymentLineOf(lead: ReceiptLead): string {
   try {
     const p = lead.bookingJson ? (JSON.parse(lead.bookingJson) as { payment?: string }).payment : undefined;
     if (p === "pay-now") return "Paid in full online by card — thank you";
+    if (p === "payid") return `Paid by PayID — ${BUSINESS.payId}`;
+    if (p === "bank-transfer") return "Paid by bank transfer — Hnry business account";
     if (p === "invoice") return "Payment on invoice — 5-day terms";
   } catch { /* fall through */ }
-  return "Paid on the day — cash or card";
+  return "Paid — thank you";
 }
 
 export async function receiptPdfBuffer(lead: ReceiptLead): Promise<Buffer> {

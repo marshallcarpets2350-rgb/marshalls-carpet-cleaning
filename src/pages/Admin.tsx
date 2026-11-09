@@ -494,7 +494,17 @@ export default function Admin() {
                       </p>
                       <p className="text-sm font-bold text-charcoal">
                         {money(j.total)}
-                        {j.paidOnline || j.paidOfflineAt ? " · paid ✓" : j.payment === "invoice" ? " · invoice after" : " · pay on the day"}
+                        {j.paidOnline || j.paidOfflineAt
+                          ? " · paid ✓"
+                          : j.payment === "invoice"
+                            ? " · invoice after"
+                            : j.payment === "payid"
+                              ? " · PayID"
+                              : j.payment === "bank-transfer"
+                                ? " · bank transfer"
+                                : j.payment === "pay-now"
+                                  ? " · paying online"
+                                  : " · pay on the day"}
                       </p>
                     </div>
                     <p className="mt-1 text-lg font-bold text-charcoal">
@@ -1116,9 +1126,13 @@ export default function Admin() {
                                 ? `Marked paid ${new Date(r.paidOfflineAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })} ✓`
                                 : booking.payment === "pay-now"
                                   ? "Paying online — Stripe marks this itself the moment the card goes through."
-                                  : booking.payment === "invoice"
-                                    ? `Invoice terms — watch Hnry/the bank for ${money(r.total)} with reference MCC-${String(r.id).padStart(4, "0")} (the invoice asks them to quote it).`
-                                    : `Pay on the day — cash or PayID to ${BUSINESS.payId}, reference MCC-${String(r.id).padStart(4, "0")}.`}
+                                  : booking.payment === "payid"
+                                    ? `PayID — watch Hnry for ${money(r.total)} with reference MCC-${String(r.id).padStart(4, "0")} (their confirmation asks them to quote it).`
+                                    : booking.payment === "bank-transfer"
+                                      ? `Bank transfer — watch Hnry for ${money(r.total)} with reference MCC-${String(r.id).padStart(4, "0")}.`
+                                      : booking.payment === "invoice"
+                                        ? `Invoice terms — watch Hnry/the bank for ${money(r.total)} with reference MCC-${String(r.id).padStart(4, "0")} (the invoice asks them to quote it).`
+                                        : `Pay on the day — cash or PayID to ${BUSINESS.payId}, reference MCC-${String(r.id).padStart(4, "0")}.`}
                           </p>
                           {(() => {
                             if (!booking?.preferredDate || r.paidOnline || r.paidOfflineAt) return null;

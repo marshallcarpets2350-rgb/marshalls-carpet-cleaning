@@ -93,9 +93,9 @@ export interface QuoteEmailData {
   recommendation?: string;
 }
 
-const QUOTE_GREEN = "#15803D";
-const QUOTE_GREEN_BG = "#F0FDF4";
-const QUOTE_GREEN_SOFT = "#BBF7D0";
+export const QUOTE_GREEN = "#15803D";
+export const QUOTE_GREEN_BG = "#F0FDF4";
+export const QUOTE_GREEN_SOFT = "#BBF7D0";
 
 /** "166 Taylor St, Armidale NSW 2350, Australia" → "166 Taylor St, Armidale". */
 export function shortAddress(address: string): string {

@@ -73,13 +73,14 @@ export const TERMS_SECTIONS: TermsSection[] = [
       "5.1 Payment options are chosen at booking:",
       {
         bullets: [
-          "Pay now by card — a secure online payment for the full amount at the time of booking;",
-          "Pay on the day — card, bank transfer or cash on completion of the job;",
-          "Invoice after the job — payment due within 5 days of the job date.",
+          "Pay now — a secure card payment for the full amount at the time of booking;",
+          "PayID — an instant transfer from your banking app to our PayID, any time before your clean;",
+          "Bank transfer — to our Hnry business account, any time before your clean.",
         ],
       },
       "5.2 Card payments are processed securely by our payment provider; we never see or store your card details.",
-      "5.3 Overdue invoices may be re-issued with a reminder, and continued non-payment may be referred to a collection agency, with any reasonable collection costs added to the amount owing.",
+      "5.3 If the job is complete and payment hasn't landed, we email an invoice — payment is due within 5 days of the job date.",
+      "5.4 Overdue invoices may be re-issued with a reminder, and continued non-payment may be referred to a collection agency, with any reasonable collection costs added to the amount owing.",
     ],
   },
   {

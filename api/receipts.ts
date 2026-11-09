@@ -7,9 +7,9 @@ import { eq } from "drizzle-orm";
 import { getDb } from "./queries/connection";
 import { leads } from "@db/schema";
 import { loadSmtpConfig, isSmtpConfigured, sendMail } from "./mailer";
-import { bookingReference, receiptEmail, type LeadRow } from "./messages";
+import { bookingReference, receiptEmail, receiptEmailHtml, type LeadRow } from "./messages";
 import { receiptPdfBuffer } from "./receiptPdf";
-import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
+import { EMAIL_CID } from "./emailTemplate";
 import { brandLogo } from "./brand";
 
 export interface ReceiptResult {
@@ -36,7 +36,7 @@ export async function sendReceiptFor(leadId: number): Promise<ReceiptResult> {
     await sendMail(smtp, lead.email, em.subject, em.text, [
       { filename: `Receipt-${ref}.pdf`, content: pdf, contentType: "application/pdf" },
       { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
-    ], brandedEmailHtml(em.text));
+    ], receiptEmailHtml(lead));
     await db.update(leads).set({ receiptSentAt: new Date() }).where(eq(leads.id, leadId));
     return { sent: true, detail: `Receipt emailed to ${lead.email}` };
   } catch (err) {

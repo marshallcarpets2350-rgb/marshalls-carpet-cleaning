@@ -103,6 +103,12 @@ export const BUSINESS = {
   // Instant bank-transfer option (Hnry account) — shown wherever customers
   // can pay by transfer instead of card.
   payId: "bmarshall7@hnry.co",
+  // Hnry account numbers for the "bank transfer" payment option. EMPTY until
+  // Ben supplies them — while empty the bank-transfer option stays hidden on
+  // the booking form and invoices point people at PayID instead.
+  bankBsb: "",
+  bankAccount: "",
+  bankName: "Hnry business account",
   area: "Armidale & the New England",
   // Home base — 35 Campion Parade, Armidale (North Hill). Every day starts
   // and ends here; all travel is measured from this point.
@@ -1082,7 +1088,10 @@ export type StainType = "pet-urine" | "food-drink" | "mud-traffic" | "not-sure";
 export type VacuumAnswer = "week" | "month" | "longer";
 export type AccessMethod = "be-there" | "agent" | "lockbox" | "someone-else" | "leave-out";
 export type ParkingAccess = "close" | "stairs-or-far";
-export type PaymentChoice = "pay-now" | "invoice" | "cash";
+// Payment choices (9 Nov 2026, Ben): card now, PayID to the Hnry account, or
+// bank transfer to the Hnry account. "invoice" and "cash" are LEGACY — kept
+// in the union so bookings made before the change still render everywhere.
+export type PaymentChoice = "pay-now" | "payid" | "bank-transfer" | "invoice" | "cash";
 export type ConfirmBy = "either" | "phone" | "email";
 
 export const PURPOSE_LABELS: Record<CleanPurpose, string> = {
@@ -1107,6 +1116,9 @@ export const RUG_PICKUP_LABELS: Record<string, string> = {
 
 export const PAYMENT_LABELS: Record<PaymentChoice, string> = {
   "pay-now": "Pay now — card, online",
+  payid: "PayID — instant transfer",
+  "bank-transfer": "Bank transfer — Hnry account",
+  // Legacy options (bookings made before 9 Nov 2026):
   invoice: "Invoice me after the job",
   cash: "Cash or PayID on the day",
 };
@@ -1180,7 +1192,7 @@ export function serviceParts(input: QuoteInput | null, rugPickup = false): Servi
   if (rugs > 0) {
     const bySize = input.rugs
       .filter((r) => r.qty > 0)
-      .map((r) => `${r.qty}× ${r.size}`)
+      .map((r) => `${r.qty}× ${(RUG_SIZES.find((x) => x.id === r.size)?.label ?? r.size).toLowerCase()}`)
       .join(", ");
     main.push(`${rugs} rug${rugs > 1 ? "s" : ""} (${bySize})${rugPickup ? " — pick-up & return" : ""}`);
   }

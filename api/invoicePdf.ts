@@ -171,7 +171,9 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
     y = doc.y + 8;
     const payLines = [
       `PayID (instant bank transfer): ${BUSINESS.payId}`,
-      `Bank transfer: contact us for the account details`,
+      BUSINESS.bankBsb
+        ? `Bank transfer: BSB ${BUSINESS.bankBsb} · Account ${BUSINESS.bankAccount} (${BUSINESS.bankName})`
+        : `Bank transfer: contact us for the account details`,
       `Card: use the secure payment link in the email this invoice came with`,
     ];
     for (const p of payLines) {

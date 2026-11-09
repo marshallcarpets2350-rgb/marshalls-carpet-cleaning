@@ -102,7 +102,9 @@ const bookingSchema = z.object({
     mobile: z.string().trim().max(40),
     parking: z.enum(["close", "stairs-or-far"]).nullable(),
   }),
-  payment: z.enum(["pay-now", "invoice", "cash"]).nullable(),
+  // "invoice"/"cash" are legacy choices — accepted so a stale cached page
+  // mid-deploy can't fail validation, but no longer offered on the form.
+  payment: z.enum(["pay-now", "payid", "bank-transfer", "invoice", "cash"]).nullable(),
   preferredDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/).nullable(),
   preferredSlot: z.number().int().min(0).max(TIME_SLOTS.length - 1).nullable(),
   confirmBy: z.enum(["either", "phone", "email"]),
@@ -271,7 +273,11 @@ export const publicRouter = createRouter({
     }),
 
   paymentsConfigured: publicQuery.query(async () => {
-    return { configured: (await getStripe()) !== null };
+    return {
+      configured: (await getStripe()) !== null,
+      // Bank-transfer option only shows once the Hnry account numbers are in.
+      bankTransfer: !!(BUSINESS.bankBsb && BUSINESS.bankAccount),
+    };
   }),
 
   messagingConfigured: publicQuery.query(async () => {

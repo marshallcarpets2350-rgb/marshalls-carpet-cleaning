@@ -13,6 +13,7 @@ import { SLOT_START_MINUTES } from "@contracts/rates";
 import {
   parseBooking,
   followUpEmail,
+  followUpEmailHtml,
   followUpSms,
   deliver,
   type LeadRow,
@@ -68,7 +69,7 @@ async function sendDueFollowUps(): Promise<void> {
     const lead = row as LeadRow;
     const paid = lead.paidOnline || lead.paidOfflineAt;
     if (paid) {
-      const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl));
+      const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
       console.log(
         `Follow-up for MCC-${row.id}: ${sent.emailSent ? "email " : ""}${sent.smsSent ? "SMS " : ""}${sent.detail || "ok"}`,
       );

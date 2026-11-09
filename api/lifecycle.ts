@@ -12,8 +12,10 @@ import { leads } from "@db/schema";
 import {
   parseBooking,
   reminderEmail,
+  reminderEmailHtml,
   reminderSms,
   nudgeEmail,
+  nudgeEmailHtml,
   nudgeSms,
   deliver,
   bookingReference,
@@ -45,7 +47,7 @@ async function sendDayBeforeReminders(): Promise<number> {
     const b = parseBooking(row as LeadRow);
     if (!b || b.preferredDate !== tomorrow) continue;
     const lead = row as LeadRow;
-    const r = await deliver(lead, reminderEmail(lead), reminderSms(lead));
+    const r = await deliver(lead, reminderEmail(lead), reminderSms(lead), { html: reminderEmailHtml(lead) });
     // Only flag when something actually went out — an SMTP hiccup retries at
     // the next sweep instead of silently dropping the reminder.
     if (r.emailSent || r.smsSent) {
@@ -79,7 +81,7 @@ async function sendSixMonthNudges(): Promise<number> {
       continue;
     }
     const lead = row as LeadRow;
-    const r = await deliver(lead, nudgeEmail(lead), nudgeSms(lead));
+    const r = await deliver(lead, nudgeEmail(lead), nudgeSms(lead), { html: nudgeEmailHtml(lead) });
     if (r.emailSent || r.smsSent) {
       await db.update(leads).set({ nudgeSentAt: new Date() }).where(eq(leads.id, row.id));
     }

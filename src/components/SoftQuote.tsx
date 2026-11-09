@@ -411,7 +411,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
               {paymentCancelled && (
                 <p className="mb-6 border-[1.5px] border-destructive bg-background px-4 py-3 text-sm font-semibold text-destructive" role="alert">
                   The card payment was cancelled — nothing was charged, and the booking wasn't sent.
-                  Pick a payment option and send again, or choose cash/invoice instead.
+                  Pick a payment option and send again, or choose PayID / bank transfer instead.
                 </p>
               )}
 

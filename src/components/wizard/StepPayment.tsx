@@ -1,13 +1,18 @@
-// Step 6 — payment: the customer's choice. Pay now runs through Stripe's
-// hosted checkout; cash and invoice are handled by us after the job.
+// Step 6 — payment: the customer's choice. Card runs through Stripe's hosted
+// checkout; PayID and bank transfer go to the Hnry account (details ride in
+// the confirmation email). 9 Nov 2026 (Ben): the "invoice me after the job"
+// option is GONE — every booking now has a concrete way to pay. The bank-
+// transfer card appears only once the Hnry account numbers are in BUSINESS
+// (contracts/rates.ts); until then it's card or PayID.
 import { trpc } from "@/providers/trpc";
 import type { PaymentChoice } from "@contracts/rates";
-import { PAYMENT_LABELS } from "@contracts/rates";
+import { BUSINESS, PAYMENT_LABELS } from "@contracts/rates";
 import { OptionCard, StepHeading } from "./ui";
 
 export function StepPayment({ payment, setPayment, kicker = "Step 6 · Payment" }: { payment: PaymentChoice | null; setPayment: (p: PaymentChoice) => void; kicker?: string }) {
   const configured = trpc.public.paymentsConfigured.useQuery(undefined, { staleTime: 60_000 });
   const live = configured.data?.configured === true;
+  const bankUp = configured.data?.bankTransfer === true;
 
   const OPTIONS: { value: PaymentChoice; hint: string }[] = [
     {
@@ -16,8 +21,18 @@ export function StepPayment({ payment, setPayment, kicker = "Step 6 · Payment" 
         ? "Secure card payment — Visa, Mastercard, Apple Pay. When you hit Send you'll go straight to the checkout, and your booking is locked in paid."
         : "We'll text or email you a secure payment link once we've confirmed the booking. Nothing is charged before that.",
     },
-    { value: "invoice", hint: "We do the job first, then email you an invoice — pay by PayID, bank transfer or card." },
-    { value: "cash", hint: "Cash on the day, or instant bank transfer to our PayID — the PayID is in your confirmation email. A receipt is still emailed to you for your records." },
+    {
+      value: "payid",
+      hint: `Instant transfer from your banking app to our PayID — ${BUSINESS.payId}. Any time before your clean; put your booking reference in the description so it lands straight against your job.`,
+    },
+    ...(bankUp
+      ? [
+          {
+            value: "bank-transfer" as PaymentChoice,
+            hint: "Straight into our Hnry business account — the BSB and account number are in your confirmation email. Any time before your clean, with your booking reference as the description.",
+          },
+        ]
+      : []),
   ];
 
   return (
