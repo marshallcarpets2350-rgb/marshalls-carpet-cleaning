@@ -104,14 +104,16 @@ export const BUSINESS = {
   // can pay by transfer instead of card.
   payId: "bmarshall7@hnry.co",
   // Hnry account numbers for the "bank transfer" payment option (from Ben's
-  // Hnry app → Settings → Financial, 11 Nov 2026). Hnry's Australian accounts
-  // are issued through Monoova — that's the institution name if a customer's
-  // banking app asks for one (most auto-detect it from the BSB). bankName is
-  // the account name exactly as Hnry registered it, so the banks' new
-  // Confirmation of Payee check matches what customers type.
+  // Hnry app → Settings → Financial, 11 Nov 2026). Per the app itself the bank
+  // behind the account is CUSCAL LIMITED (SWIFT CUSCAU2SXXX) — Hnry runs on
+  // Cuscal's banking rails via the Monoova payments platform — so "Cuscal" is
+  // the name a customer's banking app wants if it makes them pick one (most
+  // auto-detect it from the BSB). bankName shows account name + bank: the
+  // account name exactly as Hnry registered it, so the banks' Confirmation of
+  // Payee check matches what customers type.
   bankBsb: "257-019",
   bankAccount: "122108948",
-  bankName: "Marshalls Carpet Cleaning Co",
+  bankName: "Marshalls Carpet Cleaning Co — Cuscal",
   area: "Armidale & the New England",
   // Home base — 35 Campion Parade, Armidale (North Hill). Every day starts
   // and ends here; all travel is measured from this point.
