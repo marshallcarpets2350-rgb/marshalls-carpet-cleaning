@@ -2338,6 +2338,7 @@ export default function Admin() {
         const newestFirst = list.slice().sort((a, b) => +new Date(b.createdAt) - +new Date(a.createdAt));
         const latest = newestFirst[0];
         const jobsBooked = list.filter((r) => parseBooking(r.bookingJson)?.preferredDate).length;
+        const paidJobs = list.filter((r) => r.paidOnline || r.paidOfflineAt).length;
         return {
           key,
           name: latest.name,
@@ -2346,6 +2347,7 @@ export default function Admin() {
           address: [latest.address, latest.suburb].filter(Boolean).join(", "),
           quotes: list.length,
           jobsBooked,
+          paidJobs,
           totalValue: list.reduce((sum, r) => sum + (r.total ?? 0), 0),
           lastDate: latest.createdAt,
           list: newestFirst,
@@ -2377,6 +2379,7 @@ export default function Admin() {
                   address: c.address,
                   quotes: c.quotes,
                   jobsBooked: c.jobsBooked,
+                  paidJobs: c.paidJobs,
                   totalValue: c.totalValue,
                   lastContact: new Date(c.lastDate).toLocaleDateString("en-AU"),
                 })),
@@ -2421,7 +2424,7 @@ export default function Admin() {
                   </span>
                   <span className="text-right text-sm">
                     <span className="block font-bold text-charcoal">
-                      {c.jobsBooked} job{c.jobsBooked === 1 ? "" : "s"} booked · {c.quotes} quote{c.quotes === 1 ? "" : "s"}
+                      {c.jobsBooked} job{c.jobsBooked === 1 ? "" : "s"} booked · {c.quotes} quote{c.quotes === 1 ? "" : "s"} · {c.paidJobs} paid
                     </span>
                     <span className="block text-charcoal/60">
                       {money(c.totalValue)} all up · last{" "}
@@ -2455,6 +2458,11 @@ export default function Admin() {
                               <span className="text-charcoal/60">
                                 {" "}· MCC-{String(r.id).padStart(4, "0")} · {what || "quote"} · {r.status}
                               </span>
+                              {r.paidOnline || r.paidOfflineAt ? (
+                                <span className="ml-2 rounded-full bg-forest/10 px-2 py-0.5 text-xs font-bold text-forest">paid</span>
+                              ) : parseBooking(r.bookingJson)?.preferredDate ? (
+                                <span className="ml-2 rounded-full bg-red-100 px-2 py-0.5 text-xs font-bold text-red-700">unpaid</span>
+                              ) : null}
                             </span>
                             <span className="font-bold text-forest">{money(r.total)}</span>
                           </li>

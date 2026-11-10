@@ -1,24 +1,16 @@
-// Post-job follow-up timer — thank-you + review messages go out in one batch
-// at 5:00 PM on the job day (a job still running past 5 gets theirs at its own
-// finish time), and the job flips to completed on the board. UNPAID jobs get
-// the invoice email (PDF attached, card/PayID/bank options) instead — the
-// thank-you and review ask are folded into it. Rug pickups are skipped:
-// their "done" moment is the return delivery days later, so those go
-// from the admin button.
+// Post-job follow-up timer — the single job-complete email goes out in one
+// batch at 5:00 PM on the job day (a job still running past 5 gets theirs at
+// its own finish time), and the job flips to completed on the board. That one
+// email carries everything: job summary + receipt (paid) or invoice with
+// card/PayID options (unpaid) + the review ask (owner call 10 Nov 2026).
+// Rug pickups are skipped: their "done" moment is the return delivery days
+// later, so those go from the admin button.
 import { eq, isNotNull, isNull, ne, and } from "drizzle-orm";
 import { getDb } from "./queries/connection";
 import { leads } from "@db/schema";
-import { getSetting } from "./queries/settings";
 import { SLOT_START_MINUTES } from "@contracts/rates";
-import {
-  parseBooking,
-  followUpEmail,
-  followUpEmailHtml,
-  followUpSms,
-  deliver,
-  type LeadRow,
-} from "./messages";
-import { sendInvoiceFor } from "./invoices";
+import { parseBooking, type LeadRow } from "./messages";
+import { sendJobCompleteFor } from "./jobComplete";
 
 const END_OF_DAY_MIN = 17 * 60; // 5:00 PM — thank-yous batch at close of day
 const TICK_MS = 5 * 60 * 1000;
@@ -52,7 +44,6 @@ async function sendDueFollowUps(): Promise<void> {
   if (rows.length === 0) return;
 
   const { iso, minutes } = sydneyNow();
-  const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
 
   for (const row of rows) {
     const b = parseBooking(row as LeadRow);
@@ -66,19 +57,10 @@ async function sendDueFollowUps(): Promise<void> {
       (b.preferredDate === iso && minutes >= sendAt);
     if (!due) continue;
 
-    const lead = row as LeadRow;
-    const paid = lead.paidOnline || lead.paidOfflineAt;
-    if (paid) {
-      const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
-      console.log(
-        `Follow-up for MCC-${row.id}: ${sent.emailSent ? "email " : ""}${sent.smsSent ? "SMS " : ""}${sent.detail || "ok"}`,
-      );
-    } else {
-      // Unpaid — the invoice email carries the thank-you + review ask, plus
-      // card/PayID/bank payment options and the PDF invoice.
-      const inv = await sendInvoiceFor(row.id);
-      console.log(`Invoice for MCC-${row.id}: ${inv.detail}`);
-    }
+    // One email for everyone — paid get their receipt in it, unpaid get the
+    // invoice with card/PayID options; both get the review ask.
+    const res = await sendJobCompleteFor(row.id);
+    console.log(`Job-complete for MCC-${row.id}: ${res.emailSent ? "email " : ""}${res.smsSent ? "SMS " : ""}${res.detail}`);
     await db
       .update(leads)
       .set({ followUpSentAt: new Date(), status: "completed" })

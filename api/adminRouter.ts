@@ -11,6 +11,7 @@ import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY, loadRates } fr
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
 import { sendInvoiceFor } from "./invoices";
+import { sendJobCompleteFor } from "./jobComplete";
 import {
   loadSmtpConfig,
   isSmtpConfigured,
@@ -23,9 +24,6 @@ import {
   confirmationEmail,
   confirmationEmailHtml,
   confirmationSms,
-  followUpEmail,
-  followUpEmailHtml,
-  followUpSms,
   rugPickedUpEmail,
   rugPickedUpEmailHtml,
   rugPickedUpSms,
@@ -252,18 +250,19 @@ export const adminRouter = createRouter({
         .set({ finishedAt: new Date(), status: "completed" })
         .where(eq(leads.id, input.id));
       // Rug jobs: the 5pm cron skips them (their done moment is the return,
-      // not the pickup), so the final tick sends the thank-you + review ask.
+      // not the pickup), so the final tick sends the single job-complete
+      // email — receipt (paid) or invoice (unpaid) + review ask in one.
       let thankYou: string | null = null;
-      if (b?.rugPickup && paid && !row.followUpSentAt) {
-        const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
-        const lead = row as never as Parameters<typeof followUpEmail>[0];
-        const sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
+      if (b?.rugPickup && !row.followUpSentAt) {
+        const res = await sendJobCompleteFor(input.id);
         await db.update(leads).set({ followUpSentAt: new Date() }).where(eq(leads.id, input.id));
-        thankYou = sent.emailSent
-          ? "thank-you emailed"
-          : sent.smsSent
-            ? "thank-you texted"
-            : `thank-you not sent${sent.detail ? ` — ${sent.detail}` : ""}`;
+        thankYou = res.emailSent
+          ? res.paid
+            ? "job-complete + receipt emailed"
+            : "job-complete + invoice emailed"
+          : res.smsSent
+            ? "job-complete texted"
+            : `job-complete not sent${res.detail ? ` — ${res.detail}` : ""}`;
       }
       return { ok: true as const, thankYou };
     }),
@@ -1115,20 +1114,20 @@ export const adminRouter = createRouter({
       const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
       if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
       const reviewUrl = (await getSetting("google_review_url"))?.trim() || null;
-      const lead = row as never as Parameters<typeof followUpEmail>[0];
-      const paid = row.paidOnline || row.paidOfflineAt;
-      let sent: { emailSent: boolean; smsSent: boolean; detail: string };
-      let receipt: Awaited<ReturnType<typeof sendReceiptFor>> | null = null;
-      let invoice: Awaited<ReturnType<typeof sendInvoiceFor>> | null = null;
-      if (paid) {
-        sent = await deliver(lead, followUpEmail(lead, reviewUrl), followUpSms(lead, reviewUrl), { html: followUpEmailHtml(lead, reviewUrl) });
-        receipt = await sendReceiptFor(input.id);
-      } else {
-        // Unpaid — invoice email carries the thank-you + review ask, with
-        // card/PayID/bank payment options and the PDF attached.
-        invoice = await sendInvoiceFor(input.id);
-        sent = { emailSent: invoice.sent, smsSent: false, detail: invoice.detail };
-      }
+      const paid = !!(row.paidOnline || row.paidOfflineAt);
+      // One job-complete email for everyone — receipt section (PDF attached
+      // when it hasn't gone out yet) for paid, invoice + pay options for
+      // unpaid; review ask rides in both.
+      const res = await sendJobCompleteFor(input.id);
+      // Kept in the same shape the board UI reads: `invoice` set for unpaid
+      // jobs, `receipt` for paid ones.
+      const receipt = paid
+        ? { sent: res.sent, alreadySent: !res.receiptAttached, detail: res.detail }
+        : null;
+      const invoice = paid
+        ? null
+        : { sent: res.sent, alreadySent: false as const, payUrl: res.payUrl ?? null, detail: res.detail };
+      const sent = { emailSent: res.emailSent, smsSent: res.smsSent, detail: res.detail };
       await db
         .update(leads)
         .set({ status: "completed", followUpSentAt: new Date() })

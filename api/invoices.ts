@@ -28,8 +28,9 @@ export interface InvoiceResult {
 
 /** A Stripe "pay by card" link for the job's full total, or null when
  *  Stripe isn't configured / hiccups. The session id lands on the lead so
- *  verifyPayment can tick the job paid when the customer comes back. */
-async function cardPayLink(leadId: number, email: string, total: number, ref: string): Promise<string | null> {
+ *  verifyPayment can tick the job paid when the customer comes back.
+ *  Exported for the job-complete email (api/jobComplete.ts). */
+export async function cardPayLink(leadId: number, email: string, total: number, ref: string): Promise<string | null> {
   const stripe = await getStripe();
   if (!stripe) return null;
   try {

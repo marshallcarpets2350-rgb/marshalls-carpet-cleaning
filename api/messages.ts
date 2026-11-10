@@ -1028,6 +1028,148 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
 }
 
 // ---------------------------------------------------------------------------
+// Job-complete — ONE professional email when a job's finished (owner call
+// 10 Nov 2026: invoice, receipt and review ask all ride in a single email).
+// Paid jobs: job summary + receipt section (PDF attached if it hasn't already
+// gone out) + review ask. Unpaid: job summary + invoice section (PDF + card
+// pay link + PayID) + review ask.
+// ---------------------------------------------------------------------------
+
+export function jobCompleteEmail(
+  lead: LeadRow,
+  payUrl: string | null,
+  reviewUrl: string | null,
+  receiptAttached: boolean,
+): { subject: string; text: string } {
+  const ref = bookingReference(lead);
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const paid = !!(lead.paidOnline || lead.paidOfflineAt);
+  const carpet = (input?.carpetAreaM2 ?? 0) > 0;
+  const jobIso = b?.preferredDate ?? null;
+  const jobDate = jobIso
+    ? longDateLabel(jobIso)
+    : new Date(lead.createdAt ?? Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+  const dueIso = b ? paymentDueDay(b) : null;
+  const dueLabel = dueIso
+    ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : null;
+  const payment = lead.paidOnline ? "Paid in full online by card" : "Paid in full — thank you";
+
+  const moneyBlock = paid
+    ? `\nRECEIPT ${ref}\n• Total: ${money(lead.total)} — ${payment}\n• ${receiptAttached ? "Your receipt is attached as a PDF — keep it for your records (handy if a real estate or property manager needs proof of the clean)." : "Your receipt was emailed to you when you paid — sing out if you'd like another copy."}\n`
+    : `\nINVOICE ${ref}\n• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}\n• Your invoice is attached as a PDF.\n\nHOW TO PAY\n${payUrl ? `• Card: pay securely online — ${payUrl}\n` : ""}• PayID (instant bank transfer): ${BUSINESS.payId}\n${BUSINESS.bankBsb ? `• Bank transfer: BSB ${BUSINESS.bankBsb}, account ${BUSINESS.bankAccount} (${BUSINESS.bankName})\n` : ""}Put ${ref} in the payment description so it lands straight against your job.\n`;
+  const careBlock = carpet
+    ? `\nA couple of quick care notes:\n• Try to keep feet off the carpet for the first couple of hours — with the windows cracked or fans on it's usually dry within 2–6 hours.\n• Furniture can go back once the carpet's dry to the touch.\n`
+    : "";
+  const reviewBlock = reviewUrl
+    ? `\nIf you're happy with the result, a quick Google review honestly helps our little local business more than anything — it takes about a minute:\n${reviewUrl}\n`
+    : "";
+  return {
+    subject: `All done — job complete ${paid ? "+ receipt" : "+ invoice"} (${ref})`,
+    text: `Hi ${firstName(lead.name)},
+
+That's your ${serviceSummary(input, b?.rugPickup ?? false).toLowerCase()} all finished — thanks for choosing ${BUSINESS.name}. Everything from the job is in this one email.
+
+JOB SUMMARY
+• What was done: ${serviceSummary(input, b?.rugPickup ?? false)}
+• Job date: ${jobDate}
+• Reference: ${ref}
+${moneyBlock}
+No GST has been charged — not registered for GST.
+${careBlock}
+If anything at all doesn't look right, call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free. That's the deal.
+${reviewBlock}
+Thanks again,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}`,
+  };
+}
+
+export function jobCompleteSms(lead: LeadRow, reviewUrl: string | null): string {
+  const ref = bookingReference(lead);
+  const paid = !!(lead.paidOnline || lead.paidOfflineAt);
+  const moneyBit = paid
+    ? `Receipt for ${money(lead.total)} is in your email.`
+    : `Invoice ${ref} for ${money(lead.total)} is in your email (5-day terms) — PayID ${BUSINESS.payId}, put ${ref} in the description.`;
+  const review = reviewUrl ? ` Happy with the clean? A quick review helps us heaps: ${reviewUrl}` : "";
+  return `${BUSINESS.name}: all done — thanks for having us! ${moneyBit} Anything not right, call ${BUSINESS.phone} within 7 days and we'll fix it free.${review}`;
+}
+
+/** Rich HTML twin of the job-complete email. One email carries everything:
+ *  job summary, receipt (paid) or invoice with pay options (unpaid), care
+ *  notes, the fix-it promise and the review ask. */
+export function jobCompleteEmailHtml(
+  lead: LeadRow,
+  payUrl: string | null,
+  reviewUrl: string | null,
+  receiptAttached: boolean,
+): string {
+  const ref = bookingReference(lead);
+  const b = parseBooking(lead);
+  const input = parseQuote(lead);
+  const paid = !!(lead.paidOnline || lead.paidOfflineAt);
+  const carpet = (input?.carpetAreaM2 ?? 0) > 0;
+  const jobIso = b?.preferredDate ?? null;
+  const jobDate = jobIso
+    ? longDateLabel(jobIso)
+    : new Date(lead.createdAt ?? Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
+  const dueIso = b ? paymentDueDay(b) : null;
+  const dueLabel = dueIso
+    ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
+    : null;
+  const refHtml = `<span style="font-size:1.2em;font-weight:800;color:#B91C1C;text-decoration:underline">${esc(ref)}</span>`;
+
+  const moneySection = paid
+    ? `${totalBox(lead.total, lead.paidOnline ? "Paid in full online by card" : "Paid in full — thank you", "TOTAL PAID")}
+  <p style="font-size:13px;line-height:1.6;color:${BRAND.grey};margin:0 0 18px">${receiptAttached
+      ? "Your receipt is attached as a PDF — keep it for your records (handy if a real estate or property manager needs proof of the clean)."
+      : "Your receipt was emailed to you when you paid — sing out if you'd like another copy."}</p>`
+    : `${totalBox(lead.total, `5-day terms${dueLabel ? ` — due ${dueLabel}` : ""}`, "TOTAL DUE")}
+  <p style="font-size:13px;line-height:1.6;color:${BRAND.grey};margin:0 0 18px">Your invoice is attached as a PDF.</p>
+  <div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 18px">
+    <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin-bottom:8px">HOW TO PAY</div>
+    ${payUrl ? `<a href="${esc(payUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:12px 20px;border-radius:8px;font-weight:bold;text-decoration:none;margin:4px 0 10px">Pay ${money(lead.total)} by card now</a><br>` : ""}
+    <ul style="margin:0;padding-left:20px">
+      <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>PayID (instant):</strong> ${esc(BUSINESS.payId)}</li>
+      ${BUSINESS.bankBsb ? `<li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>Bank transfer:</strong> BSB ${esc(BUSINESS.bankBsb)} · account ${esc(BUSINESS.bankAccount)} (${esc(BUSINESS.bankName)})</li>` : ""}
+    </ul>
+    <div style="font-size:13px;line-height:1.5;color:${BRAND.grey};margin-top:8px">Put ${refHtml} in the payment description so it lands straight against your job.</div>
+  </div>`;
+
+  const care = carpet
+    ? `<div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">A COUPLE OF QUICK CARE NOTES</div>
+  ${bulletList([
+    "Try to keep feet off the carpet for the first couple of hours — with the windows cracked or fans on it's usually dry within 2–6 hours.",
+    "Furniture can go back once the carpet's dry to the touch.",
+  ])}`
+    : "";
+  const review = reviewUrl
+    ? ctaBox(`<strong>Happy with the result?</strong> A quick Google review honestly helps our little local business more than anything — it takes about a minute:<br>
+    <a href="${esc(reviewUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Leave a Google review</a>`)
+    : "";
+  return emailFrame(`
+  ${mailHeading("✔ ALL DONE — JOB COMPLETE", `Reference ${paid ? esc(ref) : refHtml} &nbsp;·&nbsp; ${esc(jobDate)}`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  That's your ${esc(serviceSummary(input, b?.rugPickup ?? false).toLowerCase())} all finished — thanks for choosing ${esc(BUSINESS.name)}. Everything from the job is in this one email.</p>
+
+  ${detailsBox(
+    detailRow("WHAT WAS DONE", `<strong>${esc(serviceSummary(input, b?.rugPickup ?? false))}</strong>`) +
+      detailRow("JOB DATE", esc(jobDate)),
+  )}
+
+  ${moneySection}
+  ${care}
+  ${promiseBox()}
+  ${review}
+
+  <p style="font-size:12px;line-height:1.6;color:${BRAND.grey};margin:0 0 8px">No GST has been charged — not registered for GST.</p>
+
+  ${signOff("Thanks again")}`);
+}
+
+// ---------------------------------------------------------------------------
 // Sending — email via Gmail SMTP settings, SMS via Twilio settings.
 // ---------------------------------------------------------------------------
 
@@ -1073,13 +1215,14 @@ export interface SendResult {
  * Send a message the way the customer asked to be contacted: email → inbox,
  * phone → SMS (falling back to email if SMS isn't set up yet), either → both
  * when we can. Never throws — a message failure must never lose a booking.
- * `attachTerms` adds the Terms & Conditions PDF (booking confirmations).
+ * `attachTerms` adds the Terms & Conditions PDF (booking confirmations);
+ * `attachments` adds job PDFs (receipt/invoice on the job-complete email).
  */
 export async function deliver(
   lead: LeadRow,
   email: { subject: string; text: string },
   sms: string,
-  opts?: { attachTerms?: boolean; html?: string },
+  opts?: { attachTerms?: boolean; html?: string; attachments?: MailAttachment[] },
 ): Promise<SendResult> {
   const b = parseBooking(lead);
   const pref = b?.confirmBy ?? "either";
@@ -1098,6 +1241,7 @@ export async function deliver(
   if (opts?.attachTerms) {
     attachments.push({ filename: "Marshalls-Carpet-Cleaning-Terms-and-Conditions.pdf", content: await termsPdfBuffer(), contentType: "application/pdf" });
   }
+  if (opts?.attachments) attachments.push(...opts.attachments);
   const html = opts?.html ?? brandedEmailHtml(email.text);
 
   if (wantEmail && lead.email) {
