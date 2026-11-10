@@ -21,6 +21,7 @@ import {
   estimateJobMinutes,
   emptyCondition,
   emptyAccess,
+  firstNameOf,
   type BookingDetails,
   type CleanPurpose,
   type ConditionAnswers,
@@ -139,7 +140,7 @@ export default function Quote({
       stashThanks({
         reference: r.reference,
         total: r.total,
-        firstName: contact.name.split(" ")[0] || "there",
+        firstName: firstNameOf(contact.name),
         date: whenFlexible ? null : whenDate,
         slot: whenFlexible ? null : whenSlot,
         flexible: whenFlexible,

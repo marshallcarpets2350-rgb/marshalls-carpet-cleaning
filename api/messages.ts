@@ -10,6 +10,7 @@ import {
   TIME_SLOTS,
   TIME_MODEL,
   clockLabel,
+  firstNameOf,
   longDateLabel,
   money,
   slotsNeededFor,
@@ -78,7 +79,9 @@ export function parseBooking(lead: LeadRow): BookingDetails | null {
 }
 
 function firstName(name: string): string {
-  return name.trim().split(/\s+/)[0] || name;
+  // Titles stripped, caps fixed — "Mr Rob Smith" greets as "Rob" (11 Nov 2026,
+  // after a customer booked as "Mr …" and got "Thanks Mr" on /thanks).
+  return firstNameOf(name);
 }
 
 function whenLine(b: BookingDetails): string {

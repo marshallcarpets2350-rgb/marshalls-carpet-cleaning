@@ -1075,6 +1075,32 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
 export const money = (n: number) =>
   `$${n.toLocaleString("en-AU", { maximumFractionDigits: 0 })}`;
 
+/**
+ * First name for greetings — "Mr Rob Smith" → "Rob", "ROB" → "Rob".
+ * Shared by the /thanks page stash and every customer email (confirmation,
+ * reminder, invoice, receipt, job-complete, nudge) so a customer who types
+ * their title or SHOUTS in caps is still greeted by their actual first name.
+ * Returns "there" when nothing usable is left ("Hi there," reads fine).
+ */
+export function firstNameOf(fullName: string): string {
+  const TITLES = new Set([
+    "mr", "mrs", "ms", "miss", "mx", "dr", "prof", "rev", "fr", "sir",
+    "madam", "master", "mt", "st",
+  ]);
+  const parts = fullName.trim().split(/\s+/).filter(Boolean);
+  let first = parts[0] ?? "";
+  if (parts.length > 1 && TITLES.has(first.toLowerCase().replace(/\./g, ""))) {
+    first = parts[1];
+  }
+  if (!first) return "there";
+  // ALL-CAPS or all-lowercase entries get title-cased ("ROB" → "Rob",
+  // "rob" → "Rob"); mixed case ("McLeod", "de Silva") is left alone.
+  if (first === first.toUpperCase() || first === first.toLowerCase()) {
+    first = first[0].toUpperCase() + first.slice(1).toLowerCase();
+  }
+  return first;
+}
+
 // ---------------------------------------------------------------------------
 // Booking wizard — everything below describes the job beyond the price.
 // ---------------------------------------------------------------------------

@@ -1640,6 +1640,9 @@ export default function Admin() {
     const toggle = trpc.admin.setDiscountActive.useMutation({
       onSuccess: () => utils.admin.listDiscountCodes.invalidate(),
     });
+    const del = trpc.admin.deleteDiscountCode.useMutation({
+      onSuccess: () => utils.admin.listDiscountCodes.invalidate(),
+    });
 
     return (
       <div>
@@ -1689,15 +1692,29 @@ export default function Admin() {
                 <span className="font-display text-lg font-black text-forest">{c.code}</span>
                 <span className="ml-3 text-charcoal/70">{c.percentOff}% off · used {c.uses}×</span>
               </span>
-              <button
-                type="button"
-                onClick={() => toggle.mutate({ id: c.id, active: !c.active })}
-                className={`border px-3 py-1 text-xs font-bold uppercase ${
-                  c.active ? "border-forest bg-mintlight text-forest" : "border-charcoal/40 text-charcoal/50"
-                }`}
-              >
-                {c.active ? "Active" : "Off"}
-              </button>
+              <span className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => toggle.mutate({ id: c.id, active: !c.active })}
+                  className={`border px-3 py-1 text-xs font-bold uppercase ${
+                    c.active ? "border-forest bg-mintlight text-forest" : "border-charcoal/40 text-charcoal/50"
+                  }`}
+                >
+                  {c.active ? "Active" : "Off"}
+                </button>
+                <button
+                  type="button"
+                  disabled={del.isPending}
+                  onClick={() => {
+                    if (window.confirm(`Delete the code ${c.code} for good? It stops working straight away.`)) {
+                      del.mutate({ id: c.id });
+                    }
+                  }}
+                  className="border border-destructive/50 px-3 py-1 text-xs font-bold uppercase text-destructive hover:bg-destructive/10 disabled:opacity-40"
+                >
+                  Delete
+                </button>
+              </span>
             </li>
           ))}
         </ul>

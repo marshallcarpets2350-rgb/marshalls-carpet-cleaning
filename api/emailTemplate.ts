@@ -6,7 +6,7 @@
  * content filters (Bigpond's IB703 bounce), so the van photo stays in
  * the PDFs and on the site, not in the email body.
  */
-import { BUSINESS, money } from "@contracts/rates";
+import { BUSINESS, firstNameOf, money } from "@contracts/rates";
 import { BRAND } from "./brand";
 
 export function esc(s: string): string {
@@ -149,7 +149,7 @@ export function quoteBodyHtml(d: QuoteEmailData): string {
   const recommendation =
     d.recommendation?.trim() ||
     "The complete package above — each part priced separately, all done in the one visit.";
-  const greeting = d.name.trim().split(/\s+/).length > 2 ? "Hello" : `Hi ${esc(d.name.trim().split(/\s+/)[0])}`;
+  const greeting = d.name.trim().split(/\s+/).length > 2 ? "Hello" : `Hi ${esc(firstNameOf(d.name))}`;
 
   return `
   <div style="font-size:22px;font-weight:bold;letter-spacing:2px;color:${BRAND.charcoal}">QUOTATION</div>

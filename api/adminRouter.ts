@@ -589,6 +589,17 @@ export const adminRouter = createRouter({
       return { ok: true as const };
     }),
 
+  // Bin a code entirely — for mistakes. A code that's been used but should
+  // stop working is better switched Off (keeps the history line).
+  deleteDiscountCode: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      await getDb()
+        .delete(discountCodes)
+        .where(eq(discountCodes.id, input.id));
+      return { ok: true as const };
+    }),
+
   listBlocks: adminProcedure.query(async () => {
     const today = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
     return getDb()

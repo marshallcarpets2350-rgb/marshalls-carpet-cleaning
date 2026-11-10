@@ -27,6 +27,7 @@ import {
   rugCount,
   rugPickupTravelFee,
   RUG_SIZES,
+  firstNameOf,
   type BookingDetails,
   type ConfirmBy,
   type LoungeItem,
@@ -146,7 +147,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       stashThanks({
         reference: r.reference,
         total: r.total,
-        firstName: contact.name.split(" ")[0] || "there",
+        firstName: firstNameOf(contact.name),
         date: whenFlexible ? null : whenDate,
         slot: whenFlexible || isRugs ? null : whenSlot,
         flexible: whenFlexible,
@@ -542,6 +543,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                         : undefined
                     }
                     kicker="Nearly done · review & send"
+                    submitLabel={isRugs ? `Book now — ${money(breakdown.total)}` : undefined}
                     stepOf={
                       isRugs
                         ? { where: 0, job: 1, carpet: 1, extras: 1, when: 2, payment: 3 }
@@ -775,7 +777,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
               disabled={submitLead.isPending || !allValid}
               className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {submitLead.isPending ? "Sending…" : "Send booking"}
+              {submitLead.isPending ? "Sending…" : isRugs ? "Book now" : "Send booking"}
             </button>
           )}
         </div>
