@@ -32,13 +32,13 @@ const TOWNS: TownConfig[] = [
     km: 23,
     drive: "about 25 minutes",
     direction: "south down the New England Highway",
-    travelFee: 30,
+    travelFee: 32,
     intro:
       "Uralla is our closest run out of Armidale — about 25 minutes south down the highway. We clean in Uralla most weeks: the heritage cottages around the main street, the brick homes on the outskirts, and the rentals turning over between tenants.",
     localTitle: "Older homes, honest pricing.",
     localBody: [
       "A lot of Uralla's housing has character — and character means carpet that's seen a few decades. Older carpet takes a gentler hand and hotter extraction, and it's exactly the work we do every day across the New England.",
-      "The $30 travel fee is the whole story on travel — it's added once per visit, shown in your quote before you book, and it doesn't change on the day.",
+      "The $32 travel fee is the whole story on travel — it's added once per visit, shown in your quote before you book, and it doesn't change on the day.",
     ],
     faqExtra: {
       q: "Do you do end-of-lease cleans in Uralla?",
@@ -51,13 +51,13 @@ const TOWNS: TownConfig[] = [
     km: 38,
     drive: "about 40 minutes",
     direction: "north up the New England Highway",
-    travelFee: 60,
+    travelFee: 48,
     intro:
       "Guyra sits about 40 minutes north of us, up on the top of the Tablelands. We clean across town — the weatherboard places near the highway, farmhouses just out of town, and everything in between.",
     localTitle: "High-country winters, wet carpets — sorted.",
     localBody: [
       "Guyra cold is real cold, and a carpet cleaned in a Guyra winter can take days to dry on its own. Every clean with us includes drying fans at no charge, so your rooms are back to normal in hours, not days — even in July.",
-      "The $60 travel fee covers the round trip, once per visit. It's in your quote before you book — no surprises when we pull up.",
+      "The $48 travel fee covers the round trip, once per visit. It's in your quote before you book — no surprises when we pull up.",
     ],
     faqExtra: {
       q: "Will my carpet actually dry in a Guyra winter?",
@@ -70,17 +70,17 @@ const TOWNS: TownConfig[] = [
     km: 96,
     drive: "about an hour and a quarter",
     direction: "south through the hills",
-    travelFee: 100,
+    travelFee: 126,
     intro:
       "Walcha is our longest regular run — about an hour and a quarter south of Armidale through the hills. We clean across Walcha and the surrounding properties: town homes, the older cottages near the centre, and farmhouses further out.",
     localTitle: "Worth doing properly while we're there.",
     localBody: [
-      "At the $100 travel fee, the smart move is bundling: lounges, mattresses and rugs done in the same visit all share the one trip — the travel's already paid, and same-visit extras get 10% off the extra services automatically.",
+      "At the $126 travel fee, the smart move is bundling: lounges, mattresses and rugs done in the same visit all share the one trip — the travel's already paid, so the extras only cost their own price.",
       "We batch Walcha bookings where we can, so getting in a week or two early gives you the best choice of days.",
     ],
     faqExtra: {
       q: "Is it worth it for a smaller job?",
-      a: "Usually, yes — bundle it. A couple of rooms plus the lounge suite and a rug or two in the same visit spreads the $100 travel across everything, and same-visit extras get 10% off the extra services automatically.",
+      a: "Usually, yes — bundle it. A couple of rooms plus the lounge suite and a rug or two in the same visit spreads the $126 travel across everything, so each job on the visit only carries a share of the trip.",
     },
   },
 ];

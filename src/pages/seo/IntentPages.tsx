@@ -132,7 +132,7 @@ export function EndOfLeasePage() {
                 },
                 {
                   q: "Do you clean rentals outside Armidale?",
-                  a: "Yes — Uralla, Guyra and Walcha with a flat travel fee ($30 / $60 / $100) that's in your quote before you book.",
+                  a: "Yes — Uralla, Guyra and Walcha with a flat travel fee ($32 / $48 / $126) that's in your quote before you book.",
                 },
                 {
                   q: "The last tenant had pets and I can smell it — is that fixable?",

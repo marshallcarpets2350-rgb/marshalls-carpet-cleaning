@@ -103,12 +103,15 @@ export const BUSINESS = {
   // Instant bank-transfer option (Hnry account) — shown wherever customers
   // can pay by transfer instead of card.
   payId: "bmarshall7@hnry.co",
-  // Hnry account numbers for the "bank transfer" payment option. EMPTY until
-  // Ben supplies them — while empty the bank-transfer option stays hidden on
-  // the booking form and invoices point people at PayID instead.
-  bankBsb: "",
-  bankAccount: "",
-  bankName: "Hnry business account",
+  // Hnry account numbers for the "bank transfer" payment option (from Ben's
+  // Hnry app → Settings → Financial, 11 Nov 2026). Hnry's Australian accounts
+  // are issued through Monoova — that's the institution name if a customer's
+  // banking app asks for one (most auto-detect it from the BSB). bankName is
+  // the account name exactly as Hnry registered it, so the banks' new
+  // Confirmation of Payee check matches what customers type.
+  bankBsb: "257-019",
+  bankAccount: "122108948",
+  bankName: "Marshalls Carpet Cleaning Co",
   area: "Armidale & the New England",
   // Home base — 35 Campion Parade, Armidale (North Hill). Every day starts
   // and ends here; all travel is measured from this point.
