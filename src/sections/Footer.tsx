@@ -49,6 +49,7 @@ export default function Footer() {
               <li><a href="/end-of-lease-carpet-cleaning-armidale" className="text-background/75 no-underline hover:text-mint">End-of-lease cleans</a></li>
               <li><a href="/pet-urine-carpet-cleaning-armidale" className="text-background/75 no-underline hover:text-mint">Pet urine &amp; odour</a></li>
               <li><a href="/commercial-carpet-cleaning-armidale" className="text-background/75 no-underline hover:text-mint">Commercial &amp; real estate</a></li>
+              <li><a href="/carpet-cleaning-cost-armidale" className="text-background/75 no-underline hover:text-mint">What does it cost?</a></li>
             </ul>
           </div>
 

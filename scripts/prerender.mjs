@@ -44,6 +44,7 @@ const ROUTES = [
   "/carpet-cleaning-walcha",
   "/end-of-lease-carpet-cleaning-armidale",
   "/pet-urine-carpet-cleaning-armidale",
+  "/carpet-cleaning-cost-armidale",
   "/commercial-carpet-cleaning-armidale",
   "/faq",
   "/contact",

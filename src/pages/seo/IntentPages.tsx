@@ -268,3 +268,177 @@ export function PetUrinePage() {
     </div>
   );
 }
+
+export function CostGuidePage() {
+  usePageMeta(
+    "Carpet Cleaning Cost in Armidale NSW — What Sets the Price | Marshall's",
+    "What carpet cleaning costs in Armidale and why — room size, condition, stains, travel and add-ons explained with no teaser rates. See your exact price online in 60 seconds.",
+    "/carpet-cleaning-cost-armidale",
+    {
+      "@context": "https://schema.org",
+      "@type": "Service",
+      serviceType: "Carpet cleaning",
+      provider: {
+        "@type": "LocalBusiness",
+        name: "Marshall's Carpet Cleaning",
+        telephone: "+61423581223",
+        url: "https://marshallscarpetcleaning.com.au/",
+      },
+      areaServed: { "@type": "City", name: "Armidale, NSW" },
+      url: "https://marshallscarpetcleaning.com.au/carpet-cleaning-cost-armidale",
+    },
+  );
+
+  return (
+    <div className="min-h-dvh">
+      <Header />
+      <FlowArt />
+      <main>
+        <section className="border-b-[1.5px] border-charcoal bg-creamlight py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <p className="text-sm font-bold uppercase tracking-widest text-forest">
+              Price guide — Armidale NSW
+            </p>
+            <h1 className="mt-3 max-w-3xl font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">
+              What does carpet cleaning cost in Armidale?
+            </h1>
+            <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal/80">
+              The honest answer: it depends on your rooms, your carpet and what's
+              happened to it. Here's exactly what moves the price — and how to see
+              your own number in about a minute, no phone call and no email
+              address needed.
+            </p>
+            <div className="mt-8 flex flex-wrap items-center gap-4">
+              <Link to="/quote" className="btn-pill no-underline">See my price.</Link>
+              <a href={BUSINESS.phoneHref} className="font-bold text-forest no-underline hover:underline">
+                Call {BUSINESS.phone}
+              </a>
+            </div>
+          </div>
+        </section>
+
+        <section className="py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <h2 className="font-display text-3xl font-black text-charcoal md:text-4xl">
+              The five things that set your price
+            </h2>
+            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">1. Room size</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  We price by the square metre we actually clean — measured room by
+                  room in your quote — not a "per room" guess that treats a study
+                  and a lounge room the same.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">2. Condition</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  A light freshen-up costs less than a family-worn clean, which
+                  costs less than full restoration soiling. You pick the level —
+                  the price adjusts before you book, never after.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">3. Stains and pet treatment</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  Tell us what's there and it's priced into the quote up front.
+                  Pet urine treatment has its own fixed price — see the{" "}
+                  <Link to="/pet-urine-carpet-cleaning-armidale" className="font-bold text-forest no-underline hover:underline">pet urine page</Link>.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">4. Add-ons</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  <Link to="/lounge" className="font-bold text-forest no-underline hover:underline">Lounges priced per seat</Link>,
+                  mattresses per size, and{" "}
+                  <Link to="/rugs" className="font-bold text-forest no-underline hover:underline">rugs picked up free on Fridays</Link>.
+                  Add them in the same quote and they share the one visit.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">5. Travel</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  Free inside Armidale. Flat fees outside it — {money(32)} Uralla,{" "}
+                  {money(48)} Guyra, {money(126)} Walcha — shown in your quote
+                  before you book, never added on the day.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">What's always free</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  Pre-vacuum before the wet clean, and drying fans with every job —
+                  rooms dry in hours, not overnight. Both included, every time.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t-[1.5px] border-charcoal bg-creamlight py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <h2 className="font-display text-3xl font-black text-charcoal md:text-4xl">
+              Why we don't advertise a "whole house from $99" deal
+            </h2>
+            <div className="mt-8 grid gap-5 md:grid-cols-3">
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">The teaser rate</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  A cheap headline price gets a foot in your door — then pre-spray
+                  is extra, stains are extra, and "your carpet is dirtier than
+                  standard". The real price appears on your doorstep.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">Our way</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  Measure your rooms, answer six quick questions, and watch the
+                  final price build on screen. The number you accept is the number
+                  on the invoice — that's the whole trick.
+                </p>
+              </div>
+              <div className="border-[1.5px] border-charcoal bg-background p-6">
+                <p className="font-bold text-charcoal">No surprises</p>
+                <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
+                  Every line of your quote is itemised in writing before you book.
+                  If a stain needs treatment, you approved that price before we
+                  knocked.
+                </p>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section className="border-t-[1.5px] border-charcoal bg-mintlight py-14 md:py-20">
+          <div className="mx-auto max-w-3xl px-4 md:px-6">
+            <h2 className="font-display text-3xl font-black text-charcoal md:text-4xl">
+              The usual questions
+            </h2>
+            <Faq
+              items={[
+                {
+                  q: "Can I get an exact price without a callout?",
+                  a: "Yes — that's the point of the online quote. Room sizes and condition give an exact price for standard homes; for anything unusual (flood damage, heavy restoration) we'll tell you honestly if it needs a look first.",
+                },
+                {
+                  q: "Is there a minimum charge?",
+                  a: "Small jobs carry a minimum charge — it's in the terms and shown in your quote when it applies, so a single small room is still worth booking knowing the number first.",
+                },
+                {
+                  q: "Do you price end-of-lease cleans differently?",
+                  a: "Same pricing, same quote — but tell us it's an end-of-lease clean so we allow the time agents expect. You get an itemised receipt for your property manager. More on the end of lease page.",
+                },
+              ]}
+            />
+          </div>
+        </section>
+
+        <CtaBand
+          heading="Your exact price in 60 seconds."
+          sub="Six quick questions, price on screen, book the day that suits you."
+        />
+      </main>
+      <Footer />
+    </div>
+  );
+}
