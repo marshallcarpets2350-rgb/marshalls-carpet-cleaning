@@ -132,9 +132,19 @@ export async function receiptPdfBuffer(lead: ReceiptLead): Promise<Buffer> {
     // ── Details block ───────────────────────────────────────────────
     row("Receipt no.", ref);
     row("Job date", jobDateOf(lead));
-    row("Customer", lead.name);
-    if (where) row("Service address", where);
-    y += 14;
+    y += 8;
+
+    // ── Properly addressed to the customer (same addressee block as
+    //  the invoice, 11 Nov 2026) — not a flat "Customer:" row. ────────
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("Receipt for", MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 3;
+    doc.font("Helvetica-Bold").fontSize(12).fillColor(BRAND.charcoal).text(lead.name, MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 1;
+    if (where) {
+      doc.font("Helvetica").fontSize(10).fillColor(BRAND.charcoal).text(where, MARGIN, y, { width: CONTENT_W });
+      y = doc.y + 1;
+    }
+    y += 12;
 
     // ── Line items ──────────────────────────────────────────────────
     doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("What was done", MARGIN, y, { width: CONTENT_W });

@@ -114,7 +114,7 @@ export function bookingReference(lead: LeadRow): string {
 // Shared HTML email blocks — confirmation, reminder, follow-up, rug pickup,
 // invoice, receipt and nudge are all built from these so the whole customer
 // set matches the formal standard Ben approved on 9 Nov 2026 (boxed details,
-// big total, blue borders, green promise box).
+// big total, blue borders).
 // ---------------------------------------------------------------------------
 
 function mailHeading(title: string, sub?: string): string {
@@ -156,10 +156,10 @@ function ctaBox(inner: string): string {
 }
 
 function promiseBox(): string {
-  return `<div style="border:1.5px solid ${QUOTE_GREEN};border-radius:8px;background:${QUOTE_GREEN_BG};padding:14px 16px;margin:0 0 18px;font-size:14px;line-height:1.55">
-    <strong style="color:${QUOTE_GREEN}">7-day fix-it promise.</strong> If anything at all doesn't look right, call
-    <a href="tel:+61423581223" style="color:${BRAND.blue};font-weight:bold">${esc(BUSINESS.phone)}</a>
-    within 7 days and we'll come back and put it right — free. That's the deal.</div>`;
+  // 11 Nov 2026 (owner call): the 7-day fix-it promise is retired from
+  // customer-facing copy — "it suggests we make mistakes". Kept as a no-op
+  // so old call sites can't break a build if one is ever restored.
+  return "";
 }
 
 function bulletList(items: string[]): string {
@@ -514,7 +514,7 @@ ${recommendation}
 
 TOTAL: ${money(d.total)}
 
-Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises. The work is covered by our 7-day fix-it promise: if anything isn't right, we come back and put it right, free.
+Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises.
 
 No date is locked in yet. When you're ready, call or text ${BUSINESS.phone} (or just reply to this email) quoting ${d.reference} and we'll find a day that suits.
 
@@ -555,7 +555,6 @@ export function followUpEmail(
 
 That's your ${serviceSummary(input, b?.rugPickup ?? false).toLowerCase()} all finished — thanks for choosing ${BUSINESS.name}.
 ${carpet ? `\nA couple of quick care notes:\n• Try to keep feet off the carpet for the first couple of hours — with the windows cracked or fans on it's usually dry within 2–6 hours.\n• Furniture can go back once the carpet's dry to the touch.\n` : ""}
-If anything at all doesn't look right, call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free. That's the deal.
 ${reviewBlock}
 Thanks again,
 The ${BUSINESS.name} team
@@ -565,11 +564,11 @@ ${BUSINESS.phone} · ${BUSINESS.email}`,
 
 export function followUpSms(lead: LeadRow, reviewUrl: string | null): string {
   const review = reviewUrl ? ` Happy with the clean? A quick review helps us heaps: ${reviewUrl}` : "";
-  return `${BUSINESS.name}: all done — thanks for having us! Anything not right, call ${BUSINESS.phone} within 7 days and we'll fix it free.${review}`;
+  return `${BUSINESS.name}: all done — thanks for having us!${review}`;
 }
 
 /** Rich HTML twin of the 5pm thank-you + review ask. Care notes box for
- *  carpet jobs, green fix-it promise, review CTA in the light-blue box. */
+ *  carpet jobs, review CTA in the light-blue box. */
 export function followUpEmailHtml(lead: LeadRow, reviewUrl: string | null): string {
   const input = parseQuote(lead);
   const b = parseBooking(lead);
@@ -877,8 +876,6 @@ RECEIPT ${ref}
 
 No GST has been charged — not registered for GST.
 
-Anything not right with the clean? Call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free.
-
 The ${BUSINESS.name} team
 ${BUSINESS.phone} · ${BUSINESS.email}`,
   };
@@ -962,8 +959,6 @@ ${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
 ${bankBlock}Put ${ref} in the payment description so it lands straight against your job.
 
 No GST has been charged — not registered for GST.
-
-Anything not right with the clean? Call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free.
 ${reviewBlock}
 Thanks again,
 The ${BUSINESS.name} team
@@ -1081,7 +1076,6 @@ JOB SUMMARY
 ${moneyBlock}
 No GST has been charged — not registered for GST.
 ${careBlock}
-If anything at all doesn't look right, call ${BUSINESS.phone} within 7 days and we'll come back and put it right — free. That's the deal.
 ${reviewBlock}
 Thanks again,
 The ${BUSINESS.name} team
@@ -1096,12 +1090,12 @@ export function jobCompleteSms(lead: LeadRow, reviewUrl: string | null): string 
     ? `Receipt for ${money(lead.total)} is in your email.`
     : `Invoice ${ref} for ${money(lead.total)} is in your email (5-day terms) — PayID ${BUSINESS.payId}, put ${ref} in the description.`;
   const review = reviewUrl ? ` Happy with the clean? A quick review helps us heaps: ${reviewUrl}` : "";
-  return `${BUSINESS.name}: all done — thanks for having us! ${moneyBit} Anything not right, call ${BUSINESS.phone} within 7 days and we'll fix it free.${review}`;
+  return `${BUSINESS.name}: all done — thanks for having us! ${moneyBit}${review}`;
 }
 
 /** Rich HTML twin of the job-complete email. One email carries everything:
  *  job summary, receipt (paid) or invoice with pay options (unpaid), care
- *  notes, the fix-it promise and the review ask. */
+ *  notes and the review ask. */
 export function jobCompleteEmailHtml(
   lead: LeadRow,
   payUrl: string | null,

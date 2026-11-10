@@ -197,9 +197,6 @@ export default function Home() {
             </a>{" "}
             — you'll talk to the person who'll be doing the clean.
           </p>
-          <p className="mt-2 text-center text-xs text-charcoal/60 md:text-sm lg:mt-1.5">
-            Every clean is backed by our fix-it promise — if something's not right once it's dry, we come back and put it right, free.
-          </p>
         </div>
         </div>
       </main>

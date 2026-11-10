@@ -111,11 +111,11 @@ export const TERMS_SECTIONS: TermsSection[] = [
     ],
   },
   {
-    title: "9. Our 7-day put-it-right promise",
+    title: "9. If something's not right",
     body: [
-      "9.1 If anything at all doesn't look right after your clean, call us within 7 days and we'll come back and put it right — free. That's the deal.",
-      "9.2 The promise covers the areas we cleaned. New stains or soiling after the clean aren't covered, but we're always happy to quote on them.",
-      "9.3 Those 7 days are also the window for any concern at all about the work — raise it inside a week of the clean (or of your rugs being returned) so we can come and inspect while it's fresh. We can't fairly assess issues raised weeks later once life's walked all over it.",
+      "9.1 If something doesn't look right after your clean, call us within 7 days and we'll come back, inspect it, and re-clean the area where the issue is ours to own.",
+      "9.2 This covers the areas we cleaned. New stains or soiling after the clean aren't covered, but we're always happy to quote on them.",
+      "9.3 Those 7 days are the window for any concern at all about the work — raise it inside a week of the clean (or of your rugs being returned) so we can come and inspect while it's fresh. We can't fairly assess issues raised weeks later once life's walked all over it.",
     ],
   },
   {

@@ -138,9 +138,20 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
     // ── Details block ───────────────────────────────────────────────
     row("Invoice no.", ref);
     row("Job date", auDate(jobDateOf(lead)));
-    row("Customer", lead.name);
-    if (where) row("Service address", where);
-    y += 14;
+    y += 8;
+
+    // ── Properly addressed to the customer (owner call 11 Nov 2026 —
+    //  "the invoice needs to be addressed better") — a real addressee
+    //  block, not a flat "Customer:" row. ─────────────────────────────
+    doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("Invoice to", MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 3;
+    doc.font("Helvetica-Bold").fontSize(12).fillColor(BRAND.charcoal).text(lead.name, MARGIN, y, { width: CONTENT_W });
+    y = doc.y + 1;
+    if (where) {
+      doc.font("Helvetica").fontSize(10).fillColor(BRAND.charcoal).text(where, MARGIN, y, { width: CONTENT_W });
+      y = doc.y + 1;
+    }
+    y += 12;
 
     // ── Line items ──────────────────────────────────────────────────
     doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("What was done", MARGIN, y, { width: CONTENT_W });

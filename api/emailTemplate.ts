@@ -193,7 +193,7 @@ export function quoteBodyHtml(d: QuoteEmailData): string {
   </div>
 
   <p style="font-size:13.5px;line-height:1.6;color:${BRAND.grey};margin:0 0 18px">
-  Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises. The work is covered by our 7-day fix-it promise: if anything isn't right, we come back and put it right, free.</p>
+  Every clean includes a commercial pre-vacuum and pre-spray, and the price above is the price on the day — no surprises.</p>
 
   <div style="background:${BRAND.light};border-radius:8px;padding:14px 16px;margin:0 0 8px">
     <div style="font-size:14px;line-height:1.6;color:${BRAND.charcoal}">
