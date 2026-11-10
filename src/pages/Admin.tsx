@@ -75,12 +75,13 @@ function DotLegend() {
 
 const TOKEN_KEY = "mcc_admin_token";
 
-type Tab = "overview" | "runsheet" | "leads" | "newquote" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
+type Tab = "overview" | "runsheet" | "leads" | "owing" | "newquote" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
   { key: "runsheet", label: "Run sheet" },
   { key: "leads", label: "Jobs" },
+  { key: "owing", label: "Awaiting payment" },
   { key: "newquote", label: "New quote" },
   { key: "finished", label: "Finished jobs" },
   { key: "clients", label: "Clients" },
@@ -166,6 +167,16 @@ export default function Admin() {
     retry: false,
   });
 
+  // Leads list — already cached by the Jobs/Awaiting payment/Finished tabs,
+  // so this costs nothing extra and feeds the "Awaiting payment" nav badge.
+  const allLeads = trpc.admin.listLeads.useQuery(undefined, {
+    enabled: Boolean(token),
+    retry: false,
+  });
+  const owingCount = (allLeads.data ?? []).filter(
+    (r) => r.finishedAt && !r.paidOnline && !r.paidOfflineAt,
+  ).length;
+
   if (token && stats.error?.data?.code === "UNAUTHORIZED") {
     localStorage.removeItem(TOKEN_KEY);
     setToken(null);
@@ -248,6 +259,11 @@ export default function Admin() {
               }`}
             >
               {t.label}
+              {t.key === "owing" && owingCount > 0 && (
+                <span className="ml-1.5 inline-block bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+                  {owingCount}
+                </span>
+              )}
             </button>
           ))}
         </div>
@@ -257,6 +273,7 @@ export default function Admin() {
         {tab === "overview" && <Overview onGo={setTab} />}
         {tab === "runsheet" && <RunSheet />}
         {tab === "leads" && <Leads />}
+        {tab === "owing" && <AwaitingPayment />}
         {tab === "newquote" && (
           <Quote adminMode key={quoteKey} onStartOver={() => setQuoteKey((k) => k + 1)} />
         )}
@@ -2124,12 +2141,222 @@ export default function Admin() {
     );
   }
 
+  // Jobs that are DONE but not yet PAID — the money-chasing board. Marking
+  // one paid here moves it to Finished jobs automatically. Everything here
+  // already has an invoice out (that's required before a job can be ticked
+  // off), with a "resend" button for a fresh card link when chasing.
+  function AwaitingPayment() {
+    const leads = trpc.admin.listLeads.useQuery();
+    const [msgNote, setMsgNote] = useState<Record<number, string>>({});
+    const [doneNote, setDoneNote] = useState("");
+    const todayIso = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD, local
+
+    const markPaid = trpc.admin.markLeadPaid.useMutation({
+      onSuccess: (r, v) => {
+        const receiptNote = v.paid
+          ? r.receipt?.sent
+            ? " — receipt sent"
+            : r.receipt?.alreadySent
+              ? " — receipt was already sent"
+              : ` — receipt not sent (${r.receipt?.detail || "check Settings"})`
+          : "";
+        setDoneNote(v.paid ? `Marked paid ✓${receiptNote} — moved to Finished jobs.` : "Unmarked — back to unpaid.");
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e) => setDoneNote(e.message),
+    });
+    const sendInv = trpc.admin.sendInvoice.useMutation({
+      onSuccess: (r, v) => {
+        setMsgNote((m) => ({
+          ...m,
+          [v.id]: r.invoice.sent
+            ? `Invoice sent${r.invoice.payUrl ? " with a fresh card pay link" : " (PayID/bank details — no card link)"}`
+            : r.invoice.alreadyPaid
+              ? "Already paid — no invoice needed"
+              : `Couldn't send — ${r.invoice.detail || "check Settings"}`,
+        }));
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e, v) => setMsgNote((m) => ({ ...m, [v.id]: e.message })),
+    });
+
+    if (leads.isPending) return <p>Loading…</p>;
+    const rows = (leads.data ?? []).filter(
+      (r) => r.finishedAt && !r.paidOnline && !r.paidOfflineAt,
+    );
+    type Row = (typeof rows)[number];
+
+    const dateLabel = (iso: string) =>
+      new Date(iso + "T12:00:00").toLocaleDateString("en-AU", {
+        weekday: "short",
+        day: "numeric",
+        month: "short",
+        year: "numeric",
+      });
+    const jobDateOf = (r: Row) =>
+      parseBooking(r.bookingJson)?.preferredDate ??
+      new Date(r.createdAt).toLocaleDateString("en-CA");
+    // Days until due — negative means overdue. Null when there's no job date
+    // to hang the 5-day terms off (shouldn't happen for finished jobs).
+    const daysLeft = (r: Row): number | null => {
+      const b = parseBooking(r.bookingJson);
+      if (!b?.preferredDate) return null;
+      const dueIso = paymentDueDay(b);
+      if (!dueIso) return null;
+      return Math.round(
+        (new Date(dueIso + "T12:00:00").getTime() - new Date(todayIso + "T12:00:00").getTime()) / 86400000,
+      );
+    };
+    // Most overdue first; jobs with no due date sink to the bottom, oldest
+    // ticked-off first within each group.
+    const sorted = rows.slice().sort((a, b) => {
+      const da = daysLeft(a);
+      const db = daysLeft(b);
+      if (da === null && db === null) return +new Date(a.finishedAt!) - +new Date(b.finishedAt!);
+      if (da === null) return 1;
+      if (db === null) return -1;
+      return da - db || +new Date(a.finishedAt!) - +new Date(b.finishedAt!);
+    });
+    const stillToComeIn = rows.reduce((sum, r) => sum + r.total, 0);
+
+    return (
+      <div>
+        <h2 className="font-display text-2xl font-black text-charcoal">
+          Awaiting payment ({rows.length})
+        </h2>
+        <p className="mt-1 text-sm text-charcoal/70">
+          Jobs you've finished where the money hasn't landed yet — most overdue first.
+          {rows.length > 0 && (
+            <>
+              {" "}
+              <strong className="text-charcoal">{money(stillToComeIn)} still to come in.</strong>
+            </>
+          )}{" "}
+          Mark one paid and it moves to Finished jobs; resend the invoice for a
+          fresh card link.
+        </p>
+        {doneNote && <p className="mt-3 text-sm font-semibold text-forest">{doneNote}</p>}
+
+        {rows.length === 0 ? (
+          <p className="mt-6 border-[1.5px] border-forest bg-mintlight p-4 text-sm font-bold text-forest">
+            Nothing waiting on payment — every finished job is paid up. Nice one.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-3">
+            {sorted.map((r) => {
+              const quote = safeParse(r.quoteJson);
+              const booking = parseBooking(r.bookingJson);
+              const days = daysLeft(r);
+              const overdue = days !== null && days < 0;
+              const ref = `MCC-${String(r.id).padStart(4, "0")}`;
+              const what = (quote?.breakdown?.lines ?? []).map((l) => l.label).join(", ");
+              const watchFor = !booking?.payment || booking.payment === "pay-on-day"
+                ? `Watch for cash, or ${money(r.total)} by PayID to ${BUSINESS.payId} — reference ${ref}.`
+                : booking.payment === "payid"
+                  ? `Watch Hnry for ${money(r.total)} by PayID — reference ${ref}.`
+                  : booking.payment === "bank-transfer"
+                    ? `Watch the bank for ${money(r.total)} — reference ${ref}.`
+                    : booking.payment === "invoice"
+                      ? `On invoice terms — watch Hnry/the bank for ${money(r.total)}, reference ${ref}.`
+                      : booking.payment === "pay-now"
+                        ? `Chose pay-now but the card hasn't gone through — chase ${money(r.total)} or mark paid if they've settled another way.`
+                        : `Watch for ${money(r.total)} — reference ${ref}.`;
+              return (
+                <li key={r.id} className={`border-[1.5px] bg-background p-4 ${overdue ? "border-[#B91C1C]" : "border-charcoal"}`}>
+                  <div className="flex flex-wrap items-start justify-between gap-3">
+                    <span>
+                      <span className="font-bold text-charcoal">
+                        <ServiceDots kinds={serviceKinds(quote?.input ?? null)} /> {r.name}
+                        <span className="font-normal text-charcoal/60"> — job done {dateLabel(jobDateOf(r))}</span>
+                      </span>
+                      <span className="block text-sm text-charcoal/60">
+                        {booking?.town || r.suburb || "Location n/a"}
+                        {what ? ` · ${what}` : ""}
+                      </span>
+                      <span className="mt-1 block text-sm">
+                        <a href={`tel:${r.phone}`} className="font-semibold text-forest">{r.phone}</a>
+                        {" · "}
+                        <a href={`mailto:${r.email}`} className="text-forest">{r.email}</a>
+                      </span>
+                    </span>
+                    <span className="text-right">
+                      <span className={`font-display text-2xl font-black ${overdue ? "text-[#B91C1C]" : "text-charcoal"}`}>
+                        {money(r.total)}
+                      </span>
+                      {overdue && (
+                        <span className="block border border-[#B91C1C] px-2 py-0.5 text-xs font-bold uppercase text-[#B91C1C]">
+                          {-days} day{days === -1 ? "" : "s"} overdue
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  <p className="mt-2 text-sm text-charcoal/80">
+                    <strong>Invoice:</strong>{" "}
+                    {r.invoiceSentAt
+                      ? `sent ${new Date(r.invoiceSentAt).toLocaleDateString("en-AU", { day: "numeric", month: "short" })}`
+                      : "not sent yet — send it now"}
+                    {days !== null && (
+                      <>
+                        {" · "}
+                        <span className={overdue ? "font-bold text-[#B91C1C]" : ""}>
+                          {overdue
+                            ? `was due ${dateLabel(paymentDueDay(booking!)!)}`
+                            : days === 0
+                              ? "due today"
+                              : `due ${dateLabel(paymentDueDay(booking!)!)} (${days} day${days === 1 ? "" : "s"} left)`}
+                        </span>
+                      </>
+                    )}
+                  </p>
+                  <p className="mt-1 text-sm text-charcoal/80">{watchFor}</p>
+                  <div className="mt-3 flex flex-wrap gap-2">
+                    <button
+                      type="button"
+                      className="btn-pill-dark !px-5 !py-2 text-sm"
+                      disabled={markPaid.isPending}
+                      onClick={() => markPaid.mutate({ id: r.id, paid: true })}
+                    >
+                      Payment received — mark paid
+                    </button>
+                    <button
+                      type="button"
+                      className="btn-pill !px-5 !py-2 text-sm"
+                      disabled={sendInv.isPending}
+                      onClick={() => sendInv.mutate({ id: r.id, force: true })}
+                    >
+                      {r.invoiceSentAt ? "Resend invoice (fresh card link)" : "Send invoice"}
+                    </button>
+                  </div>
+                  {msgNote[r.id] && (
+                    <p className="mt-2 text-sm font-semibold text-forest">{msgNote[r.id]}</p>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        )}
+      </div>
+    );
+  }
+
   function FinishedJobs() {
     const leads = trpc.admin.listLeads.useQuery();
     const [q, setQ] = useState("");
     const [openId, setOpenId] = useState<number | null>(null);
+    const [doneNote, setDoneNote] = useState("");
+    const markPaid = trpc.admin.markLeadPaid.useMutation({
+      onSuccess: (_r, v) => {
+        if (!v.paid) setDoneNote("Unmarked — the job's back on the Awaiting payment tab.");
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e) => setDoneNote(e.message),
+    });
     if (leads.isPending) return <p>Loading…</p>;
-    const rows = (leads.data ?? []).filter((r) => r.finishedAt);
+    // Finished = done AND paid. Finished-but-unpaid jobs live on the
+    // "Awaiting payment" tab until the money lands.
+    const rows = (leads.data ?? []).filter(
+      (r) => r.finishedAt && (r.paidOnline || r.paidOfflineAt),
+    );
     type Row = (typeof rows)[number];
 
     const jobDateOf = (r: Row) =>
@@ -2197,9 +2424,11 @@ export default function Admin() {
           </button>
         </div>
         <p className="mt-1 text-sm text-charcoal/70">
-          Jobs you've ticked off, newest first — the permanent record. The CSV is
-          your address book: names, numbers and where every job was.
+          Jobs done and paid for, newest first — the permanent record. Finished
+          jobs still waiting on money sit on the Awaiting payment tab instead.
+          The CSV is your address book: names, numbers and where every job was.
         </p>
+        {doneNote && <p className="mt-3 text-sm font-semibold text-forest">{doneNote}</p>}
         <input
           type="search"
           className="input-sharp mt-4"
@@ -2211,7 +2440,7 @@ export default function Admin() {
 
         {filtered.length === 0 ? (
           <p className="mt-6 text-charcoal/70">
-            {rows.length === 0 ? "Nothing finished yet — tick a job off on the Jobs page and it lands here." : "No matches."}
+            {rows.length === 0 ? "Nothing finished and paid yet — tick a job off on the Jobs page, and once it's paid it lands here." : "No matches."}
           </p>
         ) : (
           <ul className="mt-4 space-y-3">
@@ -2249,14 +2478,8 @@ export default function Admin() {
                     </span>
                     <span className="flex items-center gap-4">
                       <span className="font-display text-xl font-black text-forest">{money(r.total)}</span>
-                      <span
-                        className={`border px-2 py-0.5 text-xs font-bold uppercase ${
-                          r.paidOnline || r.paidOfflineAt
-                            ? "border-forest bg-mintlight text-forest"
-                            : "border-charcoal/40 text-charcoal/60"
-                        }`}
-                      >
-                        {r.paidOnline || r.paidOfflineAt ? "Paid" : "Invoiced"}
+                      <span className="border border-forest bg-mintlight px-2 py-0.5 text-xs font-bold uppercase text-forest">
+                        Paid ✓
                       </span>
                     </span>
                   </button>
@@ -2326,6 +2549,16 @@ export default function Admin() {
                         </ul>
                       )}
                       {booking?.notes && <p className="mt-2"><strong>Notes:</strong> {booking.notes}</p>}
+                      {!r.paidOnline && (
+                        <button
+                          type="button"
+                          className="btn-pill mt-3 !px-5 !py-2 text-sm"
+                          disabled={markPaid.isPending}
+                          onClick={() => markPaid.mutate({ id: r.id, paid: false })}
+                        >
+                          Unmark paid (tapped by mistake)
+                        </button>
+                      )}
                     </div>
                   )}
                 </li>

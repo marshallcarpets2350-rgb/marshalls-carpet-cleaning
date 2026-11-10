@@ -186,10 +186,12 @@ export const adminRouter = createRouter({
 
   // Manual invoice for a completed-but-unpaid job (the 5pm batch also sends
   // these automatically — this is the mid-day "send it now" button).
+  // force=true resends an already-sent invoice with a fresh card link —
+  // used from the "Awaiting payment" board when chasing money.
   sendInvoice: adminProcedure
-    .input(z.object({ id: z.number() }))
+    .input(z.object({ id: z.number(), force: z.boolean().optional() }))
     .mutation(async ({ input }) => {
-      const invoice = await sendInvoiceFor(input.id);
+      const invoice = await sendInvoiceFor(input.id, input.force ?? false);
       return { ok: true as const, invoice };
     }),
 

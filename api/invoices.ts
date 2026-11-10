@@ -61,12 +61,15 @@ export async function cardPayLink(leadId: number, email: string, total: number, 
   }
 }
 
-export async function sendInvoiceFor(leadId: number): Promise<InvoiceResult> {
+// Sends the invoice email + PDF for a lead. Normally refuses if an invoice
+// has already gone out; pass force=true (admin "Resend invoice" button) to
+// send it again with a fresh card link when chasing money.
+export async function sendInvoiceFor(leadId: number, force = false): Promise<InvoiceResult> {
   try {
     const db = getDb();
     const [row] = await db.select().from(leads).where(eq(leads.id, leadId)).limit(1);
     if (!row) return { sent: false, detail: "Booking not found" };
-    if (row.invoiceSentAt) return { sent: false, alreadySent: true, detail: "Invoice already sent" };
+    if (row.invoiceSentAt && !force) return { sent: false, alreadySent: true, detail: "Invoice already sent" };
     if (row.paidOnline || row.paidOfflineAt)
       return { sent: false, alreadyPaid: true, detail: "Already paid — no invoice needed" };
 
