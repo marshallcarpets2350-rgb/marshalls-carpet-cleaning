@@ -59,8 +59,28 @@ function ServiceDots({ kinds }: { kinds: ServiceKind[] }) {
     </span>
   );
 }
+// Red count badge on the "Awaiting payment" nav tab. Deliberately a
+// MODULE-LEVEL component with its own query subscription: if the Admin
+// parent subscribed to listLeads, every leads update would re-render Admin —
+// and because the tab components are nested function declarations, a parent
+// re-render remounts the active tab and wipes its state (the Nov 2026
+// "can't expand a job" bug). A child re-render is harmless.
+function OwingBadge() {
+  const leads = trpc.admin.listLeads.useQuery();
+  const count = (leads.data ?? []).filter(
+    (r) => r.finishedAt && !r.paidOnline && !r.paidOfflineAt,
+  ).length;
+  if (!count) return null;
+  return (
+    <span className="ml-1.5 inline-block bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
+      {count}
+    </span>
+  );
+}
 
 function DotLegend() {
+
+
   return (
     <span className="inline-flex flex-wrap items-center gap-3 text-xs font-semibold text-charcoal/60">
       {(["rug", "carpet", "lounge"] as ServiceKind[]).map((k) => (
@@ -165,17 +185,12 @@ export default function Admin() {
   const stats = trpc.admin.stats.useQuery(undefined, {
     enabled: Boolean(token),
     retry: false,
+    // A refetch resolving re-renders Admin — and because the tab components
+    // below are nested function declarations, a parent re-render REMOUNTS the
+    // active tab and wipes its state (expanded rows, typed text). Never
+    // refetch on focus.
+    refetchOnWindowFocus: false,
   });
-
-  // Leads list — already cached by the Jobs/Awaiting payment/Finished tabs,
-  // so this costs nothing extra and feeds the "Awaiting payment" nav badge.
-  const allLeads = trpc.admin.listLeads.useQuery(undefined, {
-    enabled: Boolean(token),
-    retry: false,
-  });
-  const owingCount = (allLeads.data ?? []).filter(
-    (r) => r.finishedAt && !r.paidOnline && !r.paidOfflineAt,
-  ).length;
 
   if (token && stats.error?.data?.code === "UNAUTHORIZED") {
     localStorage.removeItem(TOKEN_KEY);
@@ -259,11 +274,7 @@ export default function Admin() {
               }`}
             >
               {t.label}
-              {t.key === "owing" && owingCount > 0 && (
-                <span className="ml-1.5 inline-block bg-red-600 px-1.5 py-0.5 text-xs font-bold text-white">
-                  {owingCount}
-                </span>
-              )}
+              {t.key === "owing" && <OwingBadge />}
             </button>
           ))}
         </div>
