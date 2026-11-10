@@ -2587,6 +2587,14 @@ export default function Admin() {
     const leads = trpc.admin.listLeads.useQuery();
     const [q, setQ] = useState("");
     const [openKey, setOpenKey] = useState<string | null>(null);
+    const [winbackMsg, setWinbackMsg] = useState("");
+    const winback = trpc.admin.sendWinback.useMutation({
+      onSuccess: (r) => {
+        setWinbackMsg(r.sent?.emailSent || r.sent?.smsSent ? "Freshen-up email sent ✓" : `Not sent — ${r.sent?.detail || "check email settings"}`);
+        utils.admin.listLeads.invalidate();
+      },
+      onError: (e) => setWinbackMsg(e.message),
+    });
     if (leads.isPending) return <p>Loading…</p>;
     const rows = leads.data ?? [];
     type Row = (typeof rows)[number];
@@ -2705,6 +2713,39 @@ export default function Admin() {
                       <a href={`mailto:${c.email}`} className="text-forest">{c.email}</a>
                     </p>
                     {c.address && <p className="mt-1"><strong>Address:</strong> {c.address}</p>}
+                    {(() => {
+                      const latest = c.list[0];
+                      const sentAt = latest?.nudgeSentAt ? new Date(latest.nudgeSentAt) : null;
+                      const sentRecently = !!sentAt && Date.now() - +sentAt < 90 * 86400000;
+                      return (
+                        <div className="mt-3 flex flex-wrap items-center gap-3 rounded border-[1.5px] border-charcoal/20 bg-mintlight/40 p-3">
+                          <button
+                            type="button"
+                            className="btn-pill-dark !px-4 !py-1.5 text-xs disabled:opacity-50"
+                            disabled={winback.isPending || sentRecently || !latest?.email}
+                            onClick={() => {
+                              if (!latest) return;
+                              if (
+                                window.confirm(
+                                  `Email ${c.name} a freshen-up nudge with the booking link?\n\nPre-Christmas version while December's open. Goes to ${latest.email}.`,
+                                )
+                              )
+                                winback.mutate({ id: latest.id });
+                            }}
+                          >
+                            {winback.isPending
+                              ? "Sending…"
+                              : sentRecently
+                                ? `Freshen-up sent ${sentAt!.toLocaleDateString("en-AU", { day: "numeric", month: "short" })} ✓`
+                                : "✉ Send freshen-up email"}
+                          </button>
+                          <span className="text-xs text-charcoal/60">
+                            Win-back email with the quote link — one per 90 days per client; the 6-month auto-nudge knows not to double up.
+                          </span>
+                        </div>
+                      );
+                    })()}
+                    {winbackMsg && <p className="mt-2 text-xs font-bold text-forest">{winbackMsg}</p>}
                     <p className="mt-3 font-bold text-charcoal">Their jobs & quotes</p>
                     <ul className="mt-2 space-y-2">
                       {c.list.map((r) => {

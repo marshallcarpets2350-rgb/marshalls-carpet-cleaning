@@ -814,6 +814,106 @@ export function nudgeEmailHtml(lead: LeadRow): string {
 }
 
 // ---------------------------------------------------------------------------
+// Manual freshen-up ("win-back") email — Ben sends it from the Clients tab
+// when a past customer looks due. Season-aware: November to 18 December it
+// becomes the pre-Christmas nudge, the rest of the year it's the timeless
+// version. Stamps nudgeSentAt so the automatic 6-month sweep doesn't email
+// them again straight after.
+// ---------------------------------------------------------------------------
+
+function winbackPreChristmas(): boolean {
+  const parts = new Intl.DateTimeFormat("en-AU", {
+    timeZone: "Australia/Sydney",
+    month: "numeric",
+    day: "numeric",
+  }).formatToParts(new Date());
+  const month = Number(parts.find((p) => p.type === "month")?.value ?? 0);
+  const day = Number(parts.find((p) => p.type === "day")?.value ?? 0);
+  return month === 11 || (month === 12 && day <= 18);
+}
+
+export function winbackEmail(lead: LeadRow): { subject: string; text: string } {
+  const input = parseQuote(lead);
+  const b = parseBooking(lead);
+  const what = serviceSummary(input, b?.rugPickup ?? false).toLowerCase();
+  const optOut = `\n\nP.S. Rather not get these reminders? Call or text ${BUSINESS.phone} and we'll take you off the list.`;
+  if (winbackPreChristmas()) {
+    return {
+      subject: `Getting the house Christmas-ready, ${firstName(lead.name)}?`,
+      text: `Hi ${firstName(lead.name)},
+
+Christmas is coming up fast — and if the family (or the in-laws) are descending this year, now's the time to get the ${what} freshened up before the December rush.
+
+We finish up for the year on Friday 18 December and the December slots are already filling — if you'd like a clean before then, it takes about 60 seconds to get your exact price online:
+
+https://marshallscarpetcleaning.com.au/quote
+
+The price you see is the price you pay — no surprises on the day.
+
+Thanks again for having us last time,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}${optOut}`,
+    };
+  }
+  return {
+    subject: `Time for a freshen-up, ${firstName(lead.name)}?`,
+    text: `Hi ${firstName(lead.name)},
+
+It's been a while since we cleaned your ${what} — carpets stay at their best with a clean every 6–12 months, before everyday soil works back into the fibres.
+
+If you're due, our maintenance plan is the cheap way to do it: book two cleans a year and every clean is 10% off — no codes, no fine print, just pick the "2 cleans a year" option on the quote:
+
+https://marshallscarpetcleaning.com.au/quote
+
+Two minutes online and you'll have the exact price — the price you see is the price you pay.
+
+Thanks again for having us last time,
+The ${BUSINESS.name} team
+${BUSINESS.phone} · ${BUSINESS.email}${optOut}`,
+  };
+}
+
+export function winbackSms(lead: LeadRow): string {
+  return winbackPreChristmas()
+    ? `${BUSINESS.name}: Christmas is coming — book your freshen-up before we finish for the year on Fri 18 Dec: https://marshallscarpetcleaning.com.au/quote — questions ${BUSINESS.phone}`
+    : `${BUSINESS.name}: due a freshen-up? Book the 2-cleans-a-year plan and every clean is 10% off: https://marshallscarpetcleaning.com.au/quote — questions ${BUSINESS.phone}`;
+}
+
+/** Rich HTML twin of the manual win-back email. */
+export function winbackEmailHtml(lead: LeadRow): string {
+  const input = parseQuote(lead);
+  const b = parseBooking(lead);
+  const what = serviceSummary(input, b?.rugPickup ?? false).toLowerCase();
+  const christmas = winbackPreChristmas();
+  const body = christmas
+    ? `<p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  Christmas is coming up fast — and if the family (or the in-laws) are descending this year, now's the time to get the ${esc(what)} freshened up before the December rush.</p>
+
+  ${ctaBox(`<strong>We finish up for the year on Friday 18 December</strong> and the December slots are already filling.<br>
+    <a href="https://marshallscarpetcleaning.com.au/quote" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Get my price in 60 seconds</a>`)}
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">The price you see is the price you pay — no surprises on the day.</p>`
+    : `<p style="font-size:14px;line-height:1.6;margin:0 0 18px">Hi ${esc(firstName(lead.name))},<br><br>
+  It's been a while since we cleaned your ${esc(what)} — carpets stay at their best with a clean every 6–12 months, before everyday soil works back into the fibres.</p>
+
+  <div style="border:1.5px solid ${BRAND.blue};border-radius:8px;padding:14px 16px;margin:0 0 18px">
+    <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin-bottom:6px">THE CHEAP WAY TO DO IT</div>
+    <div style="font-size:14px;line-height:1.6">Book <strong>two cleans a year</strong> and every clean is <strong>10% off</strong> — no codes, no fine print. Pick the "2 cleans a year" option on the quote and it comes straight off.<br>
+    <a href="https://marshallscarpetcleaning.com.au/quote" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:10px 18px;border-radius:8px;font-weight:bold;text-decoration:none;margin-top:10px">Get my 10%-off quote</a></div>
+  </div>
+
+  <p style="font-size:14px;line-height:1.6;margin:0 0 18px">Two minutes online and you'll have the exact price — the price you see is the price you pay.</p>`;
+  return emailFrame(`
+  ${mailHeading(christmas ? "GETTING THE HOUSE CHRISTMAS-READY?" : "TIME FOR A FRESHEN-UP?")}
+
+  ${body}
+
+  ${signOff("Thanks again for having us last time")}
+
+  <p style="font-size:12px;line-height:1.6;color:${BRAND.grey};margin:14px 0 0">P.S. Rather not get these reminders? Call or text ${esc(BUSINESS.phone)} and we'll take you off the list.</p>`);
+}
+
+// ---------------------------------------------------------------------------
 // Payment receipt — goes out automatically when a job is marked done.
 // ---------------------------------------------------------------------------
 

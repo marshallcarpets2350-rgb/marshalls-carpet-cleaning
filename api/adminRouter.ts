@@ -28,6 +28,9 @@ import {
   rugPickedUpEmailHtml,
   rugPickedUpSms,
   floodReportEmail,
+  winbackEmail,
+  winbackEmailHtml,
+  winbackSms,
   deliver,
 } from "./messages";
 import { TRPCError } from "@trpc/server";
@@ -193,6 +196,33 @@ export const adminRouter = createRouter({
     .mutation(async ({ input }) => {
       const invoice = await sendInvoiceFor(input.id, input.force ?? false);
       return { ok: true as const, invoice };
+    }),
+
+  // Manual freshen-up email to a past customer, sent from the Clients tab.
+  // Season-aware copy (pre-Christmas version November → 18 Dec). Stamps
+  // nudgeSentAt so the automatic 6-month sweep won't email them again
+  // straight after, and refuses a re-send within 90 days.
+  sendWinback: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Client not found" });
+      if (!row.email && !row.phone) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: "No email or phone on file for this client." });
+      }
+      if (row.nudgeSentAt && Date.now() - +new Date(row.nudgeSentAt) < 90 * 86400000) {
+        throw new TRPCError({
+          code: "PRECONDITION_FAILED",
+          message: "They got a freshen-up email less than 90 days ago — give it a bit longer.",
+        });
+      }
+      const lead = row as never as Parameters<typeof winbackEmail>[0];
+      const r = await deliver(lead, winbackEmail(lead), winbackSms(lead), { html: winbackEmailHtml(lead) });
+      if (r.emailSent || r.smsSent) {
+        await db.update(leads).set({ nudgeSentAt: new Date() }).where(eq(leads.id, input.id));
+      }
+      return { ok: true as const, sent: r };
     }),
 
   // Rug jobs tick off in two stages — Friday's "picked up" (this one) and
