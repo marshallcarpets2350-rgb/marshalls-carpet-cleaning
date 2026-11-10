@@ -793,8 +793,9 @@ export default function Admin() {
           </button>
         </div>
         <p className="mt-1 text-sm text-charcoal/70">
-          Everything on the go, latest booked first. Once a job's done and the
-          money's sorted, tick it off — it moves to <strong>Finished jobs</strong>.
+          Everything on the go, latest booked first. Tick a job off when it's
+          done — if it's paid it goes to <strong>Finished jobs</strong>, if
+          not it waits on <strong>Awaiting payment</strong> until the money lands.
         </p>
 
         {rows.length === 0 ? (
@@ -992,8 +993,9 @@ export default function Admin() {
                             </button>
                           </div>
                           <p className="mt-2 text-xs text-charcoal/60">
-                            Tick-off moves it to Finished jobs. It only works once the job's
-                            paid or an invoice has gone out — so nothing slips through unpaid.
+                            Tick-off moves it on — paid jobs go to Finished jobs, unpaid
+                            ones to Awaiting payment. It only works once the job's paid
+                            or an invoice has gone out — so nothing slips through unpaid.
                             {rugStage(r)?.stage === "return" &&
                               " The customer's thank-you + review ask goes out when you tick it off."}
                           </p>
