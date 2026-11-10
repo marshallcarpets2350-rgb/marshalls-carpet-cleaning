@@ -1439,7 +1439,9 @@ export const TIME_MODEL = {
   // the free pre-vacuum. Operator-measured 9 Nov 2026: clean 3-bed ≈ 2h on
   // site, dirty ≈ 2½h, restoration ≈ 3h (anchor was 195 min from 8 Nov —
   // overshot his real times and was burning 4 slots on 2-hour jobs).
-  averageHouseMinutes: 120,
+  // Trimmed 5% (120→114) on 10 Nov 2026 at the operator's request — the
+  // 15-min rounding absorbs it on small jobs; 4-bed+ jobs drop 15–30 min.
+  averageHouseMinutes: 114,
   arriveSetupMinutes: 20, // machine out, hoses run, pre-spray bottles filled
   packUpMinutes: 15, // pack down and load up
   // Per-room minutes for a Standard clean, split into pre-spray + clean pass.
