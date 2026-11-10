@@ -8,6 +8,7 @@ export interface Contact {
   name: string;
   email: string;
   phone: string;
+  marketingOptIn: boolean;
 }
 
 export function contactValid(c: Contact): boolean {
@@ -112,6 +113,19 @@ export default function StepWhereWho({
           Nothing is booked yet and nothing is charged — we call or email to lock in the day first.
         </p>
       </div>
+
+      <label className="flex cursor-pointer items-start gap-3 border-[1.5px] border-charcoal/20 bg-mintlight/40 p-4">
+        <input
+          type="checkbox"
+          className="mt-1 h-4 w-4 accent-forest"
+          checked={contact.marketingOptIn}
+          onChange={(e) => setContact({ ...contact, marketingOptIn: e.target.checked })}
+        />
+        <span className="text-sm leading-relaxed text-charcoal/80">
+          <span className="font-bold text-charcoal">Email me seasonal deals and cleaning reminders</span>
+          {" "}— a few emails a year, like the pre-Christmas and end-of-lease slots. Unsubscribe anytime.
+        </span>
+      </label>
     </div>
   );
 }

@@ -98,7 +98,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const [review, setReview] = useState(false);
 
   // --- where & who ---
-  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "" });
+  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "", marketingOptIn: false });
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [confirmBy, setConfirmBy] = useState<ConfirmBy>("either");
 
@@ -352,6 +352,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       quote: quoteInput,
       booking,
       discountCode: appliedCode?.code,
+      marketingOptIn: contact.marketingOptIn,
       origin: window.location.origin,
     });
   };

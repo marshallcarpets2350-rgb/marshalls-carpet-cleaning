@@ -322,6 +322,7 @@ export const publicRouter = createRouter({
         quote: quoteInputSchema,
         booking: bookingSchema.optional(),
         discountCode: z.string().trim().max(50).optional(),
+        marketingOptIn: z.boolean().optional(), // unticked consent box on the Your-details step
         origin: z.string().url().max(200).optional(), // for Stripe redirect URLs
       }),
     )
@@ -457,6 +458,7 @@ export const publicRouter = createRouter({
         travelFee: breakdown.travelFee,
         total: breakdown.total,
         quoteJson: JSON.stringify({ input: quote, breakdown }),
+        marketingOptIn: input.marketingOptIn === true,
         bookingJson: input.booking
           ? JSON.stringify({
               ...input.booking,
@@ -469,6 +471,30 @@ export const publicRouter = createRouter({
 
       const leadId = Number(result[0].insertId);
       const reference = `MCC-${String(leadId).padStart(4, "0")}`;
+
+      // Ticked the deals box → they also join the newsletter list. Ticking is
+      // fresh express consent, so a past unsubscribe gets reactivated.
+      if (input.marketingOptIn) {
+        const sub = await db
+          .select()
+          .from(subscribers)
+          .where(eq(subscribers.email, input.email))
+          .limit(1);
+        if (sub[0]) {
+          if (sub[0].status !== "active") {
+            await db
+              .update(subscribers)
+              .set({ status: "active", source: "booking" })
+              .where(eq(subscribers.id, sub[0].id));
+          }
+        } else {
+          await db.insert(subscribers).values({
+            email: input.email,
+            name: input.name,
+            source: "booking",
+          });
+        }
+      }
 
       // 2-cleans-a-year plan — the second visit lands in the schedule as its
       // own booking right now, so the calendar blocks it off immediately.
@@ -484,6 +510,7 @@ export const publicRouter = createRouter({
           travelFee: breakdown.travelFee,
           total: breakdown.total,
           quoteJson: JSON.stringify({ input: quote, breakdown }),
+          marketingOptIn: input.marketingOptIn === true,
           bookingJson: JSON.stringify({
             ...input.booking,
             preferredDate: sv.date,

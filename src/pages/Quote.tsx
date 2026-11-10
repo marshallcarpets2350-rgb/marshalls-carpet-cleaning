@@ -80,7 +80,7 @@ export default function Quote({
   const [review, setReview] = useState(false);
 
   // --- step 1: where & who ---
-  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "" });
+  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "", marketingOptIn: false });
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [confirmBy, setConfirmBy] = useState<ConfirmBy>("either");
 
@@ -389,6 +389,7 @@ export default function Quote({
       quote: quoteInput,
       booking,
       discountCode: appliedCode?.code,
+      marketingOptIn: contact.marketingOptIn,
       origin: window.location.origin,
     });
   };

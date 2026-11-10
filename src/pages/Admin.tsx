@@ -2717,6 +2717,7 @@ export default function Admin() {
                       const latest = c.list[0];
                       const sentAt = latest?.nudgeSentAt ? new Date(latest.nudgeSentAt) : null;
                       const sentRecently = !!sentAt && Date.now() - +sentAt < 90 * 86400000;
+                      const optedIn = c.list.some((r) => (r as unknown as { marketingOptIn?: boolean }).marketingOptIn);
                       return (
                         <div className="mt-3 flex flex-wrap items-center gap-3 rounded border-[1.5px] border-charcoal/20 bg-mintlight/40 p-3">
                           <button
@@ -2742,6 +2743,11 @@ export default function Admin() {
                           <span className="text-xs text-charcoal/60">
                             Win-back email with the quote link — one per 90 days per client; the 6-month auto-nudge knows not to double up.
                           </span>
+                          {optedIn && (
+                            <span className="rounded border border-forest/30 bg-forest/10 px-2 py-0.5 text-xs font-bold text-forest">
+                              ✓ Tick-box deals opt-in
+                            </span>
+                          )}
                         </div>
                       );
                     })()}

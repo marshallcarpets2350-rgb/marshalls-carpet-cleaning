@@ -47,6 +47,7 @@ export const leads = mysqlTable("leads", {
   invoiceSentAt: timestamp("invoice_sent_at"), // invoice email + PDF (unpaid jobs, 5pm batch)
   pickedUpAt: timestamp("picked_up_at"), // rug runs: stage-1 tick (Fri pickup) — the final tick is the Mon return
   finishedAt: timestamp("finished_at"), // owner ticked the job off — moves it to Finished jobs
+  marketingOptIn: boolean("marketing_opt_in").notNull().default(false), // ticked the deals/reminders box at booking — express consent for marketing email
   status: mysqlEnum("status", ["new", "contacted", "booked", "completed"])
     .notNull()
     .default("new"),
