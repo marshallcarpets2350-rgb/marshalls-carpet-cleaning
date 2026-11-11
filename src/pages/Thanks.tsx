@@ -5,6 +5,7 @@
 // booking, so it's only ever reachable by booking — and it's noindexed so
 // search engines never list it.
 import { useEffect } from "react";
+import { Facebook, Instagram } from "lucide-react";
 import { Link } from "react-router";
 import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
@@ -79,6 +80,33 @@ export default function Thanks() {
               </p>
               <div className="mt-4">
                 <NewsletterForm source="thanks" />
+              </div>
+            </div>
+            <div className="mt-8 border-t-[1.5px] border-charcoal/20 pt-8">
+              <h2 className="font-display text-2xl font-black text-charcoal">
+                Keep up to date with our latest deals
+              </h2>
+              <p className="mt-2 text-charcoal/75">
+                Follow us on socials — subscriber discounts, before-and-afters
+                and seasonal offers land there first.
+              </p>
+              <div className="mt-4 flex flex-wrap gap-3">
+                <a
+                  href="https://www.facebook.com/share/1CbfuAvMDJ/"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-pill-dark inline-flex items-center gap-2"
+                >
+                  <Facebook size={18} strokeWidth={2.2} /> Facebook
+                </a>
+                <a
+                  href="https://www.instagram.com/marshall.carpets2350"
+                  target="_blank"
+                  rel="noreferrer"
+                  className="btn-pill inline-flex items-center gap-2"
+                >
+                  <Instagram size={18} strokeWidth={2.2} /> Instagram
+                </a>
               </div>
             </div>
             <div className="mt-8 flex flex-wrap gap-4">
