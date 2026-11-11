@@ -108,7 +108,9 @@ export default function Quote({
   const [whenFlexible, setWhenFlexible] = useState(false);
 
   // --- step 6: payment ---
-  const [payment, setPayment] = useState<PaymentChoice | null>(null);
+  // "Pay now" pre-selected (Ben, 11 Nov) — card up front locks the booking in;
+  // the review screen shows the choice with a Change link for PayID/bank.
+  const [payment, setPayment] = useState<PaymentChoice | null>("pay-now");
 
   // --- step 8: review ---
   const [notes, setNotes] = useState("");

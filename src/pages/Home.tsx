@@ -6,7 +6,7 @@ import { Snowfall } from "@/components/Seasonal";
 import { RatingBadge } from "@/sections/Reviews";
 import { trpc } from "@/providers/trpc";
 import { BUSINESS, christmasOn, seasonWindowFor } from "@contracts/rates";
-import vanImg from "@/assets/van.jpg";
+import vanImg from "@/assets/van.webp";
 
 /** Keeps the aggregateRating in the homepage's LocalBusiness schema in step
  *  with the live Google numbers — the static value in index.html is just the

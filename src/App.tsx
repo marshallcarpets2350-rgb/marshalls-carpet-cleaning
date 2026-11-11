@@ -1,4 +1,4 @@
-import { useEffect } from 'react'
+import { useEffect, lazy, Suspense } from 'react'
 import type { ReactNode } from 'react'
 import { Routes, Route, Navigate, useSearchParams, useLocation } from 'react-router'
 import Home from './pages/Home'
@@ -6,7 +6,9 @@ import Quote from './pages/Quote'
 import Flood from './pages/Flood'
 import Rugs from './pages/Rugs'
 import Lounge from './pages/Lounge'
-import Admin from './pages/Admin'
+// Admin is ~170 KB of dashboard code no customer ever needs — lazy chunk,
+// downloaded only when someone actually opens /admin.
+const Admin = lazy(() => import('./pages/Admin'))
 import Thanks from './pages/Thanks'
 import Unsubscribe from './pages/Unsubscribe'
 import Terms from './pages/Terms'
@@ -71,7 +73,7 @@ export default function App() {
       <Route path="/commercial-carpet-cleaning-armidale" element={<CommercialPage />} />
       <Route path="/faq" element={<PageMeta title="Carpet Cleaning FAQ — Drying Times, Stains, Travel Fees | Marshall's Armidale" description="The questions Armidale asks every week: how long carpets take to dry, whether steam cleaning voids warranties, pet stains, travel fees and commercial work." path="/faq"><SectionPage><Faq /></SectionPage></PageMeta>} />
       <Route path="/contact" element={<PageMeta title="Contact Marshall's Carpet Cleaning — Armidale NSW | 0423 581 223" description="Call, text or email Marshall's Carpet Cleaning in Armidale — you'll talk to the person who'll be doing the clean, seven days a week." path="/contact"><ContactPage /></PageMeta>} />
-      <Route path="/admin" element={<Admin />} />
+      <Route path="/admin" element={<Suspense fallback={<div className="flex min-h-dvh items-center justify-center font-display text-xl font-black text-charcoal">Loading the dashboard…</div>}><Admin /></Suspense>} />
       <Route path="/thanks" element={<PageMeta title="Booked In — Thank You | Marshall's Carpet Cleaning" description="Thanks for booking with Marshall's Carpet Cleaning — your clean is in the schedule and the confirmation email is on its way." path="/thanks"><Thanks /></PageMeta>} />
       <Route path="/unsubscribe" element={<Unsubscribe />} />
       <Route path="/terms" element={<PageMeta title="Terms & Conditions | Marshall's Carpet Cleaning Armidale" description="The terms every Marshall's Carpet Cleaning booking works by — pricing, access, drying, stains and liability, in plain English." path="/terms"><Terms /></PageMeta>} />

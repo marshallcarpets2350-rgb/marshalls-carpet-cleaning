@@ -1,7 +1,7 @@
 import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { BUSINESS } from "@contracts/rates";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 import { FairyLights, SantaHat, SeasonBanner, SeasonalStyles } from "@/components/Seasonal";
 import iconCarpet from "@/assets/icons/carpet-cleaning.png";
 import iconLounge from "@/assets/icons/lounge.png";

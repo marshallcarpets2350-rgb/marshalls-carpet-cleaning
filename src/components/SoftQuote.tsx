@@ -124,7 +124,8 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const [pickupSpot, setPickupSpot] = useState("");
 
   // --- payment ---
-  const [payment, setPayment] = useState<PaymentChoice | null>(null);
+  // "Pay now" pre-selected (Ben, 11 Nov) — same as the carpet wizard.
+  const [payment, setPayment] = useState<PaymentChoice | null>("pay-now");
 
   // --- review ---
   const [notes, setNotes] = useState("");

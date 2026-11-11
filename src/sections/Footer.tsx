@@ -1,7 +1,7 @@
 import { BUSINESS } from "@contracts/rates";
 import NewsletterForm from "@/components/NewsletterForm";
 import { SeasonalFooterLine } from "@/components/Seasonal";
-import logo from "@/assets/logo.png";
+import logo from "@/assets/logo.webp";
 
 export default function Footer() {
   return (

@@ -1,4 +1,5 @@
-@import url("https://fonts.googleapis.com/css2?family=Figtree:wght@500;600;700;800;900&family=Hanken+Grotesk:wght@400;500;600;700&display=swap");
+/* Fonts load via <link> tags in index.html (preconnected, non-blocking) —
+   a CSS @import here would chain two round-trips before first paint. */
 
 @tailwind base;
 @tailwind components;
