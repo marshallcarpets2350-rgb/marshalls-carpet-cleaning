@@ -6,8 +6,8 @@ const POINTS = [
   },
   {
     n: "02",
-    title: "Hot water extraction",
-    body: "Proper steam cleaning — the method major carpet manufacturers recommend, and the one that keeps many carpet warranties intact. High heat dissolves the greasy film that holds grit in the pile.",
+    title: "Real steam cleaning",
+    body: "Proper hot-water steam cleaning — the method carpet makers recommend, and the one that keeps many warranties valid. The heat cuts through the greasy film that holds grit in the carpet.",
   },
   {
     n: "03",

@@ -18,18 +18,18 @@ export function StepPayment({ payment, setPayment, kicker = "Step 6 · Payment" 
     {
       value: "pay-now",
       hint: live
-        ? "Secure card payment — Visa, Mastercard, Apple Pay. When you hit Send you'll go straight to the checkout, and your booking is locked in paid."
+        ? "Secure card payment — Visa, Mastercard or Apple Pay. When you hit Send you'll go straight to the checkout; pay there and your booking is locked in."
         : "We'll text or email you a secure payment link once we've confirmed the booking. Nothing is charged before that.",
     },
     {
       value: "payid",
-      hint: `Instant transfer from your banking app to our PayID — ${BUSINESS.payId}. Any time before your clean; put your booking reference in the description so it lands straight against your job.`,
+      hint: `Pay straight from your banking app to our PayID — ${BUSINESS.payId}. Any time before your clean. Put your booking reference in the payment description so we can match it to your job.`,
     },
     ...(bankUp
       ? [
           {
             value: "bank-transfer" as PaymentChoice,
-            hint: "Straight into our Hnry business account — the BSB and account number are in your confirmation email. Any time before your clean, with your booking reference as the description.",
+            hint: "Transfer to our business account — the BSB and account number are in your confirmation email. Any time before your clean, with your booking reference as the description.",
           },
         ]
       : []),
@@ -37,7 +37,7 @@ export function StepPayment({ payment, setPayment, kicker = "Step 6 · Payment" 
 
   return (
     <div className="space-y-8">
-      <StepHeading kicker={kicker} title="How would you like to pay?" sub="Entirely up to you — the price is the same whichever you choose. No card surcharge, no booking fee." />
+      <StepHeading kicker={kicker} title="How would you like to pay?" sub="Your choice — the price is the same either way. No card fees, no booking fees." />
       <div className="grid gap-4" role="radiogroup" aria-label="Payment method">
         {OPTIONS.map((o) => (
           <OptionCard

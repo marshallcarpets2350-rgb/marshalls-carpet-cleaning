@@ -92,7 +92,7 @@ export function CommercialPage() {
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal/80">
               Offices, motels, clubs and rental portfolios across Armidale &amp; the New England.
-              Hot water extraction priced by the square metre —{" "}
+              Steam cleaning priced by the square metre —{" "}
               <strong>
                 {money2(firstTier)}/m² stepping down to {money2(lastTier)}/m² on large areas
               </strong>{" "}

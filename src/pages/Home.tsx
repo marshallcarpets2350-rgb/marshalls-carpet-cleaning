@@ -145,9 +145,9 @@ export default function Home() {
                 Your price, before we knock on the door.
               </h1>
               <p className="mt-4 max-w-xl text-lg leading-relaxed text-charcoal/80 lg:mt-3 lg:text-base">
-                Hot water extraction carpet cleaning across Armidale &amp; the New
-                England. Pick what you need cleaned below and the price builds on
-                screen while you tap — 60 seconds, no callbacks, no surprises on the day.
+                Steam carpet cleaning across Armidale &amp; the New England. Pick
+                what you need cleaned below and the price builds on screen while
+                you tap — 60 seconds, no callbacks, no surprises on the day.
               </p>
 
               <div className="mt-5 lg:mt-3">

@@ -8,23 +8,23 @@ import {
 const FAQS = [
   {
     q: "How long will my carpets take to dry?",
-    a: "Typically 4–8 hours depending on weather and ventilation. We'll tell you on the day if anything needs longer, and how to speed it up.",
+    a: "Usually 4–8 hours, depending on the weather and airflow in the house. We'll tell you on the day if anything needs longer — and how to speed it up.",
   },
   {
     q: "Will steam cleaning void my carpet warranty?",
-    a: "The opposite — hot water extraction is the method most carpet manufacturers specify to keep a warranty valid. It's dry-only methods that sometimes cause problems.",
+    a: "The opposite. Steam cleaning (hot water extraction) is the method most carpet makers actually recommend to keep your warranty valid. It's the dry-only methods that sometimes cause problems.",
   },
   {
     q: "Do you guarantee stains will come out?",
-    a: "No honest cleaner does. We'll tell you before we start which marks should lift and which are permanent — that assessment is part of the quote, not a surprise afterwards.",
+    a: "No honest cleaner does. Before we start, we'll show you which marks should come out and which are permanent — that's part of the quote, not a surprise afterwards.",
   },
   {
     q: "Can you get pet stains and smells out?",
-    a: "In most cases, yes. Pet accidents need treating at the source in the underlay, not just in the pile — surface cleaning is why smells come back a week later.",
+    a: "In most cases, yes. Pet wee soaks through to the underlay, so we treat the source — not just the surface. Cleaning only the top is why smells come back a week later.",
   },
   {
     q: "How does the travel fee work?",
-    a: "It's calculated by road distance: free in Armidale, then $1 per kilometre each way outside town (flat rates for Uralla, Guyra and Walcha). Enter your address in the quote builder and the fee appears in your total before you book — it never changes on the day.",
+    a: "It's worked out by road distance: free in Armidale, then $1 per kilometre each way outside town (flat rates for Uralla, Guyra and Walcha). Put your address into the quote and the fee shows in your total before you book — it never changes on the day.",
   },
   {
     q: "Do you do commercial work?",

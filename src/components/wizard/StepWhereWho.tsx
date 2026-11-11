@@ -50,7 +50,7 @@ export default function StepWhereWho({
       <StepHeading
         kicker="Step 1 · Your details"
         title="Where are we coming?"
-        sub="The address sets the travel fee — the rest is so we can confirm the job back to you."
+        sub="Your address works out any travel fee. The rest is just so we can confirm your booking."
       />
 
       <div className="border-[1.5px] border-charcoal bg-background p-5 md:p-6">

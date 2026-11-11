@@ -69,10 +69,10 @@ export function EndOfLeasePage() {
               End-of-lease carpet cleaning your property manager signs off.
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal/80">
-              Armidale turns over hard at the end of every uni semester — and the
-              final inspection always lands on the carpets. We clean to the
-              checklist agents actually use: traffic lanes, stains, pet odour,
-              and the receipt to prove it was done professionally.
+              Armidale rentals turn over hard at the end of every uni semester — and
+              the final inspection always comes down to the carpets. We clean
+              to the checklist agents actually use: worn tracks, stains, pet
+              smells — and give you the receipt to prove it was done properly.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link to="/quote" className="btn-pill no-underline">Book your clean.</Link>
@@ -93,9 +93,9 @@ export function EndOfLeasePage() {
                 <p className="font-bold text-charcoal">Traffic lanes</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
                   The grey tracks through doorways and halls are the first thing an
-                  agent photographs. Hot water extraction lifts what a vacuum
-                  never will — and pre-vacuum is free with every clean, which is
-                  what lets the extraction work properly.
+                  agent photographs. Our steam clean lifts what a vacuum never
+                  will — and we vacuum first, free with every clean, so the
+                  steam clean can work properly.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
@@ -103,16 +103,15 @@ export function EndOfLeasePage() {
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
                   Tick the stain types in your quote and the treatment is priced
                   in — pet urine {money(RATES.stainCauseFee["pet-urine"])}, food
-                  and drink {money(RATES.stainCauseFee["food-drink"])}, each extra
-                  type half price. No surprise add-ons on the day.
+                  and drink {money(RATES.stainCauseFee["food-drink"])}, every extra
+                  type half price. No surprises on the day.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">The paper trail</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
-                  You get an itemised receipt naming the rooms and the work —
-                  exactly what a property manager asks for when the bond is on
-                  the line.
+                  You get a receipt listing the rooms and the work — exactly what
+                  your property manager asks for when your bond is on the line.
                 </p>
               </div>
             </div>
@@ -128,7 +127,7 @@ export function EndOfLeasePage() {
               items={[
                 {
                   q: "How close to handover should I book?",
-                  a: "The day before keys go back is ideal — carpets are dry within hours with the fans we bring free, and everything's fresh for the inspection. Semester-end weeks book out, so a week or two of notice helps.",
+                  a: "The day before you hand the keys back is ideal — our drying fans (free with every clean) have carpets dry within hours, so everything's fresh for the inspection. End-of-semester weeks book out fast, so a week or two of notice helps.",
                 },
                 {
                   q: "Do you clean rentals outside Armidale?",
@@ -136,7 +135,7 @@ export function EndOfLeasePage() {
                 },
                 {
                   q: "The last tenant had pets and I can smell it — is that fixable?",
-                  a: `Almost always. The enzyme pre-spray (${money(RATES.extras.enzymePreSpray)} once per job) breaks down the source of the odour in the backing rather than covering it. If urine has gone through to the underlay we'll tell you honestly on the day — that's a different fix.`,
+                  a: `Almost always. Our enzyme pre-spray (${money(RATES.extras.enzymePreSpray)} once per job) breaks down the source of the smell deep in the carpet instead of covering it up. If the wee has soaked right through to the underlay, we'll tell you honestly on the day — that's a different fix.`,
                 },
               ]}
             />
@@ -188,9 +187,9 @@ export function PetUrinePage() {
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal/80">
               If the smell came back a week after a clean, it wasn't cleaned —
-              it was masked. Urine soaks into the backing, and bacteria living
-              there bring the smell back with the first humid day. We treat the
-              source, and we tell you honestly when it's gone further.
+              it was covered up. Pet wee soaks deep into the carpet backing, and
+              that's where the smell lives. We treat the source — and if it's
+              gone further than the carpet, we'll tell you honestly.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link to="/quote" className="btn-pill no-underline">Book your clean.</Link>
@@ -210,9 +209,9 @@ export function PetUrinePage() {
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Enzyme pre-spray — {money(RATES.extras.enzymePreSpray)}</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
-                  Applied before the main clean, once per job. The enzyme breaks
-                  down what the bacteria are feeding on in the backing — the
-                  smell goes because its source is gone, not because it's covered.
+                  Sprayed on before the main clean, once per job. It breaks down
+                  the source of the smell deep in the carpet — the smell goes
+                  because its food is gone, not because it's perfumed over.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
@@ -220,15 +219,15 @@ export function PetUrinePage() {
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
                   Tick "pet urine" in your quote and it's priced in before we
                   arrive. Extra stain types on the same job are half price —
-                  you'll see every dollar before you book.
+                  you see every dollar before you book.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Honest limits</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
-                  If urine has soaked through to the underlay or the floor
-                  beneath, treating the carpet alone won't fix it. We'll tell you
-                  on the day rather than take the money and hope.
+                  If the wee has soaked through to the underlay or the floor
+                  underneath, cleaning the carpet alone won't fix it. We'll tell
+                  you straight on the day, rather than take your money and hope.
                 </p>
               </div>
             </div>
@@ -244,15 +243,15 @@ export function PetUrinePage() {
               items={[
                 {
                   q: "There's a lot of it — twenty-plus marks across the house. Worth it?",
-                  a: "Yes — heavy marking is priced into the quote (heavy soiling is a per-metre multiplier, not a surprise fee), and the stain + enzyme treatments cover the whole job once. Bad jobs are where the price-first promise matters most.",
+                  a: "Yes. Heavily marked carpet just costs more per metre — you pick the level and see the price before you book, so it's never a surprise fee. The stain and enzyme treatments each cover the whole job once.",
                 },
                 {
                   q: "Will the stains definitely come out?",
-                  a: "Most urine marks lift with treatment. A stain that has taken the dye out of the fibre is damage, not dirt, and no product brings colour back — we'll point out which is which before we start.",
+                  a: "Most wee marks come out with treatment. A spot that's bleached the colour out of the carpet is damage, not dirt — nothing brings the colour back. We'll show you which is which before we start.",
                 },
                 {
                   q: "How long until we can walk on it?",
-                  a: "Drying fans come free with every clean — rooms are usually dry within hours, not overnight, so the house is back to normal the same day.",
+                  a: "Drying fans come free with every clean — rooms are usually dry within hours, so the house is back to normal the same day.",
                 },
               ]}
             />
@@ -303,10 +302,9 @@ export function CostGuidePage() {
               What does carpet cleaning cost in Armidale?
             </h1>
             <p className="mt-5 max-w-2xl text-lg leading-relaxed text-charcoal/80">
-              The honest answer: it depends on your rooms, your carpet and what's
-              happened to it. Here's exactly what moves the price — and how to see
-              your own number in about a minute, no phone call and no email
-              address needed.
+              The honest answer: it depends on your rooms, your carpet, and what's
+              happened to it. Here's what moves the price — and how to see your
+              own number in about a minute. No phone call needed.
             </p>
             <div className="mt-8 flex flex-wrap items-center gap-4">
               <Link to="/quote" className="btn-pill no-underline">See my price.</Link>
@@ -326,17 +324,17 @@ export function CostGuidePage() {
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">1. Room size</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
-                  We price by the square metre we actually clean — measured room by
-                  room in your quote — not a "per room" guess that treats a study
-                  and a lounge room the same.
+                  We charge for the square metres we actually clean, measured room
+                  by room in your quote — not a flat "per room" guess that prices
+                  a study the same as a lounge room.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">2. Condition</p>
                 <p className="mt-2 text-sm leading-relaxed text-charcoal/75">
-                  A light freshen-up costs less than a family-worn clean, which
-                  costs less than full restoration soiling. You pick the level —
-                  the price adjusts before you book, never after.
+                  A light freshen-up costs less than a family-worn clean, which costs
+                  less than a heavy rescue job. You pick the level and the price
+                  changes before you book — never after.
                 </p>
               </div>
               <div className="border-[1.5px] border-charcoal bg-background p-6">
@@ -418,15 +416,15 @@ export function CostGuidePage() {
               items={[
                 {
                   q: "Can I get an exact price without a callout?",
-                  a: "Yes — that's the point of the online quote. Room sizes and condition give an exact price for standard homes; for anything unusual (flood damage, heavy restoration) we'll tell you honestly if it needs a look first.",
+                  a: "Yes — that's what the online quote is for. Room sizes and condition give an exact price for most homes. For anything unusual, like flood damage, we'll be upfront if we need to look at it first.",
                 },
                 {
                   q: "Is there a minimum charge?",
-                  a: "Small jobs carry a minimum charge — it's in the terms and shown in your quote when it applies, so a single small room is still worth booking knowing the number first.",
+                  a: "Small jobs have a minimum charge — you'll see it in your quote if it applies, before you book. That way even one small room is worth doing, knowing the number first.",
                 },
                 {
                   q: "Do you price end-of-lease cleans differently?",
-                  a: "Same pricing, same quote — but tell us it's an end-of-lease clean so we allow the time agents expect. You get an itemised receipt for your property manager. More on the end of lease page.",
+                  a: "Same pricing, same quote — just tell us it's an end-of-lease clean so we allow the time agents expect. You get a receipt listing the rooms and the work for your property manager. More on the end of lease page.",
                 },
               ]}
             />

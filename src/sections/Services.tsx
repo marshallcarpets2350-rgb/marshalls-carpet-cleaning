@@ -3,7 +3,7 @@ import { Link } from "react-router";
 const SERVICES = [
   {
     title: "Carpet cleaning",
-    body: "Hot water extraction — the steam method carpet manufacturers recommend. The bigger the house, the cheaper the metre.",
+    body: "Deep steam cleaning — the method carpet makers recommend. The bigger the house, the cheaper the metre.",
     price: "instant online quote",
     to: "/quote?service=carpet",
   },

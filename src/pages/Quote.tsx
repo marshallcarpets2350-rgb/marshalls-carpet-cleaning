@@ -472,7 +472,7 @@ export default function Quote({
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
             {adminMode
               ? "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
-              : "One page — answer your way down and the price moves as you go. The Continue button at the bottom takes you to the review & send page. Lounges and mattresses can join this same visit, a few questions down. Nothing is booked or charged until we confirm it with you."}
+              : "Work your way down the page — the price updates as you answer. Lounges and mattresses can join the same visit further down. Nothing is booked or charged until we confirm it with you."}
             {!adminMode && (
               <>
                 {" "}Rugs are their own{" "}
@@ -488,9 +488,9 @@ export default function Quote({
             <div className="mt-8 grid gap-4 border-[1.5px] border-charcoal bg-background p-5 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 ["1 · We arrive in your slot", "We walk the job with you first and confirm the price matches your quote — no surprises on the day."],
-                ["2 · Pre-spray & spots", "Traffic lanes and spots get a pre-treatment so the deep clean can do its best work."],
-                ["3 · The deep clean", "Hot water extraction flushes the pile and pulls the dirt straight back out."],
-                ["4 · Groomed & drying", "Most carpets dry in 4–6 hours and we leave the pile groomed so it dries looking its best."],
+                ["2 · Pre-spray & spots", "Worn tracks and spots get sprayed first, so the deep clean can do its best work."],
+                ["3 · The deep clean", "A deep steam clean flushes the dirt out of the carpet — you can watch it come out."],
+                ["4 · Groomed & drying", "We finish by grooming the carpet so it dries looking neat — most carpets dry in 4–6 hours."],
               ].map(([title, body]) => (
                 <div key={title}>
                   <p className="text-sm font-bold uppercase tracking-widest text-forest">{title}</p>

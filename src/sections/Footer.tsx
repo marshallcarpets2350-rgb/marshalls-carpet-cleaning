@@ -15,8 +15,8 @@ export default function Footer() {
               className="h-24 w-auto rounded-lg bg-background/95 p-1"
             />
             <p className="mt-4 max-w-sm leading-relaxed text-background/75">
-              Hot water extraction carpet, upholstery and mattress cleaning across
-              Armidale and the New England. Locally owned and operated.
+              Steam carpet, upholstery and mattress cleaning across Armidale
+              and the New England. Locally owned and operated.
             </p>
           </div>
 

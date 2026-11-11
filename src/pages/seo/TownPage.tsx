@@ -37,7 +37,7 @@ const TOWNS: TownConfig[] = [
       "Uralla is our closest run out of Armidale — about 25 minutes south down the highway. We clean in Uralla most weeks: the heritage cottages around the main street, the brick homes on the outskirts, and the rentals turning over between tenants.",
     localTitle: "Older homes, honest pricing.",
     localBody: [
-      "A lot of Uralla's housing has character — and character means carpet that's seen a few decades. Older carpet takes a gentler hand and hotter extraction, and it's exactly the work we do every day across the New England.",
+      "A lot of Uralla's housing has character — and character means carpet that's seen a few decades. Older carpet takes a gentler hand and a hotter clean, and it's exactly the work we do every day across the New England.",
       "The $32 travel fee is the whole story on travel — it's added once per visit, shown in your quote before you book, and it doesn't change on the day.",
     ],
     faqExtra: {
@@ -86,10 +86,10 @@ const TOWNS: TownConfig[] = [
 ];
 
 const SERVICES = [
-  { to: "/quote", label: "Carpet cleaning", body: "Hot water extraction, priced per square metre with the total locked before we knock." },
+  { to: "/quote", label: "Carpet cleaning", body: "Steam cleaning priced per square metre — the total is locked in before we knock." },
   { to: "/lounge", label: "Lounges & mattresses", body: "Per-seat pricing, recliners included, mattresses by size — all in the same quote." },
   { to: "/rugs", label: "Rug pick-up & clean", body: "Collected from your door, cleaned and returned. Free pick-up with any clean." },
-  { to: "/flood", label: "Flood & water damage", body: "24/7 emergency extraction and drying, with an insurer-ready report." },
+  { to: "/flood", label: "Flood & water damage", body: "24/7 emergency water removal and drying, with a report ready for your insurer." },
 ];
 
 export function townSlugs() {

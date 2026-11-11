@@ -54,11 +54,11 @@ export function StepExtras({
         <StepHeading
           kicker="Add-ons"
           title="Nothing else needed for rugs"
-          sub="Rugs are washed, dried and groomed at our premises — the price on the items step covers the full service."
+          sub="Rugs are washed, dried and finished at our place — the price on the items step covers everything."
         />
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/70">
-          Carpet, lounges or mattresses to do as well? Those have their own quote
-          pages — each one is priced just as clearly.
+          Carpet, lounges or mattresses to do as well? They have their own quote
+          pages — priced just as clearly.
         </p>
       </div>
     );
@@ -70,14 +70,14 @@ export function StepExtras({
         <StepHeading
           kicker="Add-ons"
           title="Any stains or odours to treat?"
-          sub="Professional fabric treatments, applied before the main clean — only where the item genuinely needs it."
+          sub="Treatments we put on before the main clean — only where they're actually needed."
         />
         <div className="space-y-5">
           <AddOnCard
             title="Enzyme pre-spray"
             price={RATES.extras.enzymePreSpray}
             priceNote="once per job"
-            desc="A professional enzyme treatment that works into the fabric and breaks down the source of pet odour and urine — not a fragrance that masks it. Applied before the main clean."
+            desc="Pet smells sink deep into the fabric. This enzyme spray breaks down the source of the smell instead of covering it with perfume. Sprayed on before the main clean."
             selected={enzymePreSpray}
             onToggle={() => setEnzymePreSpray(!enzymePreSpray)}
           />
@@ -85,7 +85,7 @@ export function StepExtras({
             title="Stain treatment package"
             price={RATES.extras.stainPackage}
             priceNote="once per job"
-            desc="Pre-spray and individual spot treatment across every marked area before the main clean — the best chance of lifting stubborn marks out of lounges and mattresses."
+            desc="We pre-spray and hand-treat every marked spot before the main clean — the best shot at getting stubborn marks out of lounges and mattresses."
             selected={stainPackage}
             onToggle={() => setStainPackage(!stainPackage)}
           />
@@ -99,13 +99,13 @@ export function StepExtras({
       <StepHeading
         kicker="Step 4 · Add-ons"
         title="Included free — and one option"
-        sub="A commercial pre-vacuum and a full pre-spray come with every carpet clean at no charge, and stain treatment is already priced from your stain answers (on a Restoration Clean it's part of the service). Nothing here is added without your tick."
+        sub="Every carpet clean already includes a proper vacuum and a pre-spray — free. Stain treatment is priced from your stain answers, and it's part of a Restoration Clean. Nothing gets added unless you tick it."
       />
 
       <ul className="space-y-2 border-[1.5px] border-forest bg-mintlight px-5 py-4 text-sm text-charcoal">
-        <li><strong>✓ Commercial pre-vacuum</strong> — every room, every clean. Free.</li>
-        <li><strong>✓ Pre-spray</strong> — applied before the wash, every clean. Free.</li>
-        <li><strong>✓ Stain treatment</strong> — priced from your stain answers, or included in the Restoration Clean.</li>
+        <li><strong>✓ A proper vacuum</strong> — every room, every clean. Free.</li>
+        <li><strong>✓ Pre-spray before the wash</strong> — every clean. Free.</li>
+        <li><strong>✓ Stain treatment</strong> — priced from your stain answers, or included free in a Restoration Clean.</li>
       </ul>
 
       <div className="space-y-5">
@@ -113,7 +113,7 @@ export function StepExtras({
           title="Enzyme pre-spray"
           price={RATES.extras.enzymePreSpray}
           priceNote="once per job"
-          desc="A professional enzyme treatment that works into the backing and breaks down the source of pet odour and urine — not a fragrance that masks it. Worth it if pets live in the home or there's a smell that keeps coming back. Applied before the main clean."
+          desc="Pet wee and smells live deep in the carpet backing — that's why they keep coming back. This enzyme spray breaks down the source instead of covering it with perfume. Worth it if you have pets, or a smell that won't quit. Sprayed on before the main clean."
           selected={enzymePreSpray}
           onToggle={() => setEnzymePreSpray(!enzymePreSpray)}
         />

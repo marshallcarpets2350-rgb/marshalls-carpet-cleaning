@@ -46,16 +46,16 @@ export default function StepJob({
       <StepHeading
         kicker="Step 2 · Your home"
         title="What's the occasion, and which rooms?"
-        sub="The reason for the clean shapes what we recommend — an end-of-lease clean is judged against an inspection checklist, a freshen-up isn't."
+        sub="Why you're cleaning changes what we recommend — a move-out clean has to pass the agent's inspection; a freshen-up doesn't."
       />
 
       {/* Purpose */}
       <div className="space-y-3" role="radiogroup" aria-label="Reason for the clean">
         {(
           [
-            ["moving-out", "End of lease", "Vacating a rental — cleaned to the standard property managers inspect against"],
-            ["living", "Freshening up", "It's our home — regular upkeep or a one-off deep clean"],
-            ["selling", "Selling or re-letting", "Presentation clean before buyers or new tenants walk through"],
+            ["moving-out", "End of lease", "Moving out of a rental — cleaned to what your property manager checks"],
+            ["living", "Freshening up", "It's our own place — a regular freshen-up or a one-off deep clean"],
+            ["selling", "Selling or re-letting", "Getting it looking its best before buyers or new tenants walk through"],
           ] as const
         ).map(([value, title, hint]) => (
           <OptionCard

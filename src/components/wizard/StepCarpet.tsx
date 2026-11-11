@@ -5,9 +5,9 @@ import { RATES, money, carpetStandardForArea, conditionComplete, recommendDirtin
 import { PillGroup, StepHeading } from "./ui";
 
 const LEVELS: { value: Dirtiness; name: string; sub: string; goodFor: string }[] = [
-  { value: "light", name: "Standard Clean", sub: "Commercial pre-vacuum, pre-spray & hot water extraction", goodFor: "Carpet in sound condition — vacuumed regularly, light soiling, no pet or odour concerns. Every room is pre-vacuumed with our commercial vacuum and pre-sprayed (both included free), then given a full hot-water extraction (steam) clean, fibre to backing." },
-  { value: "medium", name: "Deep Clean", sub: "Pre-vacuum, pre-spray, agitation & double pass", goodFor: "Family-lived carpet — kids, pets or visible traffic lanes. Free commercial pre-vacuum, then pre-treatment agitated deep into the pile and cleaned in two passes — lifts what a standard clean leaves behind." },
-  { value: "heavy", name: "Restoration Clean", sub: "Full pre-treatment, stain treatment, agitation & multi-pass extraction", goodFor: "Heavy soiling, pet accidents, odour or long-neglected carpet. Free commercial pre-vacuum, full pre-treatment worked in with agitation, every marked area individually spot-treated for stains — ground-in dirt, sticky spots and gum included — then multi-pass hot water extraction. Every treatment we carry, short of replacing the carpet." },
+  { value: "light", name: "Standard Clean", sub: "Proper vacuum, pre-spray & steam clean", goodFor: "Carpet in good nick — vacuumed often, lightly used, no pet or smell worries. Every room gets a free commercial vacuum and a pre-spray, then a full steam clean (hot water extraction), right through to the backing." },
+  { value: "medium", name: "Deep Clean", sub: "Everything in Standard, plus a scrub-in and a second pass", goodFor: "Family-lived carpet — kids, pets or worn tracks through the busy spots. After the free vacuum, we scrub the pre-spray deep into the pile and clean everything twice. It lifts what a standard clean leaves behind." },
+  { value: "heavy", name: "Restoration Clean", sub: "The works — pre-treatment, stain work & repeated steam passes", goodFor: "Heavy soiling, pet accidents, smells, or carpet that’s been let go. Free vacuum, pre-treatment scrubbed deep into the pile, every marked spot treated by hand — ground-in dirt, sticky spots and gum included — then steam cleaned over and over until it comes up clean. Everything we can do, short of replacing the carpet." },
 ];
 
 export function StepCarpet({
@@ -58,7 +58,7 @@ export function StepCarpet({
         />
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/70">
           {rugsOnly
-            ? "Every rug gets the full treatment — wash, rinse and dry — and comes back to you on the Monday. Continue to add-ons."
+            ? "Every rug gets the full works — washed, rinsed and dried — and comes back to you on the Monday. Continue to add-ons."
             : "Lounges and mattresses have their own soiling levels set on the items step. Continue to add-ons."}
         </p>
       </div>
@@ -67,7 +67,7 @@ export function StepCarpet({
 
   return (
     <div className="space-y-8">
-      <StepHeading kicker="Step 3 · Carpet condition" title="Tell us about the carpet" sub="Four quick questions — your answers shape the recommended clean level and the price, and the technician confirms it on arrival before any work starts." />
+      <StepHeading kicker="Step 3 · Carpet condition" title="Tell us about the carpet" sub="Four quick questions. Your answers set the recommended clean and the price — and we confirm it with you on the day before we start." />
 
       <div>
         <p className="mb-2 font-bold text-charcoal">Do pets live in the home?</p>
@@ -116,9 +116,8 @@ export function StepCarpet({
           <p className="mb-3 border-[1.5px] border-forest bg-mintlight px-4 py-3 text-sm text-charcoal">
             <span className="font-bold">✓ Our recommendation:</span> from your answers
             {reasons.length > 0 && <> — {reasons.join("; ")}</>} — we'd book you the{" "}
-            <strong>{LEVELS.find((l) => l.value === recommended)?.name}</strong>. The technician
-            confirms the level on arrival, before any work starts — if it comes in lighter, you pay
-            the lighter rate.
+            <strong>{LEVELS.find((l) => l.value === recommended)?.name}</strong>. We confirm the level
+            with you on the day before we start — if it needs less, you pay less.
           </p>
         )}
         {!conditionComplete(condition) && (
