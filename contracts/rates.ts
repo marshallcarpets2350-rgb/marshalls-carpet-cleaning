@@ -563,6 +563,8 @@ export function rugPickupDays(): string[] {
     if (diff >= BOOKING_NOTICE_DAYS && RUG_PICKUP_DAYS.includes(d.getDay())) {
       const iso = isoDay(d);
       if (isClosureDay(iso)) continue;
+      // same 3-hour notice as cleans — today's 3–5pm window drops off after midday
+      if (diff === 0 && sydneyNowMinutesLocal() + BOOKING_LEAD_MINUTES > 15 * 60) continue;
       out.push(iso);
     }
   }
@@ -595,6 +597,18 @@ export function paymentDueDay(b: { preferredDate: string | null; rugPickup?: boo
 function sydneyToday(): Date {
   const s = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
   return new Date(s + "T12:00:00");
+}
+// Mirror of calendar.ts sydneyNowMinutes — rates can't import from calendar
+// (calendar imports rates), so the helper lives here too.
+function sydneyNowMinutesLocal(): number {
+  const hm = new Date().toLocaleTimeString("en-GB", {
+    timeZone: "Australia/Sydney",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  });
+  const [h, m] = hm.split(":").map(Number);
+  return h * 60 + m;
 }
 function isoDay(d: Date): string {
   return d.toLocaleDateString("en-CA");
@@ -1419,12 +1433,12 @@ export const TIME_SLOTS = [
 
 export const SLOT_MINUTES = 60;
 export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
-export const BOOKING_NOTICE_DAYS = 2; // tomorrow is never offered (rugs use this too)
-/** Same-day bookings: today IS offered, but a slot must start at least this
- *  far in the future — owner call 5 Nov 2026 ("should still say available
- *  times until the day is fully finished"). The day drops out when the last
- *  slot that could still finish by 5pm falls inside this window. */
-export const SAME_DAY_LEAD_MINUTES = 120;
+export const BOOKING_NOTICE_DAYS = 0; // no day-based notice — everything runs off the 3-hour lead below (owner call 11 Nov 2026, was 2)
+/** Notice on every booking: a slot must start at least this far from now —
+ *  3 hours, owner call 11 Nov 2026 ("3 hour notice booking instead of a
+ *  whole day"). Replaced the 2-day notice rule and the 2-hour same-day lead
+ *  from 5 Nov. Applies to cleans AND rug pickups. */
+export const BOOKING_LEAD_MINUTES = 180;
 
 /** Minutes after midnight each slot starts at (8:00 AM through 4:00 PM). */
 export const SLOT_START_MINUTES = [480, 540, 600, 660, 720, 780, 840, 900, 960] as const;

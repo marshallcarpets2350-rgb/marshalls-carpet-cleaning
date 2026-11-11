@@ -5,7 +5,7 @@ import {
   BOOKING_DAYS_AHEAD,
   BOOKING_NOTICE_DAYS,
   BETWEEN_JOBS_MINUTES,
-  SAME_DAY_LEAD_MINUTES,
+  BOOKING_LEAD_MINUTES,
   SLOT_MINUTES,
   SLOT_START_MINUTES,
   TIME_SLOTS,
@@ -40,9 +40,10 @@ export function isoDay(d: Date): string {
 /** Dates offered in the picker. Sundays are never offered, and Saturdays
  *  stopped being offered from 14 Nov 2026 (owner call — weekends are for the
  *  rug run and rest). Saturday bookings made before then (e.g. 7 Nov) are
- *  honoured. Tomorrow is never offered (BOOKING_NOTICE_DAYS), but today IS —
- *  with same-day slots filtered by start time in buildAvailability, so the
- *  day stays open until no job could still finish by close. */
+ *  honoured. No day-based notice any more: every slot — today, tomorrow,
+ *  whenever — just needs to start at least BOOKING_LEAD_MINUTES (3h) from
+ *  now, enforced in slotAllowedNow for picker and server alike, so today
+ *  stays open until no job could still finish by close. */
 export const LAST_BOOKABLE_SATURDAY = "2026-11-07";
 
 export function bookableDates(): string[] {
@@ -142,14 +143,22 @@ export function canStart(
   return true;
 }
 
-/** Same-day rule: a slot today must start at least SAME_DAY_LEAD_MINUTES
- *  from now. The job fitting inside the day (finish by 5pm) is enforced by
- *  canStart, so today quietly stops offering slots as the afternoon fades.
- *  Other dates are unaffected. Used by both the calendar and the server's
- *  booking validation so a stale page can't book a slot that's already gone. */
+/** Notice rule: EVERY slot — today, tomorrow, any day — must start at least
+ *  BOOKING_LEAD_MINUTES (3h) from now (owner call 11 Nov 2026; replaced the
+ *  2-day notice rule and the same-day-only 2h lead). The job fitting inside
+ *  the day (finish by 5pm) is enforced by canStart, so today quietly stops
+ *  offering slots as the afternoon fades. Used by both the calendar and the
+ *  server's booking validation so a stale page can't book a slot that's
+ *  already gone. */
 export function slotAllowedNow(date: string, slot: number): boolean {
-  if (date !== isoDay(sydneyToday())) return true;
-  return (SLOT_START_MINUTES[slot] ?? 0) >= sydneyNowMinutes() + SAME_DAY_LEAD_MINUTES;
+  const start = sydneyToday();
+  const diffDays = Math.round(
+    (new Date(`${date}T12:00:00`).getTime() - start.getTime()) / 86400000,
+  );
+  return (
+    diffDays * 1440 + (SLOT_START_MINUTES[slot] ?? 0) >=
+    sydneyNowMinutes() + BOOKING_LEAD_MINUTES
+  );
 }
 
 /** Build every bookable day's availability for a job of `span` slots. */
