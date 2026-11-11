@@ -3,9 +3,7 @@
 // downloadable demo file, computed from a snapshot of the real bookings).
 import {
   BOOKING_DAYS_AHEAD,
-  BOOKING_NOTICE_DAYS,
   BETWEEN_JOBS_MINUTES,
-  BOOKING_LEAD_MINUTES,
   SLOT_MINUTES,
   SLOT_START_MINUTES,
   TIME_SLOTS,
@@ -21,18 +19,6 @@ export function sydneyToday(): Date {
   return new Date(`${s}T00:00:00`);
 }
 
-/** Minutes after midnight right now, in the business's timezone. */
-export function sydneyNowMinutes(): number {
-  const hm = new Date().toLocaleTimeString("en-GB", {
-    timeZone: "Australia/Sydney",
-    hour: "2-digit",
-    minute: "2-digit",
-    hour12: false,
-  });
-  const [h, m] = hm.split(":").map(Number);
-  return h * 60 + m;
-}
-
 export function isoDay(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
 }
@@ -40,10 +26,10 @@ export function isoDay(d: Date): string {
 /** Dates offered in the picker. Sundays are never offered, and Saturdays
  *  stopped being offered from 14 Nov 2026 (owner call — weekends are for the
  *  rug run and rest). Saturday bookings made before then (e.g. 7 Nov) are
- *  honoured. No day-based notice any more: every slot — today, tomorrow,
- *  whenever — just needs to start at least BOOKING_LEAD_MINUTES (3h) from
- *  now, enforced in slotAllowedNow for picker and server alike, so today
- *  stays open until no job could still finish by close. */
+ *  honoured. No same-day bookings: tomorrow is the earliest day offered
+ *  (owner call 11 Nov 2026 — replaced the 3-hour lead from earlier that
+ *  day). Rug pickups are the exception — same-day Friday stays bookable
+ *  until 2pm (rugPickupDays in rates.ts). */
 export const LAST_BOOKABLE_SATURDAY = "2026-11-07";
 
 export function bookableDates(): string[] {
@@ -52,7 +38,7 @@ export function bookableDates(): string[] {
   for (let d = new Date(start); ; d.setDate(d.getDate() + 1)) {
     const diff = Math.round((d.getTime() - start.getTime()) / 86400000);
     if (diff > BOOKING_DAYS_AHEAD) break;
-    if (diff !== 0 && diff < BOOKING_NOTICE_DAYS) continue;
+    if (diff < 1) continue; // no same-day — tomorrow is the earliest
     const day = d.getDay();
     const iso = isoDay(d);
     if (day === 0) continue; // Sundays never
@@ -143,22 +129,19 @@ export function canStart(
   return true;
 }
 
-/** Notice rule: EVERY slot — today, tomorrow, any day — must start at least
- *  BOOKING_LEAD_MINUTES (3h) from now (owner call 11 Nov 2026; replaced the
- *  2-day notice rule and the same-day-only 2h lead). The job fitting inside
- *  the day (finish by 5pm) is enforced by canStart, so today quietly stops
- *  offering slots as the afternoon fades. Used by both the calendar and the
- *  server's booking validation so a stale page can't book a slot that's
+/** Notice rule: no same-day bookings — tomorrow is the earliest a clean can
+ *  be booked, any slot (owner call 11 Nov 2026: "no same day booking, they
+ *  can [book] the following day"; replaced the 3-hour lead from earlier that
+ *  same day). Rug pickups are the exception — same-day Friday stays bookable
+ *  until 2pm (see rugPickupDays in rates.ts). Used by both the calendar and
+ *  the server's booking validation so a stale page can't book a slot that's
  *  already gone. */
-export function slotAllowedNow(date: string, slot: number): boolean {
+export function slotAllowedNow(date: string, _slot: number): boolean {
   const start = sydneyToday();
   const diffDays = Math.round(
     (new Date(`${date}T12:00:00`).getTime() - start.getTime()) / 86400000,
   );
-  return (
-    diffDays * 1440 + (SLOT_START_MINUTES[slot] ?? 0) >=
-    sydneyNowMinutes() + BOOKING_LEAD_MINUTES
-  );
+  return diffDays >= 1;
 }
 
 /** Build every bookable day's availability for a job of `span` slots. */

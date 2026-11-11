@@ -563,8 +563,8 @@ export function rugPickupDays(): string[] {
     if (diff >= BOOKING_NOTICE_DAYS && RUG_PICKUP_DAYS.includes(d.getDay())) {
       const iso = isoDay(d);
       if (isClosureDay(iso)) continue;
-      // same 3-hour notice as cleans — today's 3–5pm window drops off after midday
-      if (diff === 0 && sydneyNowMinutesLocal() + BOOKING_LEAD_MINUTES > 15 * 60) continue;
+      // same-day pickup stays bookable until the 2pm cutoff
+      if (diff === 0 && sydneyNowMinutesLocal() >= RUG_PICKUP_CUTOFF_MINUTES) continue;
       out.push(iso);
     }
   }
@@ -598,7 +598,7 @@ function sydneyToday(): Date {
   const s = new Date().toLocaleDateString("en-CA", { timeZone: "Australia/Sydney" });
   return new Date(s + "T12:00:00");
 }
-// Mirror of calendar.ts sydneyNowMinutes — rates can't import from calendar
+// Mirror of the Sydney-clock helper — rates can't import from calendar
 // (calendar imports rates), so the helper lives here too.
 function sydneyNowMinutesLocal(): number {
   const hm = new Date().toLocaleTimeString("en-GB", {
@@ -1433,12 +1433,12 @@ export const TIME_SLOTS = [
 
 export const SLOT_MINUTES = 60;
 export const BOOKING_DAYS_AHEAD = 365; // a full year forward in the calendar
-export const BOOKING_NOTICE_DAYS = 0; // no day-based notice — everything runs off the 3-hour lead below (owner call 11 Nov 2026, was 2)
-/** Notice on every booking: a slot must start at least this far from now —
- *  3 hours, owner call 11 Nov 2026 ("3 hour notice booking instead of a
- *  whole day"). Replaced the 2-day notice rule and the 2-hour same-day lead
- *  from 5 Nov. Applies to cleans AND rug pickups. */
-export const BOOKING_LEAD_MINUTES = 180;
+export const BOOKING_NOTICE_DAYS = 0; // rugs only — today's Friday pickup stays bookable until the cutoff below (owner calls 11 Nov 2026, was 2 then 0)
+/** Same-day rug pickup cutoff: today's Friday 3–5pm window stays bookable
+ *  until 2:00 PM Sydney time (owner call 11 Nov 2026: "rugs cut off at 2pm
+ *  Fridays"). Cleans have their own rule — no same-day at all, tomorrow is
+ *  the earliest bookable day (slotAllowedNow in calendar.ts). */
+export const RUG_PICKUP_CUTOFF_MINUTES = 14 * 60; // 2:00 PM
 
 /** Minutes after midnight each slot starts at (8:00 AM through 4:00 PM). */
 export const SLOT_START_MINUTES = [480, 540, 600, 660, 720, 780, 840, 900, 960] as const;
