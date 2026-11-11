@@ -79,7 +79,7 @@ await build({
   format: "esm",
   jsx: "automatic",
   outdir,
-  loader: { ".png": "file", ".jpg": "file" },
+  loader: { ".png": "file", ".jpg": "file", ".webp": "file" },
   // react-dom/server.node is CJS under the hood — give the ESM bundle a
   // require shim, same as the api/boot.ts build does.
   banner: { js: "import { createRequire } from 'module';const require = createRequire(import.meta.url);" },
@@ -99,7 +99,7 @@ await build({
 // the markup references publicPath ("/assets/...") — ship them to match.
 fs.mkdirSync(path.join(distPublic, "assets"), { recursive: true });
 for (const f of fs.readdirSync(outdir)) {
-  if (/\.(png|jpg)$/.test(f)) {
+  if (/\.(png|jpg|webp)$/.test(f)) {
     fs.copyFileSync(path.join(outdir, f), path.join(distPublic, "assets", f));
   }
 }
