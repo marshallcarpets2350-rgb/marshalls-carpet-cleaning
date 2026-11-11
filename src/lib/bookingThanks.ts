@@ -15,6 +15,9 @@ export type ThanksBooking = {
   flexible: boolean; // "call me to arrange"
   rugPickup: boolean;
   paid: boolean;
+  /** 2-cleans-a-year plan — visit 2's booking, shown next to visit 1. */
+  secondDate?: string | null;
+  secondSlot?: number | null;
 };
 
 const KEY = "mcc-thanks";
@@ -62,4 +65,10 @@ export function whenLine(b: ThanksBooking): string {
     return `We look forward to seeing you ${fmtLong(b.date)}, arriving ${TIME_SLOTS[b.slot]} — it's in the schedule already, and we'll confirm the exact time with you.`;
   }
   return "We'll give you a call to lock in a day that works.";
+}
+
+/** The plan's second visit — already booked in, 10% off applied. */
+export function secondVisitLine(b: ThanksBooking): string | null {
+  if (!b.secondDate) return null;
+  return `And visit 2 is in the schedule too — ${fmtLong(b.secondDate)}${b.secondSlot !== null && b.secondSlot !== undefined ? `, arriving ${TIME_SLOTS[b.secondSlot]}` : ""}, with your 10% plan discount on both cleans.`;
 }

@@ -58,13 +58,15 @@ function SlidingCalendar({
   monthKeys,
   selected,
   onSelect,
+  initialIdx = 0,
 }: {
   enabled: Map<string, string>; // iso → badge text
   monthKeys: string[]; // ordered "yyyy-mm" list spanning the year
   selected: string | null;
   onSelect: (iso: string) => void;
+  initialIdx?: number; // open this many months in (plan visit 2 ≈ 6 months out)
 }) {
-  const [idx, setIdx] = useState(0);
+  const [idx, setIdx] = useState(initialIdx);
   const [slide, setSlide] = useState<"left" | "right" | null>(null);
 
   if (monthKeys.length === 0) {
@@ -226,6 +228,12 @@ export function StepWhen({
   jobMinutes,
   rugsOnly,
   kicker = "Step 5 · Your schedule",
+  title,
+  sub,
+  hideFlexible = false,
+  startMonthOffset = 0,
+  minDate,
+  compact = false,
 }: {
   date: string | null;
   slot: number | null;
@@ -235,6 +243,17 @@ export function StepWhen({
   jobMinutes: number;
   rugsOnly: boolean;
   kicker?: string;
+  /** Heading overrides — the plan's visit-2 calendar reuses this component. */
+  title?: string;
+  sub?: string;
+  /** Plan visit 2 must be a real booked date — no "call me" escape hatch. */
+  hideFlexible?: boolean;
+  /** Open the calendar this many months ahead (visit 2 ≈ 6 months out). */
+  startMonthOffset?: number;
+  /** Never offer dates on or before this one (visit 2 must follow visit 1). */
+  minDate?: string;
+  /** Skip the info notes — the first calendar on the page already said it. */
+  compact?: boolean;
 }) {
   const avail = trpc.public.listAvailability.useQuery(
     { town, jobMinutes },
@@ -257,16 +276,22 @@ export function StepWhen({
     [avail.data, fallbackDays],
   );
 
+  // Visit 2 on the plan: only days AFTER the first clean are offered.
+  const offeredDays = useMemo(
+    () => (minDate ? days.filter((d) => d.date > minDate) : days),
+    [days, minDate],
+  );
+
   // Enabled dates + badges for the on-site calendar.
   const { enabled, monthKeys } = useMemo(() => {
     const map = new Map<string, string>();
-    for (const d of days) {
+    for (const d of offeredDays) {
       const free = d.slots.filter(Boolean).length;
       if (free > 0) map.set(d.date, `${free} free`);
     }
-    const keys = [...new Set(days.map((d) => monthKeyOf(d.date)))];
+    const keys = [...new Set(offeredDays.map((d) => monthKeyOf(d.date)))];
     return { enabled: map, monthKeys: keys };
-  }, [days]);
+  }, [offeredDays]);
 
   // Rug pickups — same calendar, but only Thu/Fri afternoons light up.
   const rug = useMemo(() => {
@@ -278,7 +303,7 @@ export function StepWhen({
   }, [rugsOnly]);
 
   const cal = rugsOnly ? rug : { enabled, monthKeys };
-  const dayRow = days.find((d) => d.date === date);
+  const dayRow = offeredDays.find((d) => d.date === date);
 
   return (
     <div className="space-y-8">
@@ -291,11 +316,12 @@ export function StepWhen({
 
       <StepHeading
         kicker={kicker}
-        title={rugsOnly ? "Choose your pickup day" : "Choose your date & arrival window"}
+        title={title ?? (rugsOnly ? "Choose your pickup day" : "Choose your date & arrival window")}
         sub={
-          rugsOnly
+          sub ??
+          (rugsOnly
             ? "Rugs are collected Friday between 3 and 5pm, and returned the Monday after — cleaned and dry. The calendar runs a full year ahead."
-            : "This is our live booking calendar — every booked job comes off the board in real time, so any day and time you can select is genuinely available. It runs a full year ahead, and we confirm the exact time with you before the job."
+            : "This is our live booking calendar — every booked job comes off the board in real time, so any day and time you can select is genuinely available. It runs a full year ahead, and we confirm the exact time with you before the job.")
         }
       />
 
@@ -308,7 +334,7 @@ export function StepWhen({
         </p>
       )}
 
-      {!rugsOnly && jobMinutes >= 60 && (
+      {!compact && !rugsOnly && jobMinutes >= 60 && (
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/80">
           Your job needs about <strong>{hoursLabel(jobMinutes)}</strong> on site
           {span > 1 && (
@@ -319,14 +345,14 @@ export function StepWhen({
           {" "}— the calendar only offers starts where the whole job fits.
         </p>
       )}
-      {!rugsOnly && fullDayJob && (
+      {!compact && !rugsOnly && fullDayJob && (
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/80">
           That's a full-day job — it starts at 8:00 AM and the whole day is
           yours. Every job is finished in one day, so nothing carries over to
           the next.
         </p>
       )}
-      {!rugsOnly && morningOnly && (
+      {!compact && !rugsOnly && morningOnly && (
         <p className="border-[1.5px] border-charcoal/30 bg-creamlight px-4 py-3 text-sm text-charcoal/80">
           {town || "Your town"} is a fair drive out, so jobs there start in the
           morning — the afternoon stays free for the run back and anything in town.
@@ -335,7 +361,7 @@ export function StepWhen({
 
       {/* Christmas closure notice — shows through the lead-up and the break,
           then quietly disappears once we're back (11 Jan 2027). */}
-      {new Date() < new Date(2027, 0, 11) && (
+      {!compact && new Date() < new Date(2027, 0, 11) && (
         <p className="border-[1.5px] border-charcoal bg-creamlight px-4 py-3 text-sm text-charcoal/80">
           {rugsOnly ? (
             <>
@@ -358,6 +384,7 @@ export function StepWhen({
           enabled={cal.enabled}
           monthKeys={cal.monthKeys}
           selected={date}
+          initialIdx={startMonthOffset}
           onSelect={(iso) => onPick(iso, fullDayJob ? 0 : null)}
         />
 
@@ -385,16 +412,18 @@ export function StepWhen({
         )}
       </div>
 
-      <button
-        type="button"
-        onClick={() => onPick(null, null)}
-        className={`w-full border-[1.5px] p-4 text-left transition-colors ${flexible ? "border-forest bg-mintlight" : "border-charcoal/30 bg-background hover:border-charcoal"}`}
-      >
-        <p className="font-bold text-charcoal">Not sure yet — call me to arrange</p>
-        <p className="mt-0.5 text-sm text-charcoal/60">
-          We'll phone you and find a day that works.
-        </p>
-      </button>
+      {!hideFlexible && (
+        <button
+          type="button"
+          onClick={() => onPick(null, null)}
+          className={`w-full border-[1.5px] p-4 text-left transition-colors ${flexible ? "border-forest bg-mintlight" : "border-charcoal/30 bg-background hover:border-charcoal"}`}
+        >
+          <p className="font-bold text-charcoal">Not sure yet — call me to arrange</p>
+          <p className="mt-0.5 text-sm text-charcoal/60">
+            We'll phone you and find a day that works.
+          </p>
+        </button>
+      )}
     </div>
   );
 }

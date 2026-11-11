@@ -9,13 +9,12 @@ export default function Newsletter() {
             The monthly clean-deals email
           </p>
           <h2 className="mt-3 font-display text-4xl font-black leading-tight text-charcoal md:text-5xl">
-            10% off now. Better deals every month.
+            Deals and reminders, once a month.
           </h2>
           <p className="mt-4 max-w-xl text-lg leading-relaxed text-charcoal/80">
-            Join the list and take <strong>WELCOME10</strong> into your first quote for
-            10% off. After that: one email a month with subscriber-only discounts,
-            seasonal reminders and first crack at end-of-month slots. No spam —
-            unsubscribe any time.
+            Join the list for one email a month — subscriber-only discounts,
+            seasonal cleaning reminders and first crack at end-of-month slots.
+            No spam — unsubscribe any time.
           </p>
           <div className="mt-8">
             <NewsletterForm source="newsletter-section" />

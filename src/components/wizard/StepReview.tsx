@@ -2,7 +2,7 @@
 // Shared by all three quote pages (/quote, /rugs, /lounge); `stepOf` tells
 // the "Change" links where each section lives on the page.
 import type { ReactNode } from "react";
-import type { ConditionAnswers, Dirtiness, PaymentChoice, QuoteBreakdown, ConfirmBy } from "@contracts/rates";
+import type { ConditionAnswers, Dirtiness, MaintenancePlan, PaymentChoice, QuoteBreakdown, ConfirmBy } from "@contracts/rates";
 import { CONFIRM_LABELS, PAYMENT_LABELS, PURPOSE_LABELS, RATES, TIME_SLOTS, SLOT_MINUTES, money, rugReturnDay } from "@contracts/rates";
 import type { TravelResult } from "@/components/AddressField";
 import type { Contact } from "./StepWhereWho";
@@ -57,6 +57,7 @@ export function StepReview({
   contact, confirmBy, travel, purpose, condition, dirtiness, breakdown,
   stainPackage, enzymePreSpray, preVacuum, roomCount, jobSummary,
   payment, date, slot, rugsOnly, hasCarpet, jobMinutes, pickupNote,
+  plan, secondVisit,
   kicker, stepOf,
   notes, setNotes,
   codeInput, setCodeInput, appliedCode, codeError, applyCode,
@@ -82,6 +83,9 @@ export function StepReview({
   jobMinutes: number;
   /** Rug pickups only — where the rugs are collected from. */
   pickupNote?: string;
+  /** 2-cleans-a-year plan — shown as its own row when the customer took it. */
+  plan?: MaintenancePlan;
+  secondVisit?: { date: string | null; slot: number | null } | null;
   kicker: string;
   stepOf: ReviewSteps;
   notes: string;
@@ -134,6 +138,13 @@ export function StepReview({
           <Row label="Add-ons" value={extras.length ? extras.join(" · ") : "None"} onEdit={() => onGoToStep(stepOf.extras)} />
         )}
         <Row label="Date & time" value={whenLabel} onEdit={() => onGoToStep(stepOf.when)} />
+        {plan && plan !== "none" && (
+          <Row
+            label="Plan"
+            value={`2 cleans a year — 10% off every clean${secondVisit?.date ? ` · visit 2: ${fmtDay(secondVisit.date)}${secondVisit.slot !== null ? `, ${TIME_SLOTS[secondVisit.slot]}` : ""}` : ""}`}
+            onEdit={() => onGoToStep(stepOf.when)}
+          />
+        )}
         <Row label="Payment" value={payment ? PAYMENT_LABELS[payment] : "—"} onEdit={() => onGoToStep(stepOf.payment)} />
       </div>
 
@@ -155,7 +166,7 @@ export function StepReview({
           <input
             id="code"
             className="input-sharp uppercase"
-            placeholder="e.g. WELCOME10"
+            placeholder="Enter your code"
             value={codeInput}
             onChange={(e) => setCodeInput(e.target.value)}
           />

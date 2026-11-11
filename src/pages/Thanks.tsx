@@ -12,7 +12,7 @@ import FlowArt from "@/components/FlowArt";
 import Footer from "@/sections/Footer";
 import NewsletterForm from "@/components/NewsletterForm";
 import { BUSINESS, money } from "@contracts/rates";
-import { readThanks, whenLine } from "@/lib/bookingThanks";
+import { readThanks, secondVisitLine, whenLine } from "@/lib/bookingThanks";
 
 export default function Thanks() {
   // Never let this page into Google's index — it's a post-booking screen.
@@ -50,6 +50,9 @@ export default function Thanks() {
                   <strong className="font-display text-forest">{money(b.total)}</strong>.
                 </p>
                 <p className="mt-3 leading-relaxed text-charcoal/80">{whenLine(b)}</p>
+                {secondVisitLine(b) && (
+                  <p className="mt-3 leading-relaxed text-charcoal/80">{secondVisitLine(b)}</p>
+                )}
                 <p className="mt-3 leading-relaxed text-charcoal/80">
                   {b.paid
                     ? "Paid in full by card — your receipt is on its way to your email."

@@ -30,6 +30,7 @@ import {
   type PaymentChoice,
   type QuoteInput,
   type LoungeItem,
+  type MaintenancePlan,
   type MattressItem,
 } from "@contracts/rates";
 import StepWhereWho, { contactValid, type Contact } from "@/components/wizard/StepWhereWho";
@@ -38,6 +39,7 @@ import { StepCarpet } from "@/components/wizard/StepCarpet";
 import { StepExtras } from "@/components/wizard/StepExtras";
 import StepItems from "@/components/wizard/StepItems";
 import { StepWhen } from "@/components/wizard/StepWhen";
+import { StepHeading } from "@/components/wizard/ui";
 import { StepPayment } from "@/components/wizard/StepPayment";
 import { StepReview } from "@/components/wizard/StepReview";
 
@@ -107,6 +109,12 @@ export default function Quote({
   const [whenSlot, setWhenSlot] = useState<number | null>(null);
   const [whenFlexible, setWhenFlexible] = useState(false);
 
+  // --- step 5b: the 2-cleans-a-year plan (10% off every clean, both dates
+  // locked in up front — visit 2 auto-books as its own job on the schedule) ---
+  const [plan, setPlan] = useState<MaintenancePlan>("none");
+  const [secondDate, setSecondDate] = useState<string | null>(null);
+  const [secondSlot, setSecondSlot] = useState<number | null>(null);
+
   // --- step 6: payment ---
   // "Pay now" pre-selected (Ben, 11 Nov) — card up front locks the booking in;
   // the review screen shows the choice with a Change link for PayID/bank.
@@ -148,6 +156,8 @@ export default function Quote({
         flexible: whenFlexible,
         rugPickup: false,
         paid: false,
+        secondDate: plan === "two" ? secondDate : null,
+        secondSlot: plan === "two" ? secondSlot : null,
       });
       if (r.checkoutUrl) {
         // "Pay now" → straight to Stripe's hosted checkout for the full amount
@@ -247,7 +257,7 @@ export default function Quote({
     () => ({
       carpetAreaM2,
       carpetDirtiness,
-      maintenance: "none",
+      maintenance: plan,
       lounges: csLounges,
       mattresses: csMattresses,
       rugs: [], // rugs are their own Friday pick-up run — never same-day
@@ -264,10 +274,17 @@ export default function Quote({
       roomCounts: mode === "rooms" ? roomCounts : undefined,
       crossSellApplied: false, // added-service discount removed 8 Nov 2026 — field kept for the input shape
     }),
-    [carpetAreaM2, carpetDirtiness, condition, enzymePreSpray, totalRooms, travel, appliedCode, mode, roomCounts, csLounges, csMattresses],
+    [carpetAreaM2, carpetDirtiness, plan, condition, enzymePreSpray, totalRooms, travel, appliedCode, mode, roomCounts, csLounges, csMattresses],
   );
 
   const breakdown = useMemo(() => computeQuote(quoteInput, rates, bfybModel), [quoteInput, rates, bfybModel]);
+
+  // What the 2-cleans-a-year plan would take off this clean — shown on the
+  // plan card as a real dollar figure, not just a percent.
+  const planSaving = useMemo(
+    () => computeQuote({ ...quoteInput, maintenance: "two" as MaintenancePlan }, rates, bfybModel).maintenanceDiscount,
+    [quoteInput, rates, bfybModel],
+  );
   // Price for each clean-level card: the full discounted total if that level
   // were picked — every price on the page is the pay-this number, never a
   // pre-discount figure.
@@ -300,17 +317,22 @@ export default function Quote({
     breakdown.cleaningTotal;
 
   // --- per-section validation ---
+  const whenValid = whenFlexible || (whenDate !== null && whenSlot !== null);
+  // The plan locks in BOTH cleans — picking it means visit 2 needs a slot too.
+  const planValid = plan === "none" || (secondDate !== null && secondSlot !== null);
   const coreValid = [
     contactValid(contact) && travel !== null,
     purpose !== null && !breakdown.isEmpty,
     carpetAreaM2 === 0 || conditionComplete(condition),
     true,
     true, // soft furnishings are optional — nothing to validate
-    whenFlexible || (whenDate !== null && whenSlot !== null) || adminMode,
+    (whenValid && planValid) || adminMode,
     payment !== null || adminMode,
   ];
   const allValid = coreValid.every(Boolean);
-  const missing = MISSING_LABELS.filter((l, i) => l && !coreValid[i]);
+  const missingLabels = [...MISSING_LABELS];
+  if (whenValid && !planValid) missingLabels[5] = "visit 2's day and time";
+  const missing = missingLabels.filter((l, i) => l && !coreValid[i]);
 
   const openReview = () => {
     if (!allValid) return;
@@ -379,7 +401,10 @@ export default function Quote({
       town: travel?.suburb ?? "",
       jobMinutes,
       rugPickup: false,
-      secondVisit: null,
+      secondVisit:
+        plan === "two" && secondDate !== null && secondSlot !== null
+          ? { date: secondDate, slot: secondSlot }
+          : null,
     };
     submitLead.mutate({
       name: contact.name.trim(),
@@ -567,10 +592,70 @@ export default function Quote({
                           jobMinutes={jobMinutes}
                           rugsOnly={false}
                           onPick={(d, s) => {
-                            if (d === null) { setWhenFlexible(true); setWhenDate(null); setWhenSlot(null); }
+                            if (d === null) {
+                              setWhenFlexible(true); setWhenDate(null); setWhenSlot(null);
+                              // "Call me" means no first date — the plan needs
+                              // both dates, so it goes back to a plain one-off.
+                              setPlan("none"); setSecondDate(null); setSecondSlot(null);
+                            }
                             else { setWhenFlexible(false); setWhenDate(d); setWhenSlot(s); }
+                            // Visit 2 must sit after visit 1 — if the first
+                            // clean moved to/after it, visit 2 needs re-picking.
+                            if (d && secondDate && secondDate <= d) { setSecondDate(null); setSecondSlot(null); }
                           }}
                         />
+                      </section>
+                    )}
+                    {!adminMode && !whenFlexible && whenDate !== null && whenSlot !== null && (
+                      <section id="q-plan">
+                        <div className="space-y-8">
+                          <StepHeading
+                            kicker="Optional · save 10%"
+                            title="Make it a plan and take 10% off every clean"
+                            sub="Carpets stay their best with a proper clean about every 6 months. Pick both dates now — this clean and the next one — and 10% comes off every clean. Both go straight into the schedule: no codes, no fine print."
+                          />
+                          <div className="grid gap-3 sm:grid-cols-2">
+                            <button
+                              type="button"
+                              onClick={() => { setPlan("none"); setSecondDate(null); setSecondSlot(null); }}
+                              className={`border-[1.5px] p-5 text-left transition-colors ${plan === "none" ? "border-forest bg-mintlight" : "border-charcoal/30 bg-background hover:border-charcoal"}`}
+                            >
+                              <p className="font-display text-xl font-black text-charcoal">Just this clean</p>
+                              <p className="mt-1 text-sm text-charcoal/60">One-off visit at full price — nothing else to think about.</p>
+                            </button>
+                            <button
+                              type="button"
+                              onClick={() => setPlan("two")}
+                              className={`border-[1.5px] p-5 text-left transition-colors ${plan === "two" ? "border-forest bg-mintlight" : "border-charcoal/30 bg-background hover:border-charcoal"}`}
+                            >
+                              <p className="font-display text-xl font-black text-charcoal">2 cleans a year — 10% off</p>
+                              <p className="mt-1 text-sm text-charcoal/60">
+                                This clean plus one more in about 6 months, both locked in now.
+                                {planSaving > 0 && (
+                                  <> You'd save <strong className="text-forest">{money(planSaving)}</strong> on every clean.</>
+                                )}
+                              </p>
+                            </button>
+                          </div>
+                          {plan === "two" && (
+                            <StepWhen
+                              date={secondDate}
+                              slot={secondSlot}
+                              flexible={false}
+                              town={travel?.suburb ?? ""}
+                              jobMinutes={jobMinutes}
+                              rugsOnly={false}
+                              kicker="Visit 2 · about 6 months later"
+                              title="Pick visit 2 — it goes in the schedule too"
+                              sub="Same clean, 10% off, about 6 months from now. We remind you the day before each visit, same as always."
+                              hideFlexible
+                              compact
+                              minDate={whenDate}
+                              startMonthOffset={6}
+                              onPick={(d, s) => { setSecondDate(d); setSecondSlot(s); }}
+                            />
+                          )}
+                        </div>
                       </section>
                     )}
                     {!adminMode && (
@@ -615,6 +700,8 @@ export default function Quote({
                   roomCount={totalRooms} jobSummary={roomsSummary}
                   payment={payment}
                   date={whenFlexible ? null : whenDate} slot={whenFlexible ? null : whenSlot}
+                  plan={plan}
+                  secondVisit={plan === "two" ? { date: secondDate, slot: secondSlot } : null}
                   rugsOnly={false} hasCarpet={carpetAreaM2 > 0} jobMinutes={jobMinutes}
                   kicker={adminMode ? "Review & save the quote" : "Nearly done · review & send"}
                   stepOf={{ where: 0, job: 1, carpet: 2, extras: 3, when: 5, payment: 6 }}

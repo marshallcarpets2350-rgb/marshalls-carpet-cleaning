@@ -25,7 +25,7 @@ export default function NewsletterForm({ source }: { source: string }) {
         <p className="mt-2 text-charcoal/80">
           {done === "already"
             ? "Keep an eye on your inbox — the next monthly deals email is coming."
-            : "Use code WELCOME10 in the quote builder for 10% off your first clean. Monthly deals land in your inbox from here."}
+            : "You're on the list — deals and cleaning reminders land in your inbox from here."}
         </p>
       </div>
     );

@@ -49,6 +49,9 @@ interface BookingDetails {
   town: string;
   jobMinutes: number;
   rugPickup: boolean;
+  // 2-cleans-a-year plan — visit 2 rides on the first booking's record (and
+  // lands as its own booking row the moment it's accepted).
+  secondVisit?: { date: string; slot: number } | null;
   notes?: string;
   access?: {
     method: "be-there" | "agent" | "lockbox" | "someone-else" | "leave-out" | null;
@@ -197,6 +200,9 @@ function confirmationParts(lead: LeadRow) {
     collection,
     summary: serviceSummary(input, b?.rugPickup ?? false),
     when: b ? whenLine(b) : "Time to be confirmed — we'll call you",
+    plan: b?.secondVisit
+      ? `2 cleans a year — visit 2 is booked in too: ${longDateLabel(b.secondVisit.date)}, arrival between ${TIME_SLOTS[b.secondVisit.slot]} (10% off every clean)`
+      : null,
     payment: b ? paymentLine(b, lead) : "pay on the day",
   };
 }
@@ -215,7 +221,7 @@ Beauty — you're booked in with ${BUSINESS.name}.
 
 YOUR BOOKING
 • ${pt.summary}
-• When: ${pt.when}
+• When: ${pt.when}${pt.plan ? `\n• Plan: ${pt.plan}` : ""}
 • Where: ${pt.where}${collection}
 • Total: ${money(lead.total)} — ${pt.payment}
 • Reference: ${pt.ref}
@@ -255,6 +261,7 @@ export function confirmationEmailHtml(lead: LeadRow): string {
     <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
       ${row("THE JOB", `<strong>${esc(pt.summary)}</strong>`)}
       ${row("WHEN", `<strong>${esc(pt.when)}</strong>`)}
+      ${pt.plan ? row("PLAN", `<strong>${esc(pt.plan)}</strong>`) : ""}
       ${row("WHERE", `<strong>${esc(pt.where)}</strong>`)}
       ${pt.collection ? row("COLLECTION", esc(pt.collection)) : ""}
     </table>
@@ -375,7 +382,7 @@ WHAT
 • ${serviceSummary(input, b?.rugPickup ?? false)}
 
 WHEN
-• ${when}
+• ${when}${b?.secondVisit ? `\n• PLAN: 2 cleans a year — visit 2 auto-booked ${longDateLabel(b.secondVisit.date)}, ${TIME_SLOTS[b.secondVisit.slot]}` : ""}
 
 WHERE
 • ${where}
