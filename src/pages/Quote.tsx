@@ -553,6 +553,8 @@ export default function Quote({
                         kicker="Optional · same visit"
                         title="Lounge or mattress too? Add it here."
                         sub="Same crew, same day, one booking — anything you add here is cleaned while we're already at your place. Rugs are different — they're a Friday pick-up & clean, with their own quote."
+                        mattressesCollapsed
+                        rugUpsell
                       />
                     </section>
                     {!adminMode && (

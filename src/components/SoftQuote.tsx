@@ -434,6 +434,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                         mattresses={mattresses} setMattresses={setMattresses}
                         rugs={rugs} setRugs={setRugs}
                         sub={isRugs ? undefined : "Lounges are priced per seat with three soiling levels; mattresses by size. Add as many pieces as you like — it all combines into one price."}
+                        rugUpsell={!isRugs}
                       />
                     </section>
                     {!isRugs && (

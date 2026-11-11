@@ -1,6 +1,8 @@
 // The items step for the soft-furnishing quote pages. Two modes:
 //   "lounge" — lounges & mattresses (the /lounge page)
 //   "rugs"   — rugs for the Friday pick-up run (the /rugs page)
+import { useState } from "react";
+import { Link } from "react-router";
 import { Stepper, StepHeading } from "./ui";
 import {
   RATES,
@@ -68,6 +70,8 @@ export default function StepItems({
   kicker = "Step 2 · The items",
   title,
   sub,
+  mattressesCollapsed = false,
+  rugUpsell = false,
 }: {
   mode: "lounge" | "rugs";
   lounges: LoungeItem[];
@@ -79,7 +83,15 @@ export default function StepItems({
   kicker?: string;
   title?: string;
   sub?: string;
+  /** Hide the mattress grid behind an "+ Add a mattress" button (the carpet
+   *  wizard's optional step) — the /lounge page keeps it expanded. */
+  mattressesCollapsed?: boolean;
+  /** Show the Friday rug-pickup upsell card linking to /rugs. */
+  rugUpsell?: boolean;
 }) {
+  const [mattressesToggled, setMattressesToggled] = useState(false);
+  const mattressesOpen =
+    !mattressesCollapsed || mattressesToggled || mattresses.some((m) => m.qty > 0);
   if (mode === "rugs") {
     return (
       <div className="space-y-10">
@@ -202,9 +214,12 @@ export default function StepItems({
             onClick={() =>
               setLounges((prev) => [...prev, { seats: 3, dirtiness: "light", reclinerSeats: 0 }])
             }
-            className="border-[1.5px] border-dashed border-charcoal bg-transparent px-5 py-3 font-bold text-forest hover:bg-mintlight"
+            className="w-full border-[1.5px] border-dashed border-forest bg-mintlight/50 px-6 py-4 text-left transition-colors hover:bg-mintlight sm:w-auto sm:min-w-[340px]"
           >
-            + Add a lounge
+            <span className="block text-lg font-extrabold text-forest">+ Add a lounge</span>
+            <span className="mt-0.5 block text-sm text-charcoal/60">
+              From {money(RATES.lounge.perSeat.light)} a seat, cleaned while we're already at your place
+            </span>
           </button>
         </div>
       </div>
@@ -212,6 +227,19 @@ export default function StepItems({
       {/* Mattresses */}
       <div>
         <p className="mb-3 font-bold text-charcoal">Mattresses</p>
+        {!mattressesOpen && (
+          <button
+            type="button"
+            onClick={() => setMattressesToggled(true)}
+            className="w-full border-[1.5px] border-dashed border-forest bg-mintlight/50 px-6 py-4 text-left transition-colors hover:bg-mintlight sm:w-auto sm:min-w-[340px]"
+          >
+            <span className="block text-lg font-extrabold text-forest">+ Add a mattress</span>
+            <span className="mt-0.5 block text-sm text-charcoal/60">
+              From {money(RATES.mattress.base.single)} — Single to King, priced by size
+            </span>
+          </button>
+        )}
+        {mattressesOpen && (
         <div className="grid gap-px border-[1.5px] border-charcoal bg-charcoal sm:grid-cols-2">
           {MATTRESS_SIZES.map(({ size, label }) => {
             const item = mattresses.find((m) => m.size === size);
@@ -252,7 +280,26 @@ export default function StepItems({
             );
           })}
         </div>
+        )}
       </div>
+
+      {/* Rug pickup upsell — rugs run their own Friday pickup quote, so this
+          links out to /rugs rather than adding to this booking. */}
+      {rugUpsell && (
+        <Link
+          to="/rugs"
+          className="flex flex-wrap items-center justify-between gap-4 border-[1.5px] border-charcoal bg-mintlight/60 px-6 py-5 transition-colors hover:bg-mintlight"
+        >
+          <div>
+            <p className="text-lg font-extrabold text-charcoal">Got rugs or mats that are dirty too?</p>
+            <p className="mt-1 max-w-xl text-sm text-charcoal/70">
+              Book them into the Friday pickup run — we collect them 3–5pm, wash and dry them at our
+              place, and they're back on your floor Monday. Free pickup in Armidale, from {money(RUG_SIZES[0].price)}.
+            </p>
+          </div>
+          <span className="shrink-0 bg-forest px-5 py-3 font-bold text-background">Get a rug quote →</span>
+        </Link>
+      )}
     </div>
   );
 }
