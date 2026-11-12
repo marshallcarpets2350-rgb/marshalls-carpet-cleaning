@@ -78,6 +78,79 @@ function OwingBadge() {
   );
 }
 
+// "Invoice to" editor for agency jobs (12 Nov 2026): the booking contact is
+// the real estate, but the invoice/receipt is made out to the tenant or
+// owner and just passes through the agency for payment. Module-level with
+// its own mutation + state (OwingBadge pattern) so a listLeads refresh
+// never wipes it mid-edit.
+function InvoiceToEditor({ id, name, invoiceTo }: { id: number; name: string; invoiceTo?: string | null }) {
+  const utils = trpc.useUtils();
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const [err, setErr] = useState("");
+  const save = trpc.admin.setInvoiceTo.useMutation({
+    onSuccess: () => {
+      setEditing(false);
+      setErr("");
+      utils.admin.listLeads.invalidate();
+    },
+    onError: (e) => setErr(e.message),
+  });
+  const current = invoiceTo?.trim() || "";
+  if (!editing) {
+    return (
+      <span>
+        <strong>Invoice to:</strong> {current || name}
+        {current ? <span className="text-charcoal/50">{" "}(emailed to {name})</span> : null}
+        <button
+          type="button"
+          className="ml-2 text-charcoal/50 underline"
+          onClick={() => {
+            setText(current);
+            setErr("");
+            setEditing(true);
+          }}
+        >
+          change
+        </button>
+      </span>
+    );
+  }
+  return (
+    <span>
+      <strong>Invoice to:</strong>{" "}
+      <input
+        value={text}
+        onChange={(e: ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
+        placeholder={name}
+        className="w-64 max-w-full border-[1.5px] border-charcoal/40 bg-white px-2 py-1 text-sm"
+      />
+      <button
+        type="button"
+        className="btn-pill ml-2 !px-3 !py-1 text-xs"
+        disabled={save.isPending}
+        onClick={() => save.mutate({ id, invoiceTo: text })}
+      >
+        {save.isPending ? "Saving…" : "Save"}
+      </button>
+      <button type="button" className="ml-2 text-xs text-charcoal/50 underline" onClick={() => setEditing(false)}>
+        cancel
+      </button>
+      {current ? (
+        <button
+          type="button"
+          className="ml-2 text-xs text-charcoal/50 underline"
+          disabled={save.isPending}
+          onClick={() => save.mutate({ id, invoiceTo: "" })}
+        >
+          clear
+        </button>
+      ) : null}
+      {err && <span className="ml-2 text-xs font-semibold text-[#B91C1C]">{err}</span>}
+    </span>
+  );
+}
+
 function DotLegend() {
 
 
@@ -1143,6 +1216,7 @@ export default function Admin() {
                             {booking.payment && <li><strong>Payment:</strong> {PAYMENT_LABELS[booking.payment]}</li>}
                             {booking.confirmBy && <li><strong>Confirm by:</strong> {CONFIRM_LABELS[booking.confirmBy]}</li>}
                             {booking.notes && <li><strong>Notes:</strong> {booking.notes}</li>}
+                            <li><InvoiceToEditor id={r.id} name={r.name} invoiceTo={booking.invoiceTo} /></li>
                           </ul>
                         </div>
                       )}
@@ -2322,6 +2396,9 @@ export default function Admin() {
                     )}
                   </p>
                   <p className="mt-1 text-sm text-charcoal/80">{watchFor}</p>
+                  <p className="mt-1 text-sm text-charcoal/80">
+                    <InvoiceToEditor id={r.id} name={r.name} invoiceTo={booking?.invoiceTo} />
+                  </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button
                       type="button"

@@ -62,6 +62,9 @@ interface BookingDetails {
     mobile?: string;
     parking?: "close" | "stairs-or-far" | null;
   };
+  /** Agency jobs (12 Nov 2026): invoice/receipt addressee when it's not the
+   *  booking contact — tenant/owner name, email still goes to the agency. */
+  invoiceTo?: string | null;
 }
 
 function parseQuote(lead: LeadRow): QuoteInput | null {
@@ -111,6 +114,20 @@ function paymentLine(b: BookingDetails, lead: LeadRow): string {
 
 export function bookingReference(lead: LeadRow): string {
   return `MCC-${String(lead.id).padStart(4, "0")}`;
+}
+
+/** Who the invoice/receipt PDF is made out to. Agency jobs (owner call
+ *  12 Nov 2026): the booking contact is often the real estate, but the
+ *  paperwork is made out to the tenant or owner while the email passes
+ *  through the agency — booking.invoiceTo overrides the booking name. */
+export function invoiceAddressee(lead: { name: string; bookingJson: string | null }): string {
+  try {
+    if (lead.bookingJson) {
+      const to = (JSON.parse(lead.bookingJson) as { invoiceTo?: string }).invoiceTo?.trim();
+      if (to) return to;
+    }
+  } catch { /* fall through */ }
+  return lead.name;
 }
 
 // ---------------------------------------------------------------------------
@@ -1044,6 +1061,10 @@ export function invoiceEmail(
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
+  // Agency jobs: the email goes to the real estate but the PDF is made out
+  // to the tenant/owner — say so up front so accounts can see it at a glance.
+  const addressee = invoiceAddressee(lead);
+  const madeOutLine = addressee !== lead.name ? `• Made out to: ${addressee}\n` : "";
   const cardBlock = payUrl ? `• Card: pay securely online — ${payUrl}\n` : "";
   const bankBlock = BUSINESS.bankBsb
     ? `• Bank transfer: BSB ${BUSINESS.bankBsb}, account ${BUSINESS.bankAccount} (${BUSINESS.bankName})\n`
@@ -1059,7 +1080,7 @@ Thanks for having us${jobIso ? ` on ${longDateLabel(jobIso)}` : ""} — your inv
 
 INVOICE ${ref}
 • What was done: ${serviceSummary(input, b?.rugPickup ?? false)}
-• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
+${madeOutLine}• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
 
 HOW TO PAY
 ${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
@@ -1090,6 +1111,10 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
+  // Agency jobs: email goes to the real estate, PDF is made out to the
+  // tenant/owner — call it out so accounts can see it without opening the PDF.
+  const addressee = invoiceAddressee(lead);
+  const madeOutRow = addressee !== lead.name ? detailRow("MADE OUT TO", `<strong>${esc(addressee)}</strong>`) : "";
   const refHtml = `<span style="font-size:1.2em;font-weight:800;color:#B91C1C;text-decoration:underline">${esc(ref)}</span>`;
   const cardButton = payUrl
     ? `<a href="${esc(payUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:12px 20px;border-radius:8px;font-weight:bold;text-decoration:none;margin:4px 0 10px">Pay ${money(lead.total)} by card now</a><br>`
@@ -1109,6 +1134,7 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
 
   ${detailsBox(
     detailRow("WHAT WAS DONE", `<strong>${esc(serviceSummary(input, b?.rugPickup ?? false))}</strong>`) +
+      madeOutRow +
       (jobIso ? detailRow("JOB DATE", esc(longDateLabel(jobIso))) : ""),
   )}
 

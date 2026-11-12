@@ -10,7 +10,7 @@
  */
 import type PDFDocumentT from "pdfkit";
 import { BUSINESS, paymentDueDay, rugReturnDay } from "@contracts/rates";
-import { bookingReference, type LeadRow } from "./messages";
+import { bookingReference, invoiceAddressee, type LeadRow } from "./messages";
 import { BRAND, brandLogo, brandVan } from "./brand";
 
 let PDFDocument: typeof PDFDocumentT | null = null;
@@ -145,7 +145,9 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
     //  block, not a flat "Customer:" row. ─────────────────────────────
     doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("Invoice to", MARGIN, y, { width: CONTENT_W });
     y = doc.y + 3;
-    doc.font("Helvetica-Bold").fontSize(12).fillColor(BRAND.charcoal).text(lead.name, MARGIN, y, { width: CONTENT_W });
+    // Agency jobs: made out to the tenant/owner (booking.invoiceTo), not the
+    // agency contact the email went to (12 Nov 2026).
+    doc.font("Helvetica-Bold").fontSize(12).fillColor(BRAND.charcoal).text(invoiceAddressee(lead), MARGIN, y, { width: CONTENT_W });
     y = doc.y + 1;
     if (where) {
       doc.font("Helvetica").fontSize(10).fillColor(BRAND.charcoal).text(where, MARGIN, y, { width: CONTENT_W });

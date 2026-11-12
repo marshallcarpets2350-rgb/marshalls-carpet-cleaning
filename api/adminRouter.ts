@@ -187,6 +187,28 @@ export const adminRouter = createRouter({
       return { ok: true as const, receipt };
     }),
 
+  // Agency jobs (owner call 12 Nov 2026): the booking contact is the real
+  // estate, but the invoice/receipt is made out to the tenant or owner and
+  // just passes through the agency for payment. Stored as invoiceTo on the
+  // booking JSON — blank clears it back to the booking name. Works on leads
+  // with no booking JSON too (quote-only jobs being booked by phone).
+  setInvoiceTo: adminProcedure
+    .input(z.object({ id: z.number(), invoiceTo: z.string().max(160) }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      let b: Record<string, unknown> = {};
+      try {
+        if (row.bookingJson) b = JSON.parse(row.bookingJson) as Record<string, unknown>;
+      } catch { /* fall through — start fresh */ }
+      const to = input.invoiceTo.trim();
+      if (to) b.invoiceTo = to;
+      else delete b.invoiceTo;
+      await db.update(leads).set({ bookingJson: JSON.stringify(b) }).where(eq(leads.id, input.id));
+      return { ok: true as const, invoiceTo: to || null };
+    }),
+
   // Manual invoice for a completed-but-unpaid job (the 5pm batch also sends
   // these automatically — this is the mid-day "send it now" button).
   // force=true resends an already-sent invoice with a fresh card link —

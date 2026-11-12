@@ -1413,6 +1413,11 @@ export interface BookingDetails {
   /** 2-cleans-a-year plan — the second visit, picked on the calendar and
    *  booked into the schedule at the same time as the first. */
   secondVisit: { date: string; slot: number } | null;
+  /** Agency jobs (owner call 12 Nov 2026): who the invoice/receipt is MADE
+   *  OUT TO when it's not the booking contact — e.g. the tenant or owner,
+   *  while the email still goes to the real estate. Set from the Jobs board,
+   *  never asked in the wizard. Null/blank = the booking name. */
+  invoiceTo?: string | null;
 }
 
 // Day/time picker — hourly windows 8:00 AM–5:00 PM, Monday to Friday, from
