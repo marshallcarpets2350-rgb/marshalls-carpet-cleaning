@@ -293,25 +293,44 @@ export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 // rates ($182 inspection, extraction from $289/$409 — read off their booking
 // config). The daily price watch re-reads theirs; floodPrices() follows their
 // moves automatically. These constants are the fallbacks (verified 3 Nov 2026).
+//
+// 12 Nov 2026: BFYB's flood PAGE (not the machine-readable config, so these
+// stay flat — verified from their site 12 Nov) also publishes labour bands
+// ($120 weekday / $168 after-hours / $199 Sat / $229 Sun per tech), travel
+// ($1.30/km + $84/hr tech time from Armidale) and admin ($77) / insurer
+// report ($264) fees. Ours added at 20% under each.
 export const FLOOD_UNDERCUT_PERCENT = 20;
 
 export const FLOOD_RATES = {
   inspection: 145, // floor(182 × 0.8) — thermal imaging, moisture readings, insurer-ready scope
-  labourPerHour: 80, // standard hours, per technician — 2 techs × 2h = $320 vs their $409 (78%)
-  labourAfterHours: 120, // 7 PM – 7 AM, per technician (1.5× standard loading)
+  labourPerHour: 80, // Mon–Fri standard hours, per technician — 2 techs × 2h = $320 vs their $409 (78%)
+  labourAfterHours: 120, // Mon–Fri 7 PM – 7 AM, per technician (1.5× standard loading)
+  labourSaturday: 159, // floor(199 × 0.8) — Saturday, all day, per technician
+  labourSunday: 183, // floor(229 × 0.8) — Sunday, all day, per technician
   fanPerDay: 32, // floor(41 × 0.8) — drying fans, per fan per day
+  travelPerKm: 1.04, // 1.30 × 0.8 — distance from Armidale, insurer-itemised
+  travelTechPerHour: 67, // floor(84 × 0.8) — technician time on the road
+  adminFee: 61, // floor(77 × 0.8) — administration & job coordination
+  reportFee: 211, // floor(264 × 0.8) — written insurer report
 };
 
 /** Our flood prices: inspection and fan hire always 20% under BFYB's CURRENT
- *  published rates when the daily watch has a live model (they publish no
- *  hourly labour rate, so ours are set flat); else the verified fallbacks. */
+ *  published rates when the daily watch has a live model; the rest are flat
+ *  (their labour/travel/admin/report rates live on their flood page, not in
+ *  the config the watch reads). Falls back to the verified constants. */
 export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) {
   const under = (n: number) => Math.floor(n * (1 - FLOOD_UNDERCUT_PERCENT / 100));
   return {
     inspection: model?.flood ? under(model.flood.inspection) : FLOOD_RATES.inspection,
     labourPerHour: FLOOD_RATES.labourPerHour,
     labourAfterHours: FLOOD_RATES.labourAfterHours,
+    labourSaturday: FLOOD_RATES.labourSaturday,
+    labourSunday: FLOOD_RATES.labourSunday,
     fanPerDay: model?.extras?.fanPerDay ? under(model.extras.fanPerDay) : FLOOD_RATES.fanPerDay,
+    travelPerKm: FLOOD_RATES.travelPerKm,
+    travelTechPerHour: FLOOD_RATES.travelTechPerHour,
+    adminFee: FLOOD_RATES.adminFee,
+    reportFee: FLOOD_RATES.reportFee,
   };
 }
 
@@ -321,8 +340,14 @@ export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) 
 // the insurer PDF, so every surface always agrees.
 export interface FloodReportInput {
   technicians: number; // 1–4
-  standardHours: number; // hours on site, 7 AM – 7 PM
-  afterHoursHours: number; // hours on site, 7 PM – 7 AM
+  standardHours: number; // hours on site, Mon–Fri 7 AM – 7 PM
+  afterHoursHours: number; // hours on site, Mon–Fri 7 PM – 7 AM
+  saturdayHours?: number; // Saturday on-site hours (added 12 Nov 2026)
+  sundayHours?: number; // Sunday on-site hours
+  travelKm?: number; // road distance from Armidale — insurer-itemised
+  travelHours?: number; // technician time on the road
+  adminCharged?: boolean; // administration & coordination fee
+  reportCharged?: boolean; // written insurer report fee
   fans: number; // drying fans left on site
   fanDays: number; // days the fans stayed
   inspectionCharged: boolean; // the flat emergency inspection & assessment
@@ -351,14 +376,54 @@ export function floodReportCharges(
   }
   if (input.afterHoursHours > 0) {
     lines.push({
-      label: `After-hours labour — ${techs} technician${techs > 1 ? "s" : ""} × ${input.afterHoursHours}h (7 PM – 7 AM)`,
+      label: `After-hours labour — ${techs} technician${techs > 1 ? "s" : ""} × ${input.afterHoursHours}h (Mon–Fri 7 PM – 7 AM)`,
       amount: round(techs * input.afterHoursHours * prices.labourAfterHours),
+    });
+  }
+  const saturdayHours = input.saturdayHours ?? 0;
+  if (saturdayHours > 0) {
+    lines.push({
+      label: `Weekend labour — ${techs} technician${techs > 1 ? "s" : ""} × ${saturdayHours}h (Saturday)`,
+      amount: round(techs * saturdayHours * prices.labourSaturday),
+    });
+  }
+  const sundayHours = input.sundayHours ?? 0;
+  if (sundayHours > 0) {
+    lines.push({
+      label: `Weekend labour — ${techs} technician${techs > 1 ? "s" : ""} × ${sundayHours}h (Sunday)`,
+      amount: round(techs * sundayHours * prices.labourSunday),
     });
   }
   if (input.fans > 0 && input.fanDays > 0) {
     lines.push({
       label: `Drying fans — ${input.fans} fan${input.fans > 1 ? "s" : ""} × ${input.fanDays} day${input.fanDays > 1 ? "s" : ""}`,
       amount: round(input.fans * input.fanDays * prices.fanPerDay),
+    });
+  }
+  const travelKm = input.travelKm ?? 0;
+  if (travelKm > 0) {
+    lines.push({
+      label: `Travel — ${travelKm} km from Armidale`,
+      amount: round(travelKm * prices.travelPerKm),
+    });
+  }
+  const travelHours = input.travelHours ?? 0;
+  if (travelHours > 0) {
+    lines.push({
+      label: `Travel — technician time on the road (${travelHours}h)`,
+      amount: round(travelHours * prices.travelTechPerHour),
+    });
+  }
+  if (input.adminCharged) {
+    lines.push({
+      label: "Administration & job coordination",
+      amount: prices.adminFee,
+    });
+  }
+  if (input.reportCharged) {
+    lines.push({
+      label: "Written insurer report — scope, moisture readings & drying documentation",
+      amount: prices.reportFee,
     });
   }
   return { lines, total: round(lines.reduce((s, l) => s + l.amount, 0)) };

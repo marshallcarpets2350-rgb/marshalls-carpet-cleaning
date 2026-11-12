@@ -34,6 +34,12 @@ export interface FloodReportData {
   technicians: number;
   standardHours: number;
   afterHoursHours: number;
+  saturdayHours?: number; // weekend bands added 12 Nov 2026
+  sundayHours?: number;
+  travelKm?: number; // distance from Armidale, insurer-itemised
+  travelHours?: number; // technician time on the road
+  adminCharged?: boolean; // administration & coordination fee
+  reportCharged?: boolean; // written insurer report fee
   fans: number;
   fanDays: number;
   inspectionCharged: boolean;
@@ -134,7 +140,12 @@ export async function floodReportPdfBuffer(
     y = doc.y + 8;
     row("Technicians on site", String(report.technicians));
     row("Standard hours", `${report.standardHours}h`);
-    if (report.afterHoursHours > 0) row("After-hours (7 PM – 7 AM)", `${report.afterHoursHours}h`);
+    if (report.afterHoursHours > 0) row("After-hours (Mon–Fri 7 PM – 7 AM)", `${report.afterHoursHours}h`);
+    if ((report.saturdayHours ?? 0) > 0) row("Saturday hours", `${report.saturdayHours}h`);
+    if ((report.sundayHours ?? 0) > 0) row("Sunday hours", `${report.sundayHours}h`);
+    if ((report.travelKm ?? 0) > 0) {
+      row("Travel", `${report.travelKm} km from Armidale${(report.travelHours ?? 0) > 0 ? ` · ${report.travelHours}h on the road` : ""}`);
+    }
     if (report.fans > 0) row("Drying fans", `${report.fans} fan${report.fans > 1 ? "s" : ""} × ${report.fanDays} day${report.fanDays > 1 ? "s" : ""}`);
     y += 12;
 

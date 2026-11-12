@@ -48,13 +48,19 @@ function reportOf(l: LeadRowLike): { savedAt: string; emailedAt?: string } | nul
 const ref = (id: number) => `MCC-${String(id).padStart(4, "0")}`;
 const todayIso = () => new Date().toLocaleDateString("en-CA"); // yyyy-mm-dd
 
-/** The 11 editable fields, lifted off a stored report for dirty-checking. */
+/** The editable fields, lifted off a stored report for dirty-checking. */
 function snapshotOf(r: ReportFields): ReportFields {
   return {
     attendedAt: r.attendedAt,
     technicians: r.technicians,
     standardHours: r.standardHours,
     afterHoursHours: r.afterHoursHours,
+    saturdayHours: r.saturdayHours,
+    sundayHours: r.sundayHours,
+    travelKm: r.travelKm,
+    travelHours: r.travelHours,
+    adminCharged: r.adminCharged,
+    reportCharged: r.reportCharged,
     fans: r.fans,
     fanDays: r.fanDays,
     inspectionCharged: r.inspectionCharged,
@@ -242,6 +248,12 @@ function ReportForm({
   const [technicians, setTechnicians] = useState(r?.technicians ?? 1);
   const [standardHours, setStandardHours] = useState(r?.standardHours ?? 0);
   const [afterHoursHours, setAfterHoursHours] = useState(r?.afterHoursHours ?? 0);
+  const [saturdayHours, setSaturdayHours] = useState(r?.saturdayHours ?? 0);
+  const [sundayHours, setSundayHours] = useState(r?.sundayHours ?? 0);
+  const [travelKm, setTravelKm] = useState(r?.travelKm ?? 0);
+  const [travelHours, setTravelHours] = useState(r?.travelHours ?? 0);
+  const [adminCharged, setAdminCharged] = useState(r?.adminCharged ?? false);
+  const [reportCharged, setReportCharged] = useState(r?.reportCharged ?? true);
   const [fans, setFans] = useState(r?.fans ?? 0);
   const [fanDays, setFanDays] = useState(r?.fanDays ?? 1);
   const [inspectionCharged, setInspectionCharged] = useState(r?.inspectionCharged ?? true);
@@ -253,8 +265,9 @@ function ReportForm({
   const [savedSnapshot, setSavedSnapshot] = useState<string | null>(r ? JSON.stringify(snapshotOf(r)) : null);
 
   const fields: ReportFields = {
-    attendedAt, technicians, standardHours, afterHoursHours, fans, fanDays,
-    inspectionCharged, summary, workDone, readings, insurerNotes,
+    attendedAt, technicians, standardHours, afterHoursHours,
+    saturdayHours, sundayHours, travelKm, travelHours, adminCharged, reportCharged,
+    fans, fanDays, inspectionCharged, summary, workDone, readings, insurerNotes,
   };
   const { lines, total } = floodReportCharges(fields, data.prices);
   const dirty = JSON.stringify(fields) !== savedSnapshot;
@@ -320,12 +333,48 @@ function ReportForm({
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
-              <label htmlFor="fr-std" className={labelCls}>Hours on site — standard (7 AM – 7 PM)</label>
+              <label htmlFor="fr-std" className={labelCls}>Hours — Mon–Fri standard ({money(data.prices.labourPerHour)}/hr)</label>
               <input id="fr-std" type="number" min={0} step={0.5} className={inputCls} value={standardHours} onChange={(e) => setStandardHours(Math.max(0, num(e.target.valueAsNumber)))} />
             </div>
             <div>
-              <label htmlFor="fr-ah" className={labelCls}>Hours on site — after-hours (7 PM – 7 AM)</label>
+              <label htmlFor="fr-ah" className={labelCls}>Hours — Mon–Fri after-hours ({money(data.prices.labourAfterHours)}/hr)</label>
               <input id="fr-ah" type="number" min={0} step={0.5} className={inputCls} value={afterHoursHours} onChange={(e) => setAfterHoursHours(Math.max(0, num(e.target.valueAsNumber)))} />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="fr-sat" className={labelCls}>Hours — Saturday ({money(data.prices.labourSaturday)}/hr)</label>
+              <input id="fr-sat" type="number" min={0} step={0.5} className={inputCls} value={saturdayHours} onChange={(e) => setSaturdayHours(Math.max(0, num(e.target.valueAsNumber)))} />
+            </div>
+            <div>
+              <label htmlFor="fr-sun" className={labelCls}>Hours — Sunday ({money(data.prices.labourSunday)}/hr)</label>
+              <input id="fr-sun" type="number" min={0} step={0.5} className={inputCls} value={sundayHours} onChange={(e) => setSundayHours(Math.max(0, num(e.target.valueAsNumber)))} />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="fr-tkm" className={labelCls}>Travel — km from Armidale (${data.prices.travelPerKm.toFixed(2)}/km)</label>
+              <input id="fr-tkm" type="number" min={0} step={1} className={inputCls} value={travelKm} onChange={(e) => setTravelKm(Math.max(0, num(e.target.valueAsNumber)))} />
+            </div>
+            <div>
+              <label htmlFor="fr-thr" className={labelCls}>Travel — time on the road ({money(data.prices.travelTechPerHour)}/hr)</label>
+              <input id="fr-thr" type="number" min={0} step={0.5} className={inputCls} value={travelHours} onChange={(e) => setTravelHours(Math.max(0, num(e.target.valueAsNumber)))} />
+            </div>
+          </div>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div>
+              <span className={labelCls}>Admin fee</span>
+              <label className="flex items-center gap-2 border-[1.5px] border-charcoal bg-background px-3 py-2.5 text-sm font-semibold text-charcoal">
+                <input type="checkbox" checked={adminCharged} onChange={(e) => setAdminCharged(e.target.checked)} />
+                Charged ({money(data.prices.adminFee)})
+              </label>
+            </div>
+            <div>
+              <span className={labelCls}>Insurer report fee</span>
+              <label className="flex items-center gap-2 border-[1.5px] border-charcoal bg-background px-3 py-2.5 text-sm font-semibold text-charcoal">
+                <input type="checkbox" checked={reportCharged} onChange={(e) => setReportCharged(e.target.checked)} />
+                Charged ({money(data.prices.reportFee)})
+              </label>
             </div>
           </div>
           <div className="grid gap-4 sm:grid-cols-2">
@@ -374,7 +423,7 @@ function ReportForm({
               <span className="font-display text-2xl font-black text-forest">{money(total)}</span>
             </div>
             <p className="mt-2 text-xs text-charcoal/50">
-              Published rates: {money(data.prices.labourPerHour)}/hr standard · {money(data.prices.labourAfterHours)}/hr after-hours · {money(data.prices.fanPerDay)}/fan/day · {money(data.prices.inspection)} inspection
+              Published rates: {money(data.prices.labourPerHour)}/hr M–F · {money(data.prices.labourAfterHours)}/hr after-hours · {money(data.prices.labourSaturday)}/hr Sat · {money(data.prices.labourSunday)}/hr Sun · {money(data.prices.fanPerDay)}/fan/day · {money(data.prices.inspection)} inspection · ${data.prices.travelPerKm.toFixed(2)}/km + {money(data.prices.travelTechPerHour)}/hr travel · {money(data.prices.adminFee)} admin · {money(data.prices.reportFee)} report
             </p>
             <button
               type="button"
@@ -419,6 +468,12 @@ interface ReportFields {
   technicians: number;
   standardHours: number;
   afterHoursHours: number;
+  saturdayHours: number;
+  sundayHours: number;
+  travelKm: number;
+  travelHours: number;
+  adminCharged: boolean;
+  reportCharged: boolean;
   fans: number;
   fanDays: number;
   inspectionCharged: boolean;
