@@ -1,4 +1,4 @@
-import { useState, type ChangeEvent } from "react";
+import { useRef, useState, type ChangeEvent } from "react";
 import { Link } from "react-router";
 import { trpc } from "@/providers/trpc";
 import FloodReports from "@/pages/admin/FloodReports";
@@ -146,6 +146,171 @@ function InvoiceToEditor({ id, name, invoiceTo }: { id: number; name: string; in
           clear
         </button>
       ) : null}
+      {err && <span className="ml-2 text-xs font-semibold text-[#B91C1C]">{err}</span>}
+    </span>
+  );
+}
+
+/** Agency work order (12 Nov 2026, Ben: "maybe we also have a work order
+ *  upload document"): the number prints on the invoice/receipt so the
+ *  agency can match payment; the document (photo or PDF) is stored against
+ *  the job and opened on demand. Module-level with its own subscriptions —
+ *  the OwingBadge rule, so listLeads refreshes can't wipe it mid-edit. */
+function WorkOrderEditor({ id, number, doc }: { id: number; number?: string | null; doc?: string | null }) {
+  const utils = trpc.useUtils();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => utils.admin.listLeads.invalidate();
+  const saveNum = trpc.admin.setWorkOrderNumber.useMutation({
+    onSuccess: () => {
+      setEditing(false);
+      setErr("");
+      refresh();
+    },
+    onError: (e) => setErr(e.message),
+  });
+  const upload = trpc.admin.uploadWorkOrderDoc.useMutation({
+    onSuccess: () => {
+      setErr("");
+      refresh();
+    },
+    onError: (e) => setErr(e.message),
+  });
+  const remove = trpc.admin.removeWorkOrderDoc.useMutation({
+    onSuccess: () => {
+      setErr("");
+      refresh();
+    },
+    onError: (e) => setErr(e.message),
+  });
+  const current = number?.trim() || "";
+
+  const openDoc = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const d = await utils.admin.getWorkOrderDoc.fetch({ id });
+      const m = d ? /^data:([^;]+);base64,(.+)$/s.exec(d.dataUrl) : null;
+      if (!d || !m) {
+        setErr("Couldn't open that document — try uploading it again.");
+        return;
+      }
+      const bin = atob(m[2].replace(/\s/g, ""));
+      const bytes = new Uint8Array(bin.length);
+      for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+      window.open(URL.createObjectURL(new Blob([bytes], { type: m[1] })), "_blank");
+    } catch {
+      setErr("Couldn't open that document — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr("");
+    try {
+      let dataUrl: string;
+      if (file.type === "application/pdf") {
+        if (file.size > 5 * 1024 * 1024) {
+          setErr("That PDF is over 5 MB — send yourself a smaller copy.");
+          return;
+        }
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(String(fr.result));
+          fr.onerror = () => reject(new Error("unreadable"));
+          fr.readAsDataURL(file);
+        });
+      } else {
+        dataUrl = await resizeImage(file);
+      }
+      upload.mutate({ id, fileName: file.name, dataUrl });
+    } catch {
+      setErr("Couldn't read that file — use a photo (JPEG/PNG) or a PDF.");
+    }
+  };
+
+  return (
+    <span>
+      <strong>Work order:</strong>{" "}
+      {editing ? (
+        <span>
+          <input
+            value={text}
+            onChange={(e: ChangeEvent<HTMLInputElement>) => setText(e.target.value)}
+            placeholder="e.g. 8017a-4358"
+            className="w-40 max-w-full border-[1.5px] border-charcoal/40 bg-white px-2 py-1 text-sm"
+          />
+          <button
+            type="button"
+            className="btn-pill ml-2 !px-3 !py-1 text-xs"
+            disabled={saveNum.isPending}
+            onClick={() => saveNum.mutate({ id, number: text })}
+          >
+            {saveNum.isPending ? "Saving…" : "Save"}
+          </button>
+          <button type="button" className="ml-2 text-xs text-charcoal/50 underline" onClick={() => setEditing(false)}>
+            cancel
+          </button>
+          {current ? (
+            <button
+              type="button"
+              className="ml-2 text-xs text-charcoal/50 underline"
+              disabled={saveNum.isPending}
+              onClick={() => saveNum.mutate({ id, number: "" })}
+            >
+              clear
+            </button>
+          ) : null}
+        </span>
+      ) : (
+        <span>
+          {current || <span className="text-charcoal/50">none</span>}
+          <button
+            type="button"
+            className="ml-2 text-charcoal/50 underline"
+            onClick={() => {
+              setText(current);
+              setErr("");
+              setEditing(true);
+            }}
+          >
+            change
+          </button>
+        </span>
+      )}
+      {" · "}
+      {doc ? (
+        <span>
+          <button type="button" className="text-charcoal/50 underline" disabled={busy} onClick={openDoc}>
+            {busy ? "opening…" : `view ${doc}`}
+          </button>
+          <button type="button" className="ml-2 text-charcoal/50 underline" disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+            replace
+          </button>
+          <button
+            type="button"
+            className="ml-2 text-charcoal/50 underline"
+            disabled={remove.isPending}
+            onClick={() => {
+              if (window.confirm("Remove the work order document from this job?")) remove.mutate({ id });
+            }}
+          >
+            remove
+          </button>
+        </span>
+      ) : (
+        <button type="button" className="text-charcoal/50 underline" disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+          {upload.isPending ? "uploading…" : "attach document"}
+        </button>
+      )}
+      <input ref={fileRef} type="file" accept="image/*,application/pdf" className="hidden" onChange={pickFile} />
       {err && <span className="ml-2 text-xs font-semibold text-[#B91C1C]">{err}</span>}
     </span>
   );
@@ -1217,6 +1382,7 @@ export default function Admin() {
                             {booking.confirmBy && <li><strong>Confirm by:</strong> {CONFIRM_LABELS[booking.confirmBy]}</li>}
                             {booking.notes && <li><strong>Notes:</strong> {booking.notes}</li>}
                             <li><InvoiceToEditor id={r.id} name={r.name} invoiceTo={booking.invoiceTo} /></li>
+                            <li><WorkOrderEditor id={r.id} number={booking.workOrderNumber} doc={booking.workOrderDoc} /></li>
                           </ul>
                         </div>
                       )}
@@ -2398,6 +2564,9 @@ export default function Admin() {
                   <p className="mt-1 text-sm text-charcoal/80">{watchFor}</p>
                   <p className="mt-1 text-sm text-charcoal/80">
                     <InvoiceToEditor id={r.id} name={r.name} invoiceTo={booking?.invoiceTo} />
+                  </p>
+                  <p className="mt-1 text-sm text-charcoal/80">
+                    <WorkOrderEditor id={r.id} number={booking?.workOrderNumber} doc={booking?.workOrderDoc} />
                   </p>
                   <div className="mt-3 flex flex-wrap gap-2">
                     <button

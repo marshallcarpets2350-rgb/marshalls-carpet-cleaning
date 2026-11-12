@@ -9,7 +9,7 @@
  */
 import type PDFDocumentT from "pdfkit";
 import { BUSINESS } from "@contracts/rates";
-import { bookingReference, invoiceAddressee, type LeadRow } from "./messages";
+import { bookingReference, invoiceAddressee, workOrderNumberOf, type LeadRow } from "./messages";
 import { BRAND, brandLogo, brandVan } from "./brand";
 
 let PDFDocument: typeof PDFDocumentT | null = null;
@@ -132,6 +132,9 @@ export async function receiptPdfBuffer(lead: ReceiptLead): Promise<Buffer> {
     // ── Details block ───────────────────────────────────────────────
     row("Receipt no.", ref);
     row("Job date", jobDateOf(lead));
+    // Agency work-order number (12 Nov 2026) — same matching aid as the invoice.
+    const wo = workOrderNumberOf(lead);
+    if (wo) row("Work order", wo, { bold: true });
     y += 8;
 
     // ── Properly addressed to the customer (same addressee block as

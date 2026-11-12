@@ -10,7 +10,7 @@
  */
 import type PDFDocumentT from "pdfkit";
 import { BUSINESS, paymentDueDay, rugReturnDay } from "@contracts/rates";
-import { bookingReference, invoiceAddressee, type LeadRow } from "./messages";
+import { bookingReference, invoiceAddressee, workOrderNumberOf, type LeadRow } from "./messages";
 import { BRAND, brandLogo, brandVan } from "./brand";
 
 let PDFDocument: typeof PDFDocumentT | null = null;
@@ -138,6 +138,10 @@ export async function invoicePdfBuffer(lead: InvoiceLead): Promise<Buffer> {
     // ── Details block ───────────────────────────────────────────────
     row("Invoice no.", ref);
     row("Job date", auDate(jobDateOf(lead)));
+    // Agency work-order number (12 Nov 2026) — their accounts team matches
+    // the payment to this, so it sits up in the details block.
+    const wo = workOrderNumberOf(lead);
+    if (wo) row("Work order", wo, { bold: true });
     y += 8;
 
     // ── Properly addressed to the customer (owner call 11 Nov 2026 —

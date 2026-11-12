@@ -1418,6 +1418,14 @@ export interface BookingDetails {
    *  while the email still goes to the real estate. Set from the Jobs board,
    *  never asked in the wizard. Null/blank = the booking name. */
   invoiceTo?: string | null;
+  /** Agency work-order number (e.g. PropertyTree "8017a-4358") — prints on
+   *  the invoice/receipt so the agency accounts team can match the payment.
+   *  Set from the Jobs board, never asked in the wizard. */
+  workOrderNumber?: string | null;
+  /** File name of the uploaded work-order document. The document itself is
+   *  a data URL under the workorder_doc:<leadId> settings key — keeping it
+   *  out of booking_json so the admin list payload stays light. */
+  workOrderDoc?: string | null;
 }
 
 // Day/time picker — hourly windows 8:00 AM–5:00 PM, Monday to Friday, from

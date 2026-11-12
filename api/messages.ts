@@ -65,6 +65,9 @@ interface BookingDetails {
   /** Agency jobs (12 Nov 2026): invoice/receipt addressee when it's not the
    *  booking contact — tenant/owner name, email still goes to the agency. */
   invoiceTo?: string | null;
+  /** Agency work-order number + uploaded document file name (12 Nov 2026). */
+  workOrderNumber?: string | null;
+  workOrderDoc?: string | null;
 }
 
 function parseQuote(lead: LeadRow): QuoteInput | null {
@@ -128,6 +131,19 @@ export function invoiceAddressee(lead: { name: string; bookingJson: string | nul
     }
   } catch { /* fall through */ }
   return lead.name;
+}
+
+/** The agency work-order number for a job (12 Nov 2026) — prints on the
+ *  invoice/receipt so the agency accounts team can match the payment to
+ *  their work order. Null when the job has none. */
+export function workOrderNumberOf(lead: { bookingJson: string | null }): string | null {
+  try {
+    if (lead.bookingJson) {
+      const wo = (JSON.parse(lead.bookingJson) as { workOrderNumber?: string }).workOrderNumber?.trim();
+      if (wo) return wo;
+    }
+  } catch { /* fall through */ }
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -1065,6 +1081,8 @@ export function invoiceEmail(
   // to the tenant/owner — say so up front so accounts can see it at a glance.
   const addressee = invoiceAddressee(lead);
   const madeOutLine = addressee !== lead.name ? `• Made out to: ${addressee}\n` : "";
+  const wo = workOrderNumberOf(lead);
+  const woLine = wo ? `• Work order: ${wo}\n` : "";
   const cardBlock = payUrl ? `• Card: pay securely online — ${payUrl}\n` : "";
   const bankBlock = BUSINESS.bankBsb
     ? `• Bank transfer: BSB ${BUSINESS.bankBsb}, account ${BUSINESS.bankAccount} (${BUSINESS.bankName})\n`
@@ -1080,7 +1098,7 @@ Thanks for having us${jobIso ? ` on ${longDateLabel(jobIso)}` : ""} — your inv
 
 INVOICE ${ref}
 • What was done: ${serviceSummary(input, b?.rugPickup ?? false)}
-${madeOutLine}• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
+${madeOutLine}${woLine}• Total due: ${money(lead.total)} — 5-day terms${dueLabel ? ` (due ${dueLabel})` : ""}
 
 HOW TO PAY
 ${cardBlock}• PayID (instant bank transfer): ${BUSINESS.payId}
@@ -1115,6 +1133,8 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
   // tenant/owner — call it out so accounts can see it without opening the PDF.
   const addressee = invoiceAddressee(lead);
   const madeOutRow = addressee !== lead.name ? detailRow("MADE OUT TO", `<strong>${esc(addressee)}</strong>`) : "";
+  const wo = workOrderNumberOf(lead);
+  const woRow = wo ? detailRow("WORK ORDER", `<strong>${esc(wo)}</strong>`) : "";
   const refHtml = `<span style="font-size:1.2em;font-weight:800;color:#B91C1C;text-decoration:underline">${esc(ref)}</span>`;
   const cardButton = payUrl
     ? `<a href="${esc(payUrl)}" style="display:inline-block;background:${BRAND.blue};color:#ffffff;padding:12px 20px;border-radius:8px;font-weight:bold;text-decoration:none;margin:4px 0 10px">Pay ${money(lead.total)} by card now</a><br>`
@@ -1135,6 +1155,7 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
   ${detailsBox(
     detailRow("WHAT WAS DONE", `<strong>${esc(serviceSummary(input, b?.rugPickup ?? false))}</strong>`) +
       madeOutRow +
+      woRow +
       (jobIso ? detailRow("JOB DATE", esc(longDateLabel(jobIso))) : ""),
   )}
 

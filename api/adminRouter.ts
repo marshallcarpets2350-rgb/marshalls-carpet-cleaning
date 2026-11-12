@@ -35,6 +35,11 @@ import {
 } from "./messages";
 import { TRPCError } from "@trpc/server";
 import { getPriceWatchReport, runPriceWatch, loadBfybModel } from "./priceWatch";
+import {
+  saveWorkOrderDoc,
+  getWorkOrderDoc as getWorkOrderDocById,
+  removeWorkOrderDoc as removeWorkOrderDocDb,
+} from "./workOrders";
 import { floodReportPdfBuffer, type FloodReportData } from "./floodReportPdf";
 import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
 import { brandLogo } from "./brand";
@@ -207,6 +212,70 @@ export const adminRouter = createRouter({
       else delete b.invoiceTo;
       await db.update(leads).set({ bookingJson: JSON.stringify(b) }).where(eq(leads.id, input.id));
       return { ok: true as const, invoiceTo: to || null };
+    }),
+
+  // Agency work orders (owner call 12 Nov 2026): the PropertyTree-style
+  // work-order number prints on the invoice/receipt so the agency accounts
+  // team can match the payment; the document itself (photo or PDF) is stored
+  // under a settings key and fetched on demand — see api/workOrders.ts.
+  setWorkOrderNumber: adminProcedure
+    .input(z.object({ id: z.number(), number: z.string().max(80) }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      let b: Record<string, unknown> = {};
+      try {
+        if (row.bookingJson) b = JSON.parse(row.bookingJson) as Record<string, unknown>;
+      } catch { /* fall through — start fresh */ }
+      const num = input.number.trim();
+      if (num) b.workOrderNumber = num;
+      else delete b.workOrderNumber;
+      await db.update(leads).set({ bookingJson: JSON.stringify(b) }).where(eq(leads.id, input.id));
+      return { ok: true as const, workOrderNumber: num || null };
+    }),
+
+  uploadWorkOrderDoc: adminProcedure
+    .input(z.object({ id: z.number(), fileName: z.string().max(140), dataUrl: z.string().max(7_500_000) }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      let fileName: string;
+      try {
+        fileName = await saveWorkOrderDoc(input.id, input.fileName, input.dataUrl);
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Couldn't store that file" });
+      }
+      let b: Record<string, unknown> = {};
+      try {
+        if (row.bookingJson) b = JSON.parse(row.bookingJson) as Record<string, unknown>;
+      } catch { /* fall through — start fresh */ }
+      b.workOrderDoc = fileName;
+      await db.update(leads).set({ bookingJson: JSON.stringify(b) }).where(eq(leads.id, input.id));
+      return { ok: true as const, fileName };
+    }),
+
+  removeWorkOrderDoc: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      await removeWorkOrderDocDb(input.id);
+      let b: Record<string, unknown> = {};
+      try {
+        if (row.bookingJson) b = JSON.parse(row.bookingJson) as Record<string, unknown>;
+      } catch { /* fall through — start fresh */ }
+      delete b.workOrderDoc;
+      await db.update(leads).set({ bookingJson: JSON.stringify(b) }).where(eq(leads.id, input.id));
+      return { ok: true as const };
+    }),
+
+  getWorkOrderDoc: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getWorkOrderDocById(input.id);
     }),
 
   // Manual invoice for a completed-but-unpaid job (the 5pm batch also sends
