@@ -21,6 +21,7 @@ import {
   BFYB_MODEL,
   computeQuote,
   money,
+  promoText,
   estimateJobMinutes,
   emptyCondition,
   emptyAccess,
@@ -619,7 +620,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                           )}
                           {breakdown.seasonalDiscount > 0 && breakdown.seasonalPromo && (
                             <li className="flex items-baseline justify-between gap-3 font-semibold text-[#15803D]">
-                              <span>🏷️ {breakdown.seasonalPromo.label} — {breakdown.seasonalPromo.percent}% off</span>
+                              <span>🏷️ {promoText(breakdown.seasonalPromo)}</span>
                               <span className="whitespace-nowrap">−{money(breakdown.seasonalDiscount)}</span>
                             </li>
                           )}

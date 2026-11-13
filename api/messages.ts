@@ -13,6 +13,7 @@ import {
   firstNameOf,
   longDateLabel,
   money,
+  promoText,
   slotsNeededFor,
   serviceSummary,
   serviceKinds,
@@ -397,7 +398,7 @@ export function ownerNotification(lead: LeadRow): { subject: string; text: strin
     if (bd?.rugDiscount) lines.push({ label: "Bulk rug discount", amount: -bd.rugDiscount });
     if (bd?.maintenanceDiscount) lines.push({ label: "2-cleans-a-year plan", amount: -bd.maintenanceDiscount });
     if (bd?.codeDiscount) lines.push({ label: "Discount code", amount: -bd.codeDiscount });
-    if (bd?.seasonalDiscount) lines.push({ label: `${bd.seasonalPromo?.label ?? "Seasonal deal"} — ${bd.seasonalPromo?.percent ?? ""}% off`.replace(" — %", ""), amount: -bd.seasonalDiscount });
+    if (bd?.seasonalDiscount) lines.push({ label: bd.seasonalPromo ? promoText(bd.seasonalPromo) : "Seasonal deal", amount: -bd.seasonalDiscount });
     if (bd?.volumeDiscount) lines.push({ label: "Volume discount ($10 off every $150)", amount: -bd.volumeDiscount });
     if (bd?.undercutDiscount) lines.push({ label: "Price-beat discount", amount: -bd.undercutDiscount });
     travel = bd?.travelFee ?? null;

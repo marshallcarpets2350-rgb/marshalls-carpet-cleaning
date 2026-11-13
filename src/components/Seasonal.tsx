@@ -6,7 +6,7 @@
 // phones — no gutters — it keeps falling, art and Santa mixed in.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
-import { christmasOn, seasonFor, seasonWindowFor } from "@contracts/rates";
+import { christmasOn, promoText, seasonFor, seasonWindowFor } from "@contracts/rates";
 
 const CSS = `
 @keyframes mcc-bulb {
@@ -290,7 +290,7 @@ export function SeasonBanner() {
   const promo = season?.promo ?? null;
   const endLabel = win?.end.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   const text = promo
-    ? `🏷️ ${promo.label} — ${promo.percent}% off every clean until ${endLabel}, comes off your quote automatically.`
+    ? `🏷️ ${promoText(promo)} every clean until ${endLabel}, comes off your quote automatically.`
     : season?.banner;
   if (!text) return null;
   return (
@@ -379,11 +379,41 @@ export function LogoMask() {
   );
 }
 
-/** Snow on the homepage — on desktop one gentle pass over the entry, then it
- *  fades out and the gutters carry the season (Ben's call 8 Nov). Phones have
- *  no gutters, so there it snows the whole visit: endless flakes with the
- *  season's drawn art and Santa mixed in (Ben's call, 13 Nov 2026). */
-export function Snowfall({ count = 16 }: { count?: number }) {
+/** Permanent on-screen sale tag while a promo runs — hangs from the sticky
+ *  header (so it never scrolls away, phone or desktop), swings gently, links
+ *  to /quote. Owner call 13 Nov 2026: "a 10% off price tag permanently on
+ *  the screen on both desktop and phone". Reduced-motion parks it still. */
+export function PromoTag() {
+  const promo = seasonWindowFor()?.season.promo ?? null;
+  if (!promo) return null;
+  return (
+    <Link
+      to="/quote"
+      aria-label={`${promo.label} — comes off your quote automatically. Book your clean`}
+      className="absolute right-2 top-full z-30 mt-1 block md:right-5 md:mt-2"
+    >
+      <span
+        className="mcc-sway block origin-top"
+        style={{ animation: "mcc-sway 2.8s ease-in-out infinite alternate" }}
+      >
+        <span
+          className="block w-14 md:w-[4.5rem]"
+          style={{ filter: "drop-shadow(0 3px 4px rgb(23 30 39 / 0.3))" }}
+        >
+          {SHAPES.tag("#B91C1C", "", `${promo.percent}% OFF`)}
+        </span>
+      </span>
+    </Link>
+  );
+}
+
+/** Snow on the homepage — a big opening shower on arrival (desktop settles
+ *  after one pass and the gutters carry the season — Ben's call 8 Nov);
+ *  phones have no gutters, so there it snows the whole visit: endless flakes
+ *  with the season's drawn art, Santa and — while a promo runs — red
+ *  "{percent}% OFF" sale tags mixed in (Ben's calls, 13 Nov 2026: more
+ *  Christmas pieces, on desktop too, plus the falling price tags). */
+export function Snowfall({ count = 24 }: { count?: number }) {
   const [fading, setFading] = useState(false);
   const [gone, setGone] = useState(false);
   const [endless, setEndless] = useState(false);
@@ -404,6 +434,7 @@ export function Snowfall({ count = 16 }: { count?: number }) {
     };
   }, [endless]);
   if (!christmasOn() || gone) return null;
+  const promo = seasonWindowFor()?.season.promo ?? null;
   const flakes = Array.from({ length: endless ? count + 4 : count });
   return (
     <div
@@ -418,15 +449,21 @@ export function Snowfall({ count = 16 }: { count?: number }) {
         const delay = -((i * 1.7) % 7) - (endless ? (i * 2.3) % 9 : 0);
         const drift = ((i % 2 === 0 ? 1 : -1) * (3 + (i % 5))).toFixed(0);
         const opacity = 0.65 + ((i * 13) % 30) / 100 - (endless ? 0.12 : 0);
-        // Phones: mix in the season's drawn art (same pieces as the desktop
-        // gutters) and one Santa drifting down with the lot.
+        // The mix (both desktop and phones): a Santa, red sale tags while a
+        // promo runs, the season's drawn art (same pieces as the desktop
+        // gutters), and plain flakes filling the gaps.
         let node: ReactNode = SHAPES.snowflake(i % 3 === 0 ? "#93C5FD" : "#5FA8E8", "");
         let itemSize = size;
-        if (endless && i === 2) {
+        let wide = false;
+        if (i === 2) {
           node = <span style={{ fontSize: size + 10, lineHeight: 1 }}>🎅</span>;
           itemSize = size + 10;
-        } else if (endless && i % 5 === 4) {
-          const art = SEASON_ART.christmas[Math.floor(i / 5) % SEASON_ART.christmas.length];
+        } else if (promo && i % 6 === 5) {
+          node = SHAPES.tag("#B91C1C", "", `${promo.percent}% OFF`);
+          itemSize = size + 8;
+          wide = true; // tags are 64×40 — give them their real aspect
+        } else if (i % 2 === 1) {
+          const art = SEASON_ART.christmas[Math.floor(i / 2) % SEASON_ART.christmas.length];
           node = SHAPES[art.s]?.(art.c1, art.c2 ?? "") ?? node;
           itemSize = size + 8;
         }
@@ -438,9 +475,9 @@ export function Snowfall({ count = 16 }: { count?: number }) {
               {
                 left: `${left}vw`,
                 top: "-6vh",
-                width: `${itemSize}px`,
+                width: `${wide ? itemSize * 1.6 : itemSize}px`,
                 height: `${itemSize}px`,
-                opacity,
+                opacity: wide ? Math.min(1, opacity + 0.2) : opacity,
                 animation: `mcc-snow ${dur}s linear ${delay}s ${endless ? "infinite" : "1"} both`,
                 "--drift": `${drift}vw`,
                 "--fo": opacity,

@@ -682,9 +682,10 @@ function isoDay(d: Date): string {
 // ---------------------------------------------------------------------------
 // The site's seasonal calendar — one table drives everything: the falling
 // page art in the gutters, the header strip, the footer line, and the
-// automatic promo discount in computeQuote. No promo at Christmas (December
-// sells itself — we sell scarcity); the 10% deals fire in the quiet windows
-// (owner call 6 Nov 2026, with the 5% price rise so a 10% promo still lands
+// automatic promo discount in computeQuote. Christmas NOW CARRIES a 10%
+// promo ("Christmas 10% off" — owner call 13 Nov 2026, reversing the 6 Nov
+// no-promo-at-Christmas call); the other 10% deals fire in the quiet windows
+// (set 6 Nov 2026, with the 5% price rise so a 10% promo still lands
 // above the old prices' margin). All dates Sydney time; Easter is computed,
 // so the calendar never needs touching.
 // ---------------------------------------------------------------------------
@@ -704,7 +705,7 @@ const SEASONS: Record<string, SeasonDef> = {
     id: "christmas",
     banner: "🎄 Booked in before Christmas? December is nearly full — grab a spot while there's room 🦌",
     footer: "🎄🦌 Merry Christmas from the Marshall's team — and thanks for backing a local business this year.",
-    promo: null,
+    promo: { percent: 10, label: "Christmas 10% off" },
   },
   boxingday: {
     id: "boxingday",
@@ -825,6 +826,13 @@ export function seasonFor(at: Date = sydneyToday()): SeasonDef | null {
 /** The automatic seasonal promo running right now, if any. */
 export function seasonalPromoFor(at: Date = sydneyToday()): { percent: number; label: string } | null {
   return seasonFor(at)?.promo ?? null;
+}
+
+/** Display text for a promo — appends the percent unless the label already
+ *  says it ("Christmas 10% off" stays as-is, "Winter warm-up" → "Winter
+ *  warm-up — 10% off"). */
+export function promoText(p: { percent: number; label: string }): string {
+  return p.label.includes("%") ? p.label : `${p.label} — ${p.percent}% off`;
 }
 
 /** Christmas window check — kept for the fairy lights, Santa hat and snow. */

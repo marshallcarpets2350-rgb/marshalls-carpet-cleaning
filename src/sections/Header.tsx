@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { Link } from "react-router";
 import { BUSINESS } from "@contracts/rates";
 import logo from "@/assets/logo.webp";
-import { FairyLights, LogoMask, SeasonBanner, SeasonalStyles } from "@/components/Seasonal";
+import { FairyLights, LogoMask, PromoTag, SeasonBanner, SeasonalStyles } from "@/components/Seasonal";
 import iconCarpet from "@/assets/icons/carpet-cleaning.png";
 import iconLounge from "@/assets/icons/lounge.png";
 import iconRug from "@/assets/icons/rug-pickup.png";
@@ -263,6 +263,7 @@ export default function Header() {
       )}
       <FairyLights />
       <SeasonBanner />
+      <PromoTag />
     </header>
   );
 }
