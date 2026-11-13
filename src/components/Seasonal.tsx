@@ -382,14 +382,18 @@ export function LogoMask() {
 /** Permanent on-screen sale tag while a promo runs — hangs from the sticky
  *  header (so it never scrolls away, phone or desktop), swings gently, links
  *  to /quote. Owner call 13 Nov 2026: "a 10% off price tag permanently on
- *  the screen on both desktop and phone". Reduced-motion parks it still. */
+ *  the screen on both desktop and phone" — and it must NAME the promo, so
+ *  the tag is two lines: promo name over the percent (label's "% off" tail
+ *  is stripped for line 1). Reduced-motion parks it still. */
 export function PromoTag() {
   const promo = seasonWindowFor()?.season.promo ?? null;
   if (!promo) return null;
+  const line1 = promo.label.replace(/\s*[-–—]?\s*\d+%\s*off\s*$/i, "").trim() || promo.label;
+  const line2 = `${promo.percent}% OFF`;
   return (
     <Link
       to="/quote"
-      aria-label={`${promo.label} — comes off your quote automatically. Book your clean`}
+      aria-label={`${promoText(promo)} — comes off your quote automatically. Book your clean`}
       className="absolute right-2 top-full z-30 mt-1 block md:right-5 md:mt-2"
     >
       <span
@@ -397,10 +401,22 @@ export function PromoTag() {
         style={{ animation: "mcc-sway 2.8s ease-in-out infinite alternate" }}
       >
         <span
-          className="block w-14 md:w-[4.5rem]"
+          className="block w-16 md:w-20"
           style={{ filter: "drop-shadow(0 3px 4px rgb(23 30 39 / 0.3))" }}
         >
-          {SHAPES.tag("#B91C1C", "", `${promo.percent}% OFF`)}
+          <svg viewBox="0 0 76 46" className="h-full w-full">
+            <path d="M14 5h42l10 18-10 18H14a6 6 0 0 1-6-6V11a6 6 0 0 1 6-6z" fill="#B91C1C" />
+            <circle cx="16" cy="23" r="3" fill="#FDF6EC" />
+            <path d="M16 23C12 17 8 15 3 15" stroke="#8B5E34" strokeWidth="1.8" fill="none" />
+            <text x="40" y="19.5" textAnchor="middle" fontFamily="inherit" fontSize="9.5" fontWeight="800" fill="#fff"
+              {...(line1.length > 8 ? { textLength: 40, lengthAdjust: "spacingAndGlyphs" } : {})}>
+              {line1}
+            </text>
+            <text x="40" y="34" textAnchor="middle" fontFamily="inherit" fontSize="11.5" fontWeight="800" fill="#fff"
+              textLength="42" lengthAdjust="spacingAndGlyphs">
+              {line2}
+            </text>
+          </svg>
         </span>
       </span>
     </Link>
