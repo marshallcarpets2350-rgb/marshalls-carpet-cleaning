@@ -2,7 +2,8 @@
 // contracts/rates.ts (seasonFor / seasonalPromoFor / seasonWindowFor).
 // The falling gutter art is hand-drawn SVG (brand palette, drop shadows,
 // gentle sway) — it pops instead of reading as clip-art. The homepage snow
-// falls once on arrival, then settles and leaves the page alone.
+// falls once on arrival on desktop, then settles (the gutters carry on); on
+// phones — no gutters — it keeps falling, art and Santa mixed in.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { christmasOn, seasonWindowFor } from "@contracts/rates";
@@ -27,8 +28,10 @@ const CSS = `
   to { transform: rotate(12deg); }
 }
 @keyframes mcc-snow {
-  0% { transform: translate3d(0, -6vh, 0); }
-  100% { transform: translate3d(var(--drift, 4vw), 106vh, 0); }
+  0% { transform: translate3d(0, -6vh, 0); opacity: 0; }
+  8% { opacity: var(--fo, 1); }
+  88% { opacity: var(--fo, 1); }
+  100% { transform: translate3d(var(--drift, 4vw), 106vh, 0); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
   .mcc-bulb, .mcc-flake, .mcc-hat, .mcc-sway { animation: none !important; }
@@ -351,22 +354,32 @@ export function SantaHat() {
   );
 }
 
-/** Snow on arrival — one gentle pass of drawn flakes over the homepage,
- *  then it fades out and leaves the page alone (Ben's call: the snow
- *  stops after entry, the gutters keep the season going). */
+/** Snow on the homepage — on desktop one gentle pass over the entry, then it
+ *  fades out and the gutters carry the season (Ben's call 8 Nov). Phones have
+ *  no gutters, so there it snows the whole visit: endless flakes with the
+ *  season's drawn art and Santa mixed in (Ben's call, 13 Nov 2026). */
 export function Snowfall({ count = 16 }: { count?: number }) {
   const [fading, setFading] = useState(false);
   const [gone, setGone] = useState(false);
+  const [endless, setEndless] = useState(false);
   useEffect(() => {
+    const mq = window.matchMedia("(max-width: 1023px)");
+    const apply = () => setEndless(mq.matches);
+    apply();
+    mq.addEventListener("change", apply);
+    return () => mq.removeEventListener("change", apply);
+  }, []);
+  useEffect(() => {
+    if (endless) return;
     const t1 = setTimeout(() => setFading(true), 15000);
     const t2 = setTimeout(() => setGone(true), 16500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, []);
+  }, [endless]);
   if (!christmasOn() || gone) return null;
-  const flakes = Array.from({ length: count });
+  const flakes = Array.from({ length: endless ? count + 4 : count });
   return (
     <div
       aria-hidden="true"
@@ -376,9 +389,22 @@ export function Snowfall({ count = 16 }: { count?: number }) {
       {flakes.map((_, i) => {
         const size = 14 + ((i * 7) % 13);
         const left = (i * 137) % 100;
-        const dur = 8 + ((i * 3) % 7);
-        const delay = -((i * 1.7) % 7);
+        const dur = 8 + ((i * 3) % 7) + (endless ? 5 : 0);
+        const delay = -((i * 1.7) % 7) - (endless ? (i * 2.3) % 9 : 0);
         const drift = ((i % 2 === 0 ? 1 : -1) * (3 + (i % 5))).toFixed(0);
+        const opacity = 0.65 + ((i * 13) % 30) / 100 - (endless ? 0.12 : 0);
+        // Phones: mix in the season's drawn art (same pieces as the desktop
+        // gutters) and one Santa drifting down with the lot.
+        let node: ReactNode = SHAPES.snowflake(i % 3 === 0 ? "#93C5FD" : "#5FA8E8", "");
+        let itemSize = size;
+        if (endless && i === 2) {
+          node = <span style={{ fontSize: size + 10, lineHeight: 1 }}>🎅</span>;
+          itemSize = size + 10;
+        } else if (endless && i % 5 === 4) {
+          const art = SEASON_ART.christmas[Math.floor(i / 5) % SEASON_ART.christmas.length];
+          node = SHAPES[art.s]?.(art.c1, art.c2 ?? "") ?? node;
+          itemSize = size + 8;
+        }
         return (
           <span
             key={i}
@@ -387,16 +413,17 @@ export function Snowfall({ count = 16 }: { count?: number }) {
               {
                 left: `${left}vw`,
                 top: "-6vh",
-                width: `${size}px`,
-                height: `${size}px`,
-                opacity: 0.65 + ((i * 13) % 30) / 100,
-                animation: `mcc-snow ${dur}s linear ${delay}s 1 both`,
+                width: `${itemSize}px`,
+                height: `${itemSize}px`,
+                opacity,
+                animation: `mcc-snow ${dur}s linear ${delay}s ${endless ? "infinite" : "1"} both`,
                 "--drift": `${drift}vw`,
+                "--fo": opacity,
                 filter: "drop-shadow(0 1px 2px rgb(30 95 184 / 0.25))",
               } as CSSProperties
             }
           >
-            {SHAPES.snowflake(i % 3 === 0 ? "#93C5FD" : "#5FA8E8", "")}
+            {node}
           </span>
         );
       })}
