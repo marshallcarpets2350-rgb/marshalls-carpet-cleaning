@@ -179,7 +179,7 @@ export default function Home() {
                 <h2 className="flex min-h-[3rem] flex-col justify-center font-display text-base font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
                   <span>{t.title}</span>
                   {t.under && (
-                    <span className="block text-sm font-black text-charcoal/70 md:text-xl lg:text-lg">
+                    <span className="block text-sm font-black text-charcoal md:text-xl lg:text-lg">
                       {t.under}
                     </span>
                   )}
