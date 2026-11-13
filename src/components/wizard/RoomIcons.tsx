@@ -16,7 +16,7 @@ function Svg({ children }: { children: ReactNode }) {
   return (
     <svg
       viewBox="0 0 48 48"
-      className="h-9 w-9"
+      className="h-10 w-10"
       fill="none"
       stroke={S}
       strokeWidth={2}
@@ -76,27 +76,30 @@ const ICONS: Record<string, ReactNode> = {
       <path d="M12 32v4M28 32v4M36 36v3" />
     </Svg>
   ),
-  // Dining room — table, two chairs, pendant light
+  // Dining room — table with place settings, a chair each side
   dining: (
     <Svg>
-      <path d="M24 5v5" />
-      <path d="M19.5 13a4.5 3 0 0 1 9 0z" fill={LIGHT} />
-      <path d="M7 17v9h5M12 26v6" strokeWidth={2.5} stroke={DEEP} />
-      <path d="M41 17v9h-5M36 26v6" strokeWidth={2.5} stroke={DEEP} />
-      <rect x="11" y="22" width="26" height="3.5" fill={MID} />
-      <path d="M15 25.5v10M33 25.5v10" />
+      <rect x="4.5" y="16" width="4" height="13" rx="1.5" fill={DEEP} />
+      <path d="M8.5 25h5v3h-5z" fill={MID} />
+      <path d="M11 28v7" />
+      <rect x="39.5" y="16" width="4" height="13" rx="1.5" fill={DEEP} />
+      <path d="M39.5 25h-5v3h5z" fill={DEEP} />
+      <path d="M37 28v7" />
+      <rect x="12" y="21" width="24" height="4" fill={MID} />
+      <path d="M15.5 25v10M32.5 25v10" />
+      <circle cx="19" cy="19" r="1.8" fill={PALE} />
+      <circle cx="29" cy="19" r="1.8" fill={PALE} />
     </Svg>
   ),
-  // Walk-in robe — open wardrobe, rail with hangers
+  // Walk-in robe — open wardrobe, rail with hangers over a folded pile
   wir: (
     <Svg>
       <rect x="13" y="7" width="22" height="34" fill={PALE} />
       <path d="M16 14h16" strokeWidth={2.5} stroke={DEEP} />
       <path d="M19 13.5v2M19 15.5l-4 4.5h8z" fill={LIGHT} />
       <path d="M27 13.5v2M27 15.5l-4 4.5h8z" fill={MID} />
-      <path d="M16 33h16" />
-      <rect x="18" y="28" width="5" height="4" fill={LIGHT} stroke="none" />
-      <rect x="24" y="28" width="6" height="4" fill={MID} stroke="none" />
+      <path d="M16 32h16" />
+      <rect x="18" y="28.5" width="12" height="3.5" fill={LIGHT} stroke="none" />
     </Svg>
   ),
   // Large walk-in robe — wardrobe with rail + shelf stack
@@ -123,24 +126,24 @@ const ICONS: Record<string, ReactNode> = {
   ),
 };
 
-// Hallways — top-down corridor with a runner; the longer the run, the more
-// stripes on the runner (1 = short run … 4 = full length).
-function hall(stripes: number[]) {
+// Hallways — top-down corridor with a runner; chevrons point down the run,
+// and the longer the hallway the more chevrons (1 = short … 4 = full length).
+function hall(chevrons: number[]) {
   return (
     <Svg>
       <rect x="17" y="7" width="14" height="34" fill={PALE} stroke="none" />
       <path d="M17 7v34M31 7v34" strokeWidth={3} stroke={DEEP} />
       <rect x="20.5" y="11" width="7" height="28" fill={LIGHT} strokeWidth={1.5} />
-      {stripes.map((y) => (
-        <path key={y} d={`M21.5 ${y}h5`} strokeWidth={1.5} />
+      {chevrons.map((y) => (
+        <path key={y} d={`M21.8 ${y}l2.2 2.2 2.2-2.2`} strokeWidth={1.5} />
       ))}
     </Svg>
   );
 }
-ICONS.hall = hall([25]);
-ICONS.hall2 = hall([19, 31]);
-ICONS.hall3 = hall([16.5, 25, 34]);
-ICONS.hall4 = hall([14.5, 21, 27.5, 34]);
+ICONS.hall = hall([24]);
+ICONS.hall2 = hall([18, 30]);
+ICONS.hall3 = hall([15.5, 24, 32.5]);
+ICONS.hall4 = hall([13.5, 20, 26.5, 33]);
 
 export function RoomIcon({ room }: { room: string }) {
   return ICONS[room] ?? ICONS.bed;
