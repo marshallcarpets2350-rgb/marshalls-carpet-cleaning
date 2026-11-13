@@ -78,6 +78,9 @@ export default function Header() {
             <img
               src={logo}
               alt="Marshall's Carpet Cleaning"
+              width="512"
+              height="505"
+              fetchPriority="high"
               className="h-20 w-auto md:h-40 lg:h-28 xl:h-32"
             />
             <LogoMask />

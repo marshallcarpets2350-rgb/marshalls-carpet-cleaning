@@ -162,6 +162,8 @@ export default function Home() {
               <img
                 src={vanImg}
                 alt="The Marshall's Carpet Cleaning van"
+                width="1400"
+                height="753"
                 className="offset-shadow mx-auto w-full -rotate-1 border-[1.5px] border-charcoal lg:h-52 lg:w-auto xl:h-60"
               />
             </div>
