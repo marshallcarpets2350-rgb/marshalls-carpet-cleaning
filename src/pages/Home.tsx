@@ -5,7 +5,7 @@ import FlowArt from "@/components/FlowArt";
 import { Snowfall } from "@/components/Seasonal";
 import { RatingBadge } from "@/sections/Reviews";
 import { trpc } from "@/providers/trpc";
-import { BUSINESS, seasonWindowFor } from "@contracts/rates";
+import { BUSINESS, promoText, seasonWindowFor } from "@contracts/rates";
 import vanImg from "@/assets/van.webp";
 
 /** Keeps the aggregateRating in the homepage's LocalBusiness schema in step
@@ -136,7 +136,7 @@ export default function Home() {
               </p>
               {promo && (
                 <p className="ml-0 mt-3 inline-block border-[1.5px] border-charcoal bg-[#FEF2F2] px-3 py-1.5 text-sm font-bold text-[#B91C1C] md:ml-2 lg:mt-2">
-                  🏷️ {promo.label} — {promo.percent}% off, ends {promoEnd}
+                  🏷️ {promoText(promo)}, ends {promoEnd}
                 </p>
               )}
               <h1 className="mt-2 font-display text-2xl font-black leading-[1.05] text-charcoal md:mt-3 md:text-5xl lg:mt-2 lg:text-[2.35rem]">
