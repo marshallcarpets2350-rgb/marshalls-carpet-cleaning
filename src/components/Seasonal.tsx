@@ -10,8 +10,10 @@ import { christmasOn, promoText, seasonFor, seasonWindowFor } from "@contracts/r
 
 const CSS = `
 @keyframes mcc-bulb {
-  0%, 100% { opacity: 1; filter: brightness(1.3); }
-  50% { opacity: 0.45; filter: brightness(0.8); }
+  /* opacity only — animating filter: brightness() repaints every bulb every
+     frame and stutters phones */
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.45; }
 }
 @keyframes mcc-mask {
   0%, 14%   { left: 63%; top: 5%;  transform: translate(-50%,-50%) rotate(-14deg) scale(.7); }
@@ -497,7 +499,9 @@ export function Snowfall({ count = 24 }: { count?: number }) {
                 animation: `mcc-snow ${dur}s linear ${delay}s ${endless ? "infinite" : "1"} both`,
                 "--drift": `${drift}vw`,
                 "--fo": opacity,
-                filter: "drop-shadow(0 1px 2px rgb(30 95 184 / 0.25))",
+                // phones run this endlessly — 28 drop-shadowed layers stutter,
+                // so the shadow is desktop-only (one pass, fewer pieces)
+                filter: endless ? undefined : "drop-shadow(0 1px 2px rgb(30 95 184 / 0.25))",
               } as CSSProperties
             }
           >

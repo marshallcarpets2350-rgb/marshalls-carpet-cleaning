@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useLayoutEffect, useRef, useState } from "react";
 import { Link } from "react-router";
 import Header from "@/sections/Header";
 import FlowArt from "@/components/FlowArt";
@@ -36,12 +36,17 @@ function useLiveRatingSchema() {
 
 /** One-screen homepage: if the content is taller than the viewport, gently
  *  scale it down so everything (incl. the service buttons) always fits.
- *  Runs on phones too — the page is height-locked there, no scrolling. */
+ *  Runs on phones too — the page is height-locked there, no scrolling.
+ *  Layout-effect so the FIRST paint is already scaled — measuring in a
+ *  plain effect let the page paint unscaled, then visibly jump (the
+ *  "stutter" on open). The font preloads in index.html stop the late
+ *  font-swap remeasure from moving things a second time. */
+const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 function useFitToScreen() {
   const ref = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
   const [scale, setScale] = useState(1);
-  useEffect(() => {
+  useIsoLayoutEffect(() => {
     const measure = () => {
       const el = ref.current;
       if (!el) return;
