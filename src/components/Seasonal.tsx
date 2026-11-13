@@ -7,7 +7,6 @@
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
 import { christmasOn, seasonFor, seasonWindowFor } from "@contracts/rates";
-import mascotHead from "@/assets/mascot-head.webp";
 
 const CSS = `
 @keyframes mcc-bulb {
@@ -15,11 +14,11 @@ const CSS = `
   50% { opacity: 0.45; filter: brightness(0.8); }
 }
 @keyframes mcc-mask {
-  0%, 14%   { left: 84%; top: 9%;  transform: translate(-50%,-50%) rotate(-14deg) scale(.7); }
-  22%       { left: 68%; top: 34%; transform: translate(-50%,-50%) rotate(165deg)  scale(.92); }
-  28%, 54%  { left: 52%; top: 60%; transform: translate(-50%,-50%) rotate(360deg)  scale(1); }
-  60%       { left: 68%; top: 32%; transform: translate(-50%,-50%) rotate(525deg)  scale(.9); }
-  68%, 100% { left: 84%; top: 9%;  transform: translate(-50%,-50%) rotate(706deg)  scale(.7); }
+  0%, 14%   { left: 63%; top: 5%;  transform: translate(-50%,-50%) rotate(-14deg) scale(.7); }
+  22%       { left: 57%; top: 12%; transform: translate(-50%,-50%) rotate(165deg)  scale(.92); }
+  28%, 54%  { left: 49%; top: 21%; transform: translate(-50%,-50%) rotate(360deg)  scale(1); }
+  60%       { left: 57%; top: 11%; transform: translate(-50%,-50%) rotate(525deg)  scale(.9); }
+  68%, 100% { left: 63%; top: 5%;  transform: translate(-50%,-50%) rotate(706deg)  scale(.7); }
 }
 @keyframes mcc-fall {
   0% { transform: translate3d(0, -10vh, 0); opacity: 0; }
@@ -339,10 +338,11 @@ export function FairyLights() {
   );
 }
 
-/** One emoji per season — the little character that perches on the mascot's
- *  cap, rolls down onto his face like a mask (the Marshall's character
- *  "becomes" Santa at Christmas), then rolls back off. Owner call 13 Nov
- *  2026: Santa came OFF the main logo and onto the mascot beside it. */
+/** One emoji per season — the little character that perches on the logo
+ *  mascot's cap, rolls down onto his face like a mask (the Marshall's
+ *  character "becomes" Santa at Christmas), then rolls back off. Owner call
+ *  13 Nov 2026: separate mascot head REMOVED — the mask rides the logo
+ *  itself, and the logo got bigger for readability. */
 const SEASON_MASK: Record<string, string> = {
   christmas: "🎅",
   boxingday: "🎁",
@@ -356,28 +356,25 @@ const SEASON_MASK: Record<string, string> = {
   latespring: "🌻",
 };
 
-/** The mascot head beside the header logo — year-round, with the season's
- *  emoji mask rolling on and off his face (12s loop). The mask positions are
- *  % of the mascot image so they hold at every breakpoint; reduced-motion
- *  leaves it parked on the cap. */
-export function HeaderMascot() {
+/** The season's emoji mask on the header LOGO's mascot (12s loop). Rendered
+ *  inside a relative wrapper around the logo img — the positions are % of
+ *  the logo image so they hold at every breakpoint; reduced-motion leaves
+ *  it parked on the cap. */
+export function LogoMask() {
   const mask = SEASON_MASK[seasonFor()?.id ?? ""] ?? null;
+  if (!mask) return null;
   return (
-    <span aria-hidden="true" className="relative ml-1 inline-block shrink-0 select-none md:ml-2">
-      <img src={mascotHead} alt="" className="h-11 w-auto md:h-24 lg:h-20 xl:h-24" />
-      {mask && (
-        <span
-          className="mcc-mask pointer-events-none absolute text-xl leading-none md:text-5xl lg:text-4xl xl:text-5xl"
-          style={{
-            left: "84%",
-            top: "9%",
-            transform: "translate(-50%,-50%) rotate(-14deg) scale(.7)",
-            animation: "mcc-mask 12s ease-in-out infinite",
-          }}
-        >
-          {mask}
-        </span>
-      )}
+    <span
+      aria-hidden="true"
+      className="mcc-mask pointer-events-none absolute text-xl leading-none md:text-4xl lg:text-2xl xl:text-3xl"
+      style={{
+        left: "63%",
+        top: "5%",
+        transform: "translate(-50%,-50%) rotate(-14deg) scale(.7)",
+        animation: "mcc-mask 12s ease-in-out infinite",
+      }}
+    >
+      {mask}
     </span>
   );
 }
