@@ -164,7 +164,7 @@ export default function Home() {
 
           {/* The four ways in — a compact 2×2 on phones so the whole grid
               fits the first screen; desktop keeps the big 4-across row */}
-          <p className="mt-3 text-center font-display text-xl font-black text-charcoal md:mt-6 lg:hidden">
+          <p className="mt-3 text-center font-display text-2xl font-black text-charcoal md:mt-6 lg:hidden">
             What do you need cleaned?
           </p>
           <div className="mt-3 grid grid-cols-2 gap-2 md:mt-4 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
@@ -174,18 +174,18 @@ export default function Home() {
                 to={t.to}
                 className="group flex flex-col border-[1.5px] border-charcoal bg-background p-3 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6 lg:p-4"
               >
-                <h2 className="flex min-h-[3rem] flex-col justify-center font-display text-base font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
+                <h2 className="flex min-h-[4.5rem] flex-col justify-center font-display text-xl font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
                   <span>{t.title}</span>
                   {t.under && (
-                    <span className="block text-sm font-black text-charcoal md:text-xl lg:text-lg">
+                    <span className="block text-base font-black text-charcoal md:text-xl lg:text-lg">
                       {t.under}
                     </span>
                   )}
                 </h2>
-                <p className="mx-auto mt-2 max-w-xs flex-1 text-xs leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
+                <p className="mx-auto mt-2 max-w-xs flex-1 text-sm leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
                   {t.sub}
                 </p>
-                <span className="btn-pill mx-auto mt-3 !px-4 !py-1.5 text-sm md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
+                <span className="btn-pill mx-auto mt-3 !px-5 !py-2 text-base md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
                   {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
                 </span>
               </Link>
