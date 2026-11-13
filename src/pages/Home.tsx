@@ -219,7 +219,7 @@ export default function Home() {
           to="/quote"
           className="flex items-center justify-center gap-2 py-3.5 text-center text-base font-bold text-white no-underline"
         >
-          {promo ? `🏷️ ${promo.percent}% off until ${promoEnd} — book your clean →` : "Book your clean — 60-second price →"}
+          {promo ? `🏷️ ${promoText(promo)} until ${promoEnd} — book your clean →` : "Book your clean — 60-second price →"}
         </Link>
       </div>
     </div>
