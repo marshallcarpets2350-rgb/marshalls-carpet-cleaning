@@ -425,35 +425,26 @@ export function PromoTag() {
   );
 }
 
-/** Snow on the homepage — a big opening shower on arrival (desktop settles
- *  after one pass and the gutters carry the season — Ben's call 8 Nov);
- *  phones have no gutters, so there it snows the whole visit: endless flakes
- *  with the season's drawn art, Santa and — while a promo runs — red
- *  "{percent}% OFF" sale tags mixed in (Ben's calls, 13 Nov 2026: more
- *  Christmas pieces, on desktop too, plus the falling price tags). */
+/** Snow on the homepage — one big opening shower on arrival, then it fades
+ *  and unmounts (desktop ~15s pass; Ben's call 8 Nov). Phones get the SAME
+ *  single pass now (Ben 13 Nov: endless snow on phones read as cheap and
+ *  kept the GPU busy) — same mix everywhere: the season's drawn art, a
+ *  Santa, and — while a promo runs — red "{percent}% OFF" sale tags.
+ *  No per-flake drop-shadow anywhere: it repaints 24+ layers every frame. */
 export function Snowfall({ count = 24 }: { count?: number }) {
   const [fading, setFading] = useState(false);
   const [gone, setGone] = useState(false);
-  const [endless, setEndless] = useState(false);
   useEffect(() => {
-    const mq = window.matchMedia("(max-width: 1023px)");
-    const apply = () => setEndless(mq.matches);
-    apply();
-    mq.addEventListener("change", apply);
-    return () => mq.removeEventListener("change", apply);
-  }, []);
-  useEffect(() => {
-    if (endless) return;
     const t1 = setTimeout(() => setFading(true), 15000);
     const t2 = setTimeout(() => setGone(true), 16500);
     return () => {
       clearTimeout(t1);
       clearTimeout(t2);
     };
-  }, [endless]);
+  }, []);
   if (!christmasOn() || gone) return null;
   const promo = seasonWindowFor()?.season.promo ?? null;
-  const flakes = Array.from({ length: endless ? count + 4 : count });
+  const flakes = Array.from({ length: count });
   return (
     <div
       aria-hidden="true"
@@ -463,10 +454,10 @@ export function Snowfall({ count = 24 }: { count?: number }) {
       {flakes.map((_, i) => {
         const size = 14 + ((i * 7) % 13);
         const left = (i * 137) % 100;
-        const dur = 8 + ((i * 3) % 7) + (endless ? 5 : 0);
-        const delay = -((i * 1.7) % 7) - (endless ? (i * 2.3) % 9 : 0);
+        const dur = 8 + ((i * 3) % 7);
+        const delay = -((i * 1.7) % 7);
         const drift = ((i % 2 === 0 ? 1 : -1) * (3 + (i % 5))).toFixed(0);
-        const opacity = 0.65 + ((i * 13) % 30) / 100 - (endless ? 0.12 : 0);
+        const opacity = 0.65 + ((i * 13) % 30) / 100;
         // The mix (both desktop and phones): a Santa, red sale tags while a
         // promo runs, the season's drawn art (same pieces as the desktop
         // gutters), and plain flakes filling the gaps.
@@ -496,12 +487,9 @@ export function Snowfall({ count = 24 }: { count?: number }) {
                 width: `${wide ? itemSize * 1.6 : itemSize}px`,
                 height: `${itemSize}px`,
                 opacity: wide ? Math.min(1, opacity + 0.2) : opacity,
-                animation: `mcc-snow ${dur}s linear ${delay}s ${endless ? "infinite" : "1"} both`,
+                animation: `mcc-snow ${dur}s linear ${delay}s 1 both`,
                 "--drift": `${drift}vw`,
                 "--fo": opacity,
-                // phones run this endlessly — 28 drop-shadowed layers stutter,
-                // so the shadow is desktop-only (one pass, fewer pieces)
-                filter: endless ? undefined : "drop-shadow(0 1px 2px rgb(30 95 184 / 0.25))",
               } as CSSProperties
             }
           >

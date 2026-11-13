@@ -34,13 +34,12 @@ function useLiveRatingSchema() {
   }, [rating, count]);
 }
 
-/** One-screen homepage: if the content is taller than the viewport, gently
- *  scale it down so everything (incl. the service buttons) always fits.
- *  Runs on phones too — the page is height-locked there, no scrolling.
- *  Layout-effect so the FIRST paint is already scaled — measuring in a
- *  plain effect let the page paint unscaled, then visibly jump (the
- *  "stutter" on open). The font preloads in index.html stop the late
- *  font-swap remeasure from moving things a second time. */
+/** One-screen homepage: scales the column so the whole page fits the window.
+ *  Measures ONCE in a layout effect so the FIRST paint is already the final
+ *  size — after that the page NEVER resizes (Ben 13 Nov: the visible
+ *  re-fitting looked cheap). The 0.97 margin + font preloads in index.html
+ *  cover late font-swap growth, so no delayed re-measures are needed; the
+ *  only re-measure is a real window resize (rotation, browser chrome). */
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 function useFitToScreen() {
   const ref = useRef<HTMLDivElement>(null);
@@ -54,8 +53,6 @@ function useFitToScreen() {
       let s = 1;
       if (parent) {
         const natural = el.getBoundingClientRect().height / scaleRef.current;
-        // 3% safety margin — display fonts swap in after first paint and
-        // make the content slightly taller than the first measurement
         const avail = parent.clientHeight * 0.97;
         if (natural > avail) s = Math.max(avail / natural, 0.55);
       }
@@ -65,15 +62,8 @@ function useFitToScreen() {
       }
     };
     measure();
-    const t1 = setTimeout(measure, 250);
-    const t2 = setTimeout(measure, 1200);
-    document.fonts?.ready.then(measure).catch(() => {});
     window.addEventListener("resize", measure);
-    return () => {
-      window.removeEventListener("resize", measure);
-      clearTimeout(t1);
-      clearTimeout(t2);
-    };
+    return () => window.removeEventListener("resize", measure);
   }, []);
   return { ref, scale };
 }
