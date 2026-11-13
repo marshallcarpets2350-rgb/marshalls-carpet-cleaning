@@ -49,7 +49,9 @@ function useFitToScreen() {
       let s = 1;
       if (parent) {
         const natural = el.getBoundingClientRect().height / scaleRef.current;
-        const avail = parent.clientHeight;
+        // 3% safety margin — display fonts swap in after first paint and
+        // make the content slightly taller than the first measurement
+        const avail = parent.clientHeight * 0.97;
         if (natural > avail) s = Math.max(avail / natural, 0.55);
       }
       if (Math.abs(s - scaleRef.current) > 0.004) {
@@ -60,6 +62,7 @@ function useFitToScreen() {
     measure();
     const t1 = setTimeout(measure, 250);
     const t2 = setTimeout(measure, 1200);
+    document.fonts?.ready.then(measure).catch(() => {});
     window.addEventListener("resize", measure);
     return () => {
       window.removeEventListener("resize", measure);
