@@ -34,8 +34,9 @@ function useLiveRatingSchema() {
   }, [rating, count]);
 }
 
-/** Desktop only: if the one-screen homepage is taller than the viewport, gently
- *  scale the content down so everything (incl. the service buttons) always fits. */
+/** One-screen homepage: if the content is taller than the viewport, gently
+ *  scale it down so everything (incl. the service buttons) always fits.
+ *  Runs on phones too — the page is height-locked there, no scrolling. */
 function useFitToScreen() {
   const ref = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
@@ -44,10 +45,9 @@ function useFitToScreen() {
     const measure = () => {
       const el = ref.current;
       if (!el) return;
-      const desktop = window.matchMedia("(min-width: 1024px)").matches;
       const parent = el.parentElement;
       let s = 1;
-      if (desktop && parent) {
+      if (parent) {
         const natural = el.getBoundingClientRect().height / scaleRef.current;
         const avail = parent.clientHeight;
         if (natural > avail) s = Math.max(avail / natural, 0.65);
@@ -102,7 +102,7 @@ export default function Home() {
   const { ref: fitRef, scale: fitScale } = useFitToScreen();
   useLiveRatingSchema();
   return (
-    <div className="flex min-h-dvh flex-col lg:h-dvh lg:overflow-hidden">
+    <div className="flex h-dvh flex-col overflow-hidden">
       <Header />
       <Snowfall />
       <FlowArt />
