@@ -6,16 +6,20 @@
 // phones — no gutters — it keeps falling, art and Santa mixed in.
 import { useEffect, useState, type CSSProperties, type ReactNode } from "react";
 import { Link } from "react-router";
-import { christmasOn, seasonWindowFor } from "@contracts/rates";
+import { christmasOn, seasonFor, seasonWindowFor } from "@contracts/rates";
+import mascotHead from "@/assets/mascot-head.webp";
 
 const CSS = `
 @keyframes mcc-bulb {
   0%, 100% { opacity: 1; filter: brightness(1.3); }
   50% { opacity: 0.45; filter: brightness(0.8); }
 }
-@keyframes mcc-hat-wobble {
-  0%, 100% { transform: rotate(-14deg); }
-  50% { transform: rotate(-8deg); }
+@keyframes mcc-mask {
+  0%, 14%   { left: 84%; top: 9%;  transform: translate(-50%,-50%) rotate(-14deg) scale(.7); }
+  22%       { left: 68%; top: 34%; transform: translate(-50%,-50%) rotate(165deg)  scale(.92); }
+  28%, 54%  { left: 52%; top: 60%; transform: translate(-50%,-50%) rotate(360deg)  scale(1); }
+  60%       { left: 68%; top: 32%; transform: translate(-50%,-50%) rotate(525deg)  scale(.9); }
+  68%, 100% { left: 84%; top: 9%;  transform: translate(-50%,-50%) rotate(706deg)  scale(.7); }
 }
 @keyframes mcc-fall {
   0% { transform: translate3d(0, -10vh, 0); opacity: 0; }
@@ -34,7 +38,7 @@ const CSS = `
   100% { transform: translate3d(var(--drift, 4vw), 106vh, 0); opacity: 0; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .mcc-bulb, .mcc-flake, .mcc-hat, .mcc-sway { animation: none !important; }
+  .mcc-bulb, .mcc-flake, .mcc-mask, .mcc-sway { animation: none !important; }
   .mcc-fall-item { display: none !important; }
 }
 `;
@@ -335,21 +339,45 @@ export function FairyLights() {
   );
 }
 
-/** A little Santa hat perched on the corner of the logo, Christmas only.
- *  Desktop perches ON the top-left corner of the badge (md:text-4xl, barely
- *  raised) — it must NOT hang off the left edge (md:-left-5 put it off-screen:
- *  the header logo sits flush against the viewport edge on any window up to
- *  ~1288px wide, so half the hat was clipped). It used to sit at left-4
- *  text-5xl and cover the mascot's face (Ben's fix, 8 Nov 2026). */
-export function SantaHat() {
-  if (!christmasOn()) return null;
+/** One emoji per season — the little character that perches on the mascot's
+ *  cap, rolls down onto his face like a mask (the Marshall's character
+ *  "becomes" Santa at Christmas), then rolls back off. Owner call 13 Nov
+ *  2026: Santa came OFF the main logo and onto the mascot beside it. */
+const SEASON_MASK: Record<string, string> = {
+  christmas: "🎅",
+  boxingday: "🎁",
+  newyear: "🎆",
+  summer: "😎",
+  easter: "🐰",
+  autumn: "🍂",
+  winter: "❄️",
+  latewinter: "🌧️",
+  spring: "🌸",
+  latespring: "🌻",
+};
+
+/** The mascot head beside the header logo — year-round, with the season's
+ *  emoji mask rolling on and off his face (12s loop). The mask positions are
+ *  % of the mascot image so they hold at every breakpoint; reduced-motion
+ *  leaves it parked on the cap. */
+export function HeaderMascot() {
+  const mask = SEASON_MASK[seasonFor()?.id ?? ""] ?? null;
   return (
-    <span
-      aria-hidden="true"
-      className="mcc-hat pointer-events-none absolute -top-1 left-2 text-3xl md:-top-0.5 md:text-4xl"
-      style={{ transform: "rotate(-14deg)", transformOrigin: "bottom left", animation: "mcc-hat-wobble 6s ease-in-out infinite" }}
-    >
-      🎅
+    <span aria-hidden="true" className="relative ml-1 inline-block shrink-0 select-none md:ml-2">
+      <img src={mascotHead} alt="" className="h-11 w-auto md:h-24 lg:h-20 xl:h-24" />
+      {mask && (
+        <span
+          className="mcc-mask pointer-events-none absolute text-xl leading-none md:text-5xl lg:text-4xl xl:text-5xl"
+          style={{
+            left: "84%",
+            top: "9%",
+            transform: "translate(-50%,-50%) rotate(-14deg) scale(.7)",
+            animation: "mcc-mask 12s ease-in-out infinite",
+          }}
+        >
+          {mask}
+        </span>
+      )}
     </span>
   );
 }
