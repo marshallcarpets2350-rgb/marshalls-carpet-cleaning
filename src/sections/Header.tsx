@@ -78,9 +78,23 @@ export default function Header() {
           <img
             src={logo}
             alt="Marshall's Carpet Cleaning"
-            className="h-24 w-auto md:h-32 lg:h-24 xl:h-28"
+            className="h-14 w-auto md:h-32 lg:h-24 xl:h-28"
           />
         </Link>
+
+        {/* Red flood pill in the middle of the header on phones/tablets —
+            desktop (xl) already carries the red "Emergency flood" nav item. */}
+        <div className="flex min-w-0 flex-1 justify-center xl:hidden">
+          <Link
+            to="/flood"
+            className="flex items-center gap-1.5 whitespace-nowrap border-[1.5px] border-[#B91C1C] bg-[#FEF2F2] px-2.5 py-1.5 text-xs font-black text-[#B91C1C] no-underline"
+          >
+            <span aria-hidden="true" className="inline-block h-4 w-4 shrink-0">
+              <FloodIcon />
+            </span>
+            Flood help 24/7
+          </Link>
+        </div>
 
         <nav className="hidden flex-1 items-center xl:flex" aria-label="Main">
           <div className="flex flex-1 items-center justify-evenly">

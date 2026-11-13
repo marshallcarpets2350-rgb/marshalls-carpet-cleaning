@@ -107,7 +107,7 @@ export default function Home() {
       <Snowfall />
       <FlowArt />
 
-      <main className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden bg-creamlight py-4 md:py-6 lg:py-2">
+      <main className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden bg-creamlight py-2 md:py-6 lg:py-2">
         <div
           ref={fitRef}
           className="mx-auto"
@@ -141,16 +141,16 @@ export default function Home() {
                   🏷️ {promo.label} — {promo.percent}% off, ends {promoEnd}
                 </p>
               )}
-              <h1 className="mt-3 font-display text-4xl font-black leading-[1.05] text-charcoal md:text-5xl lg:mt-2 lg:text-[2.35rem]">
+              <h1 className="mt-2 font-display text-2xl font-black leading-[1.05] text-charcoal md:mt-3 md:text-5xl lg:mt-2 lg:text-[2.35rem]">
                 Your price, before we knock on the door.
               </h1>
-              <p className="mt-4 max-w-xl text-lg leading-relaxed text-charcoal/80 lg:mt-3 lg:text-base">
+              <p className="mt-4 hidden max-w-xl text-lg leading-relaxed text-charcoal/80 md:block lg:mt-3 lg:text-base">
                 Steam carpet cleaning across Armidale &amp; the New England. Pick
                 what you need cleaned below and the price builds on screen while
                 you tap — 60 seconds, no callbacks, no surprises on the day.
               </p>
 
-              <div className="mt-5 lg:mt-3">
+              <div className="mt-5 hidden md:block lg:mt-3">
                 <RatingBadge />
               </div>
             </div>
@@ -164,33 +164,37 @@ export default function Home() {
             </div>
           </div>
 
-          {/* The three ways in — big, centred, impossible to miss */}
-          <div className="mt-8 grid grid-cols-2 gap-3 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
+          {/* The four ways in — a compact 2×2 on phones so the whole grid
+              fits the first screen; desktop keeps the big 4-across row */}
+          <p className="mt-4 text-center font-display text-lg font-black text-charcoal md:mt-6 md:text-xl lg:hidden">
+            What do you need cleaned?
+          </p>
+          <div className="mt-2 grid grid-cols-2 gap-2 md:mt-4 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
             {TILES.map((t) => (
               <Link
                 key={t.title}
                 to={t.to}
-                className="group flex flex-col border-[1.5px] border-charcoal bg-background p-4 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6 lg:p-4"
+                className="group flex flex-col border-[1.5px] border-charcoal bg-background p-2.5 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6 lg:p-4"
               >
-                <h2 className="flex min-h-[3.5rem] flex-col justify-center font-display text-xl font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
+                <h2 className="flex min-h-[2.5rem] flex-col justify-center font-display text-sm font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
                   <span>{t.title}</span>
                   {t.under && (
-                    <span className="block text-base font-black text-charcoal/70 md:text-xl lg:text-lg">
+                    <span className="block text-xs font-black text-charcoal/70 md:text-xl lg:text-lg">
                       {t.under}
                     </span>
                   )}
                 </h2>
-                <p className="mx-auto mt-3 max-w-xs flex-1 text-xs leading-relaxed text-charcoal/70 md:text-sm lg:mt-2">
+                <p className="mx-auto mt-1.5 max-w-xs flex-1 text-[11px] leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
                   {t.sub}
                 </p>
-                <span className="btn-pill mx-auto mt-5 !px-5 !py-2 text-sm md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
+                <span className="btn-pill mx-auto mt-2 !px-3 !py-1 text-xs md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
                   {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
                 </span>
               </Link>
             ))}
           </div>
 
-          <p className="mt-6 text-center text-sm text-charcoal/75 md:text-base lg:mt-4">
+          <p className="mt-4 text-center text-xs text-charcoal/75 md:mt-6 md:text-base lg:mt-4">
             Rather talk it through?{" "}
             <a href={BUSINESS.phoneHref} className="font-bold text-forest">
               Call {BUSINESS.phone}
@@ -201,7 +205,7 @@ export default function Home() {
         </div>
       </main>
 
-      <footer className="border-t-[1.5px] border-charcoal bg-charcoal py-4 text-center text-sm text-background/80 lg:py-2">
+      <footer className="border-t-[1.5px] border-charcoal bg-charcoal py-2 text-center text-xs text-background/80 md:py-4 md:text-sm lg:py-2">
         <p>
           <span className="font-bold text-background">Marshall's Carpet Cleaning</span>
           {" · "}Armidale NSW 2350{" · "}
