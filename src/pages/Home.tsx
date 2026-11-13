@@ -50,7 +50,7 @@ function useFitToScreen() {
       if (parent) {
         const natural = el.getBoundingClientRect().height / scaleRef.current;
         const avail = parent.clientHeight;
-        if (natural > avail) s = Math.max(avail / natural, 0.65);
+        if (natural > avail) s = Math.max(avail / natural, 0.55);
       }
       if (Math.abs(s - scaleRef.current) > 0.004) {
         scaleRef.current = s;
