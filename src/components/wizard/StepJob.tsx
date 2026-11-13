@@ -1,6 +1,7 @@
 // Step 2 of the carpet wizard — the reason for the clean, and the carpeted
 // rooms. Rug pick-up and lounge/mattress quotes live on their own pages.
 import { Stepper, OptionCard, StepHeading } from "./ui";
+import { RoomIcon } from "./RoomIcons";
 import type { CleanPurpose } from "@contracts/rates";
 
 // Room list written in our own words and our own order. The internal keys map
@@ -104,6 +105,9 @@ export default function StepJob({
                   key={r.key}
                   className={`p-4 transition-colors ${count > 0 ? "bg-mintlight" : "bg-background"}`}
                 >
+                  <div className="mb-3 flex h-12 w-12 items-center justify-center border-[1.5px] border-charcoal bg-cream">
+                    <RoomIcon room={r.key} />
+                  </div>
                   <p className="font-bold text-charcoal">{r.label}</p>
                   <p className="text-xs text-charcoal/60">{r.hint} · ~{r.m2} m²</p>
                   <div className="mt-3">
