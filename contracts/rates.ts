@@ -702,7 +702,7 @@ export interface SeasonDef {
 const SEASONS: Record<string, SeasonDef> = {
   christmas: {
     id: "christmas",
-    banner: "🎄🦌 Pre-Christmas cleans now booking — December spots fill fast.",
+    banner: "🎄 Booked in before Christmas? December is nearly full — grab a spot while there's room 🦌",
     footer: "🎄🦌 Merry Christmas from the Marshall's team — and thanks for backing a local business this year.",
     promo: null,
   },
