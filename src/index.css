@@ -147,13 +147,13 @@
    IMPORTANT: the chrome + natural constants are measured from the live
    page — RE-MEASURE and update all three tiers whenever homepage mobile
    content changes (hero copy, tiles, promo badge, header/banner/footer). */
-@media (max-width: 399px) {
+@media (max-width: 380px) {
   .mcc-fit {
     transform-origin: center center;
     transform: scale(max(0.55, min(1, calc((100svh - 293px) * 0.97 / 736px))));
   }
 }
-@media (min-width: 400px) and (max-width: 767px) {
+@media (min-width: 381px) and (max-width: 767px) {
   .mcc-fit {
     transform-origin: center center;
     transform: scale(max(0.55, min(1, calc((100svh - 273px) * 0.97 / 716px))));
