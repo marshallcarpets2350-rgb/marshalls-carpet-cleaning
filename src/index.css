@@ -146,34 +146,77 @@
    keyed to 100svh so the iOS toolbar show/hide never changes it. The
    width/margin compensation lets the content lay out wider before scaling
    (same geometry the old JS scaler produced) so buttons stay on one line.
+   Tiers are keyed to MEASURED widths (every iPhone width gets its own
+   constants) so nobody is over-shrunk by a coarse tier.
    IMPORTANT: the chrome + natural constants are measured from the live
-   page with compensation STRIPPED — RE-MEASURE and update all three tiers
+   page with compensation STRIPPED — RE-MEASURE and update every tier
    whenever homepage mobile content changes (hero copy, tiles, promo badge,
    header/banner/footer). */
-@media (max-width: 380px) {
+@media (max-width: 1023px) {
   .mcc-fit {
-    --mccs: max(0.55, min(1, calc((100svh - 293px) * 0.97 / 736px)));
     transform-origin: center center;
     transform: scale(var(--mccs));
     width: calc(100% / var(--mccs));
     margin-left: calc((100% - (100% / var(--mccs))) / 2);
   }
 }
-@media (min-width: 381px) and (max-width: 767px) {
+@media (max-width: 349px) {
   .mcc-fit {
-    --mccs: max(0.55, min(1, calc((100svh - 273px) * 0.97 / 716px)));
-    transform-origin: center center;
-    transform: scale(var(--mccs));
-    width: calc(100% / var(--mccs));
-    margin-left: calc((100% - (100% / var(--mccs))) / 2);
+    --mccs: max(0.55, min(1, calc((100svh - 329px) * 0.97 / 773px)));
   }
 }
-@media (min-width: 768px) and (max-width: 1023px) {
+@media (min-width: 350px) and (max-width: 374px) {
   .mcc-fit {
-    --mccs: max(0.55, min(1, calc((100svh - 337px) * 0.97 / 951px)));
-    transform-origin: center center;
-    transform: scale(var(--mccs));
-    width: calc(100% / var(--mccs));
-    margin-left: calc((100% - (100% / var(--mccs))) / 2);
+    --mccs: max(0.55, min(1, calc((100svh - 329px) * 0.97 / 679px)));
+  }
+}
+@media (min-width: 375px) and (max-width: 389px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 659px)));
+  }
+}
+@media (min-width: 390px) and (max-width: 401px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 631px)));
+  }
+}
+@media (min-width: 402px) and (max-width: 429px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 631px)));
+  }
+}
+@media (min-width: 430px) and (max-width: 459px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 579px)));
+  }
+}
+@media (min-width: 460px) and (max-width: 539px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 579px)));
+  }
+}
+@media (min-width: 540px) and (max-width: 619px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 557px)));
+  }
+}
+@media (min-width: 620px) and (max-width: 699px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 289px) * 0.97 / 466px)));
+  }
+}
+@media (min-width: 700px) and (max-width: 767px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 249px) * 0.97 / 466px)));
+  }
+}
+@media (min-width: 768px) and (max-width: 879px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 345px) * 0.97 / 901px)));
+  }
+}
+@media (min-width: 880px) and (max-width: 1023px) {
+  .mcc-fit {
+    --mccs: max(0.55, min(1, calc((100svh - 345px) * 0.97 / 881px)));
   }
 }
