@@ -2,37 +2,37 @@ import { Link } from "react-router";
 
 const SERVICES = [
   {
-    title: "Carpet cleaning",
+    title: "Carpet Cleaning",
     body: "Deep steam cleaning — the method carpet makers recommend. The bigger the house, the cheaper the metre.",
     price: "instant online quote",
     to: "/quote?service=carpet",
   },
   {
-    title: "Rug pick-up & clean",
+    title: "Rug Pick-Up & Clean",
     body: "Rugs collected Friday afternoon, washed and dried at our place, and back on your floor Monday. Free pickup in Armidale ($1/km outside) — five or more rugs takes 10% off.",
     price: "instant online quote",
     to: "/rugs",
   },
   {
-    title: "Lounge & upholstery",
+    title: "Lounge & Upholstery",
     body: "Couches, armchairs and recliners priced per seat with three soiling levels, so a lightly-used 2-seater never costs the same as the family dog's 5-seater.",
     price: "instant online quote",
     to: "/lounge?service=upholstery",
   },
   {
-    title: "Mattress cleaning",
+    title: "Mattress Cleaning",
     body: "Single through king, each with its own soiling level. Sweat, dust mites and allergens lifted out — not just the surface freshened.",
     price: "instant online quote",
     to: "/lounge?service=mattress",
   },
   {
-    title: "Stains, dirt & gum",
+    title: "Stains, Dirt & Gum",
     body: "A dedicated treatment package for the jobs that need more than a standard clean — ground-in dirt, chewing gum, and heavy staining. Enzyme pre-spray for pet odour and urine.",
     price: "instant online quote",
     to: "/quote",
   },
   {
-    title: "End of lease",
+    title: "End of Lease",
     body: "Carpets cleaned to the standard property managers inspect against, with a written quote you can forward to your agent before booking.",
     price: "instant written quote",
     to: "/quote?purpose=moving-out",

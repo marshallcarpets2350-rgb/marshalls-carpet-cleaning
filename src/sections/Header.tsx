@@ -33,10 +33,10 @@ function FloodIcon() {
 }
 
 const MAIN_NAV: NavItem[] = [
-  { icon: iconCarpet, label: "Carpet cleaning", sub: "quote", to: "/quote" },
-  { icon: iconRug, label: "Rug pick-up", sub: "& clean", to: "/rugs" },
-  { icon: iconLounge, label: "Lounge, mattress", sub: "and upholstery", to: "/lounge" },
-  { svg: <FloodIcon />, label: "Emergency flood", sub: "24/7 help", to: "/flood", urgent: true },
+  { icon: iconCarpet, label: "Carpet Cleaning", sub: "quote", to: "/quote" },
+  { icon: iconRug, label: "Rug Pick-Up", sub: "& Clean", to: "/rugs" },
+  { icon: iconLounge, label: "Lounge, Mattress", sub: "and Upholstery", to: "/lounge" },
+  { svg: <FloodIcon />, label: "Emergency Flood", sub: "24/7 help", to: "/flood", urgent: true },
 ];
 
 const MORE_NAV: NavItem[] = [

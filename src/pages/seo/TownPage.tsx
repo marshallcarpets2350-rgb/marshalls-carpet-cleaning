@@ -86,10 +86,10 @@ const TOWNS: TownConfig[] = [
 ];
 
 const SERVICES = [
-  { to: "/quote", label: "Carpet cleaning", body: "Steam cleaning priced per square metre — the total is locked in before we knock." },
-  { to: "/lounge", label: "Lounges & mattresses", body: "Per-seat pricing, recliners included, mattresses by size — all in the same quote." },
-  { to: "/rugs", label: "Rug pick-up & clean", body: "Collected from your door, cleaned and returned. Free pick-up with any clean." },
-  { to: "/flood", label: "Flood & water damage", body: "24/7 emergency water removal and drying, with a report ready for your insurer." },
+  { to: "/quote", label: "Carpet Cleaning", body: "Steam cleaning priced per square metre — the total is locked in before we knock." },
+  { to: "/lounge", label: "Lounges & Mattresses", body: "Per-seat pricing, recliners included, mattresses by size — all in the same quote." },
+  { to: "/rugs", label: "Rug Pick-Up & Clean", body: "Collected from your door, cleaned and returned. Free pick-up with any clean." },
+  { to: "/flood", label: "Flood & Water Damage", body: "24/7 emergency water removal and drying, with a report ready for your insurer." },
 ];
 
 export function townSlugs() {

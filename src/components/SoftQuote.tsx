@@ -47,7 +47,7 @@ import { OptionCard } from "@/components/wizard/ui";
 
 const COPY = {
   lounge: {
-    title: "Lounge, mattress & upholstery.",
+    title: "Lounge, Mattress & Upholstery.",
     blurb: (
       <>
         Lounges are priced per seat with three soiling levels, mattresses by size
@@ -66,7 +66,7 @@ const COPY = {
     missingItems: "at least one lounge or mattress",
   },
   rugs: {
-    title: "Rug pick-up & clean.",
+    title: "Rug Pick-Up & Clean.",
     blurb: (
       <>
         We collect your rugs on Fridays between 3 and 5pm, wash and dry

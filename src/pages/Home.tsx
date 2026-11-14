@@ -78,23 +78,23 @@ function useFitToScreen() {
 
 const TILES: { title: string; under?: string; sub: string; to: string }[] = [
   {
-    title: "Carpet cleaning",
+    title: "Carpet Cleaning",
     sub: "Rooms, stairs, hallways.",
     to: "/quote",
   },
   {
-    title: "Rug pick-up & clean",
+    title: "Rug Pick-Up & Clean",
     sub: "Back on your floor Monday.",
     to: "/rugs",
   },
   {
-    title: "Lounge, mattress",
-    under: "and upholstery",
+    title: "Lounge, Mattress",
+    under: "and Upholstery",
     sub: "Priced per seat.",
     to: "/lounge",
   },
   {
-    title: "Flood & water damage",
+    title: "Flood & Water Damage",
     under: "24/7 emergency",
     sub: "Insurer-ready reports.",
     to: "/flood",
