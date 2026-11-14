@@ -34,19 +34,22 @@ function useLiveRatingSchema() {
   }, [rating, count]);
 }
 
-/** One-screen homepage: scales the column so the whole page fits the window.
- *  Measures ONCE in a layout effect so the FIRST paint is already the final
- *  size — after that the page NEVER resizes (Ben 13 Nov: the visible
- *  re-fitting looked cheap). The 0.97 margin + font preloads in index.html
- *  cover late font-swap growth, so no delayed re-measures are needed; the
- *  only re-measure is a real window resize (rotation, browser chrome). */
+/** One-screen homepage. Phones/tablets are scaled by the pure-CSS .mcc-fit
+ *  rules in index.css, so their FIRST paint (even the static prerender) is
+ *  already the final size — no JS, no rescale (Ben 14 Nov: the page visibly
+ *  jumped through states on load). This hook now only runs on desktop
+ *  (≥1024px): measures ONCE in a layout effect, re-measures only when the
+ *  window WIDTH actually changes — height-only resizes are just browser
+ *  chrome showing/hiding and must not rescale the page. */
 const useIsoLayoutEffect = typeof window === "undefined" ? useEffect : useLayoutEffect;
 function useFitToScreen() {
   const ref = useRef<HTMLDivElement>(null);
   const scaleRef = useRef(1);
   const [scale, setScale] = useState(1);
   useIsoLayoutEffect(() => {
+    let lastW = window.innerWidth;
     const measure = () => {
+      if (window.innerWidth < 1024) return; // mobile: .mcc-fit CSS owns the fit
       const el = ref.current;
       if (!el) return;
       const parent = el.parentElement;
@@ -62,8 +65,13 @@ function useFitToScreen() {
       }
     };
     measure();
-    window.addEventListener("resize", measure);
-    return () => window.removeEventListener("resize", measure);
+    const onResize = () => {
+      if (window.innerWidth === lastW) return;
+      lastW = window.innerWidth;
+      measure();
+    };
+    window.addEventListener("resize", onResize);
+    return () => window.removeEventListener("resize", onResize);
   }, []);
   return { ref, scale };
 }
@@ -100,7 +108,7 @@ export default function Home() {
   const { ref: fitRef, scale: fitScale } = useFitToScreen();
   useLiveRatingSchema();
   return (
-    <div className="flex h-dvh flex-col overflow-hidden">
+    <div className="flex h-svh flex-col overflow-hidden">
       <Header />
       <Snowfall />
       <FlowArt />
@@ -108,7 +116,7 @@ export default function Home() {
       <main className="flex min-h-0 flex-1 flex-col justify-center overflow-hidden bg-creamlight py-2 md:py-6 lg:py-2">
         <div
           ref={fitRef}
-          className="mx-auto"
+          className="mx-auto mcc-fit"
           style={
             fitScale < 1
               ? {

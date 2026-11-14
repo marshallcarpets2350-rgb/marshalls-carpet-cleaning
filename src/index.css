@@ -137,3 +137,31 @@
 .total-pop {
   animation: total-pop 0.2s ease-out;
 }
+
+/* Mobile homepage one-screen fit — pure CSS so the FIRST paint (including
+   the prerendered static HTML, before any JS runs) is already the final
+   size: no JS measure, no visible rescale (Ben 14 Nov: "still jumping
+   between updates — fix it completely"). scale = (viewport height − fixed
+   header/banner/footer chrome) ÷ natural content height, clamped 0.55–1,
+   keyed to 100svh so the iOS toolbar show/hide never changes it.
+   IMPORTANT: the chrome + natural constants are measured from the live
+   page — RE-MEASURE and update all three tiers whenever homepage mobile
+   content changes (hero copy, tiles, promo badge, header/banner/footer). */
+@media (max-width: 399px) {
+  .mcc-fit {
+    transform-origin: center center;
+    transform: scale(max(0.55, min(1, calc((100svh - 293px) * 0.97 / 736px))));
+  }
+}
+@media (min-width: 400px) and (max-width: 767px) {
+  .mcc-fit {
+    transform-origin: center center;
+    transform: scale(max(0.55, min(1, calc((100svh - 273px) * 0.97 / 716px))));
+  }
+}
+@media (min-width: 768px) and (max-width: 1023px) {
+  .mcc-fit {
+    transform-origin: center center;
+    transform: scale(max(0.55, min(1, calc((100svh - 337px) * 0.97 / 951px))));
+  }
+}
