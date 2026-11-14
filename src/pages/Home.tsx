@@ -222,9 +222,9 @@ export default function Home() {
       <div className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-charcoal bg-[#1A6FD1] lg:hidden">
         <Link
           to="/quote"
-          className="flex items-center justify-center gap-2 py-4 text-center text-lg font-bold text-white no-underline"
+          className="flex items-center justify-center gap-2 py-4 text-center text-base font-bold text-white no-underline sm:text-lg"
         >
-          {promo ? `🏷️ ${promoText(promo)} until ${promoEnd} — book your clean →` : "Book your clean — 60-second price →"}
+          {promo ? `🏷️ ${promoText(promo)} — book your clean →` : "Book your clean — 60-second price →"}
         </Link>
       </div>
     </div>
