@@ -79,24 +79,24 @@ function useFitToScreen() {
 const TILES: { title: string; under?: string; sub: string; to: string }[] = [
   {
     title: "Carpet cleaning",
-    sub: "Rooms, stairs and hallways — the price builds as you tap.",
+    sub: "Rooms, stairs and hallways.",
     to: "/quote",
   },
   {
     title: "Rug pick-up & clean",
-    sub: "Collected, washed and dried at our premises — back on your floor Monday.",
+    sub: "Picked up Friday, back to you Monday.",
     to: "/rugs",
   },
   {
     title: "Lounge, mattress",
     under: "and upholstery",
-    sub: "Priced per seat with three soiling levels.",
+    sub: "Priced per seat, light to heavy.",
     to: "/lounge",
   },
   {
     title: "Flood & water damage",
     under: "24/7 emergency",
-    sub: "Extraction, structural drying, insurer-ready reports — price in writing before we start.",
+    sub: "Insurer-ready reports, priced up front.",
     to: "/flood",
   },
 ];
@@ -138,7 +138,7 @@ export default function Home() {
                 Armidale · Uralla · Guyra · Walcha
               </p>
               {promo && (
-                <p className="ml-0 mt-3 inline-block border-[1.5px] border-charcoal bg-[#FEF2F2] px-3 py-1.5 text-sm font-bold text-[#B91C1C] md:ml-2 lg:mt-2">
+                <p className="mt-2 hidden border-[1.5px] border-charcoal bg-[#FEF2F2] px-3 py-1.5 text-sm font-bold text-[#B91C1C] md:ml-2 md:inline-block lg:mt-2">
                   {promoText(promo)}, ends {promoEnd}
                 </p>
               )}
@@ -172,14 +172,14 @@ export default function Home() {
           <p className="mt-4 text-center font-display text-3xl font-black text-charcoal md:mt-6 lg:hidden">
             What do you need cleaned?
           </p>
-          <div className="mt-4 grid grid-cols-2 gap-3 md:mt-4 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
+          <div className="mt-3 grid grid-cols-2 gap-3 md:mt-4 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
             {TILES.map((t) => (
               <Link
                 key={t.title}
                 to={t.to}
                 className="group flex flex-col border-[1.5px] border-charcoal bg-background p-4 text-center no-underline transition-all duration-200 hover:-translate-y-1 hover:shadow-[0_14px_28px_-12px_rgb(30_30_30/0.4)] md:p-6 lg:p-4"
               >
-                <h2 className="flex min-h-[5.5rem] flex-col justify-center font-display text-2xl font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
+                <h2 className="flex flex-col justify-center font-display text-2xl font-black leading-tight text-charcoal md:min-h-[5rem] md:text-3xl lg:min-h-[3.75rem] lg:text-2xl">
                   <span>{t.title}</span>
                   {t.under && (
                     <span className="block text-lg font-black text-charcoal md:text-xl lg:text-lg">
@@ -187,10 +187,10 @@ export default function Home() {
                     </span>
                   )}
                 </h2>
-                <p className="mx-auto mt-3 max-w-xs flex-1 text-base leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
+                <p className="mx-auto mt-2 max-w-xs flex-1 text-base leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
                   {t.sub}
                 </p>
-                <span className="btn-pill mx-auto mt-3 !px-6 !py-3 text-lg md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
+                <span className="btn-pill mx-auto mt-2 !px-6 !py-2.5 text-lg md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
                   {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
                 </span>
               </Link>
