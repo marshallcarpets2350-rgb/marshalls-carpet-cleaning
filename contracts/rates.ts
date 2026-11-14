@@ -601,14 +601,13 @@ export function rugCount(rugs: RugItem[]): number {
 export const RUG_PICKUP_DAYS = [5]; // getDay(): 5=Fri
 export const RUG_PICKUP_LABEL = "3:00 – 5:00 PM";
 
-/** Christmas closure for RUG PICKUPS: last pickup Fri 11 Dec 2026, first back
- *  Fri 15 Jan 2027. Cleans keep running through Fri 18 Dec (owner's last working
- *  day, 8 Nov 2026 call — on-site days are opened/closed via availability_blocks,
- *  not here). Rug pickups stop a week earlier because a pickup needs its Monday
- *  return — a Fri 18 Dec pickup would come back Mon 21 Dec, mid-closure.
- *  rugPickupDays() doesn't consult availability_blocks, so closure Fridays are
- *  excluded here. */
-export const CLOSURE_START = "2026-12-16";
+/** Holiday closure for RUG PICKUPS: owner away on holidays from mid-Nov 2026,
+ *  rolling straight into the Christmas break — pickups resume Fri 15 Jan 2027
+ *  (owner call 14 Nov 2026: "book out rug pickups until I'm back from
+ *  holidays"). Cleans keep running through Fri 18 Dec (on-site days are
+ *  opened/closed via availability_blocks, not here). rugPickupDays() doesn't
+ *  consult availability_blocks, so closure Fridays are excluded here. */
+export const CLOSURE_START = "2026-11-16";
 export const CLOSURE_END = "2027-01-08";
 export function isClosureDay(iso: string): boolean {
   return iso >= CLOSURE_START && iso <= CLOSURE_END;
