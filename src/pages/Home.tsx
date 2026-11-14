@@ -79,24 +79,24 @@ function useFitToScreen() {
 const TILES: { title: string; under?: string; sub: string; to: string }[] = [
   {
     title: "Carpet cleaning",
-    sub: "Rooms, stairs and hallways.",
+    sub: "Rooms, stairs, hallways.",
     to: "/quote",
   },
   {
     title: "Rug pick-up & clean",
-    sub: "Picked up Friday, back to you Monday.",
+    sub: "Back on your floor Monday.",
     to: "/rugs",
   },
   {
     title: "Lounge, mattress",
     under: "and upholstery",
-    sub: "Priced per seat, light to heavy.",
+    sub: "Priced per seat.",
     to: "/lounge",
   },
   {
     title: "Flood & water damage",
     under: "24/7 emergency",
-    sub: "Insurer-ready reports, priced up front.",
+    sub: "Insurer-ready reports.",
     to: "/flood",
   },
 ];
@@ -169,7 +169,7 @@ export default function Home() {
 
           {/* The four ways in — a compact 2×2 on phones so the whole grid
               fits the first screen; desktop keeps the big 4-across row */}
-          <p className="mt-4 text-center font-display text-3xl font-black text-charcoal md:mt-6 lg:hidden">
+          <p className="mt-3 text-center font-display text-2xl font-black text-charcoal md:mt-6 lg:hidden">
             What do you need cleaned?
           </p>
           <div className="mt-3 grid grid-cols-2 gap-3 md:mt-4 md:gap-6 lg:mt-5 lg:grid-cols-4 lg:gap-4">
@@ -190,8 +190,8 @@ export default function Home() {
                 <p className="mx-auto mt-2 max-w-xs flex-1 text-base leading-snug text-charcoal/70 md:mt-3 md:text-sm md:leading-relaxed lg:mt-2">
                   {t.sub}
                 </p>
-                <span className="btn-pill mx-auto mt-2 !px-6 !py-2.5 text-lg md:mt-5 md:!px-6 md:!py-2.5 md:text-base lg:mt-3 group-hover:-translate-y-0.5">
-                  {t.to === "/flood" ? "Get help now →" : "Start this quote →"}
+                <span className="btn-pill mt-2 w-full whitespace-nowrap !px-2 !py-2.5 text-base md:mt-5 md:mx-auto md:w-auto md:!px-6 lg:mt-3 group-hover:-translate-y-0.5">
+                  {t.to === "/flood" ? "Get help now →" : "Start quote →"}
                 </span>
               </Link>
             ))}
