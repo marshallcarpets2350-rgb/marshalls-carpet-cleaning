@@ -312,6 +312,12 @@ export const FLOOD_RATES = {
   travelTechPerHour: 67, // floor(84 × 0.8) — technician time on the road
   adminFee: 61, // floor(77 × 0.8) — administration & job coordination
   reportFee: 211, // floor(264 × 0.8) — written insurer report
+  // After-flood recovery clean (added 15 Nov 2026). BFYB treat the return
+  // visit as a fresh booking — their $289 minimum callout hits AGAIN, so a
+  // hallway clean + antimicrobial costs their customer another $289+.
+  // Ours rides on the same job at the standard carpet rate, no second callout.
+  returnCleanPerM2: 4, // per m² of soaked carpet cleaned on the return visit
+  antimicroPerArea: 31, // floor(39 × 0.8) — anti-microbial treatment, per area
 };
 
 /** Our flood prices: inspection and fan hire always 20% under BFYB's CURRENT
@@ -331,6 +337,8 @@ export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) 
     travelTechPerHour: FLOOD_RATES.travelTechPerHour,
     adminFee: FLOOD_RATES.adminFee,
     reportFee: FLOOD_RATES.reportFee,
+    returnCleanPerM2: FLOOD_RATES.returnCleanPerM2,
+    antimicroPerArea: model?.extras?.antimicro ? under(model.extras.antimicro) : FLOOD_RATES.antimicroPerArea,
   };
 }
 
@@ -351,6 +359,8 @@ export interface FloodReportInput {
   fans: number; // drying fans left on site
   fanDays: number; // days the fans stayed
   inspectionCharged: boolean; // the flat emergency inspection & assessment
+  returnCleanM2?: number; // m² of soaked carpet cleaned on the return visit (added 15 Nov 2026)
+  antimicroAreas?: number; // areas anti-microbial treated on the return visit
 }
 
 export type FloodPrices = ReturnType<typeof floodPrices>;
@@ -398,6 +408,20 @@ export function floodReportCharges(
     lines.push({
       label: `Drying fans — ${input.fans} fan${input.fans > 1 ? "s" : ""} × ${input.fanDays} day${input.fanDays > 1 ? "s" : ""}`,
       amount: round(input.fans * input.fanDays * prices.fanPerDay),
+    });
+  }
+  const returnCleanM2 = input.returnCleanM2 ?? 0;
+  if (returnCleanM2 > 0) {
+    lines.push({
+      label: `Return-visit carpet clean — ${returnCleanM2} m² (after-flood recovery, no second callout fee)`,
+      amount: round(returnCleanM2 * prices.returnCleanPerM2),
+    });
+  }
+  const antimicroAreas = input.antimicroAreas ?? 0;
+  if (antimicroAreas > 0) {
+    lines.push({
+      label: `Anti-microbial treatment — ${antimicroAreas} area${antimicroAreas > 1 ? "s" : ""}`,
+      amount: round(antimicroAreas * prices.antimicroPerArea),
     });
   }
   const travelKm = input.travelKm ?? 0;

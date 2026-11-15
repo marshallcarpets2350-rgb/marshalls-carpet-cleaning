@@ -43,6 +43,8 @@ export interface FloodReportData {
   fans: number;
   fanDays: number;
   inspectionCharged: boolean;
+  returnCleanM2?: number; // after-flood recovery clean, m² (added 15 Nov 2026)
+  antimicroAreas?: number; // anti-microbial areas treated on the return visit
   summary: string; // what we found on arrival
   workDone: string; // extraction, drying, treatment
   readings: string; // moisture readings / drying status

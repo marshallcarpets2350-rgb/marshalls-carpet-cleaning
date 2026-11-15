@@ -64,6 +64,8 @@ function snapshotOf(r: ReportFields): ReportFields {
     fans: r.fans,
     fanDays: r.fanDays,
     inspectionCharged: r.inspectionCharged,
+    returnCleanM2: r.returnCleanM2,
+    antimicroAreas: r.antimicroAreas,
     summary: r.summary,
     workDone: r.workDone,
     readings: r.readings,
@@ -139,9 +141,12 @@ export default function FloodReports() {
                     : "No report yet"}
                 </p>
               </div>
-              <button type="button" className="btn-pill" onClick={() => setSelected(l.id)}>
-                {rep ? "Open report" : "Write report"}
-              </button>
+              <div className="flex items-center gap-4">
+                <DeleteFloodJob id={l.id} name={l.name} />
+                <button type="button" className="btn-pill" onClick={() => setSelected(l.id)}>
+                  {rep ? "Open report" : "Write report"}
+                </button>
+              </div>
             </div>
           );
         })}
@@ -223,6 +228,32 @@ function NewFloodJob({ onCreated }: { onCreated: (id: number) => void }) {
   );
 }
 
+/** Delete a flood job (mistakes, double-ups, cancelled callouts). Confirms
+ *  first — this removes the booking entirely, not just the report. */
+function DeleteFloodJob({ id, name, onDeleted }: { id: number; name: string; onDeleted?: () => void }) {
+  const utils = trpc.useUtils();
+  const del = trpc.admin.deleteLead.useMutation({
+    onSuccess: async () => {
+      await utils.admin.listLeads.invalidate();
+      onDeleted?.();
+    },
+  });
+  return (
+    <button
+      type="button"
+      className="text-sm font-bold text-destructive underline disabled:opacity-40"
+      disabled={del.isPending}
+      onClick={() => {
+        if (window.confirm(`Delete ${ref(id)} — ${name}? The job and its report are gone for good.`)) {
+          del.mutate({ id });
+        }
+      }}
+    >
+      {del.isPending ? "Deleting…" : "Delete job"}
+    </button>
+  );
+}
+
 function ReportEditor({ id, onBack }: { id: number; onBack: () => void }) {  const data = trpc.admin.floodReportData.useQuery({ id });
   if (data.isLoading) return <p className="text-charcoal/70">Loading…</p>;
   if (!data.data) return <p className="text-destructive">Couldn't load this job.</p>;
@@ -257,6 +288,8 @@ function ReportForm({
   const [fans, setFans] = useState(r?.fans ?? 0);
   const [fanDays, setFanDays] = useState(r?.fanDays ?? 1);
   const [inspectionCharged, setInspectionCharged] = useState(r?.inspectionCharged ?? true);
+  const [returnCleanM2, setReturnCleanM2] = useState(r?.returnCleanM2 ?? 0);
+  const [antimicroAreas, setAntimicroAreas] = useState(r?.antimicroAreas ?? 0);
   const [summary, setSummary] = useState(r?.summary ?? "");
   const [workDone, setWorkDone] = useState(r?.workDone ?? "");
   const [readings, setReadings] = useState(r?.readings ?? "");
@@ -267,7 +300,7 @@ function ReportForm({
   const fields: ReportFields = {
     attendedAt, technicians, standardHours, afterHoursHours,
     saturdayHours, sundayHours, travelKm, travelHours, adminCharged, reportCharged,
-    fans, fanDays, inspectionCharged, summary, workDone, readings, insurerNotes,
+    fans, fanDays, inspectionCharged, returnCleanM2, antimicroAreas, summary, workDone, readings, insurerNotes,
   };
   const { lines, total } = floodReportCharges(fields, data.prices);
   const dirty = JSON.stringify(fields) !== savedSnapshot;
@@ -282,6 +315,7 @@ function ReportForm({
   const email = trpc.admin.emailFloodReport.useMutation({
     onSuccess: () => utils.admin.floodReportData.invalidate({ id: data.lead.id }),
   });
+  const invoice = trpc.admin.sendInvoice.useMutation();
 
   const num = (v: number) => (Number.isFinite(v) ? v : 0);
   const canEmail = hasSaved && !dirty && Boolean(data.lead.email);
@@ -387,6 +421,25 @@ function ReportForm({
               <input id="fr-fandays" type="number" min={0} max={60} className={inputCls} value={fanDays} onChange={(e) => setFanDays(Math.max(0, Math.round(num(e.target.valueAsNumber))))} />
             </div>
           </div>
+          <div className="border-[1.5px] border-charcoal bg-creamlight p-4">
+            <p className="font-bold text-charcoal">Back for the after-flood clean?</p>
+            <p className="mt-0.5 text-xs text-charcoal/60">
+              The fans have dried it out and you're back to clean the carpet that
+              was soaked. Charged per m² with no second callout fee — BFYB treat
+              this as a new booking, so their customer cops another $289 minimum
+              before the clean even starts.
+            </p>
+            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="fr-cleanm2" className={labelCls}>Carpet cleaned ({money(data.prices.returnCleanPerM2)}/m²)</label>
+                <input id="fr-cleanm2" type="number" min={0} step={1} className={inputCls} value={returnCleanM2} onChange={(e) => setReturnCleanM2(Math.max(0, num(e.target.valueAsNumber)))} placeholder="m²" />
+              </div>
+              <div>
+                <label htmlFor="fr-antimicro" className={labelCls}>Anti-microbial — areas treated ({money(data.prices.antimicroPerArea)}/area)</label>
+                <input id="fr-antimicro" type="number" min={0} max={50} className={inputCls} value={antimicroAreas} onChange={(e) => setAntimicroAreas(Math.max(0, Math.round(num(e.target.valueAsNumber))))} />
+              </div>
+            </div>
+          </div>
           <div>
             <label htmlFor="fr-summary" className={labelCls}>What we found</label>
             <textarea id="fr-summary" className={`${inputCls} min-h-20`} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Water through the kitchen and hallway from a burst flexi hose under the sink. Source stopped before arrival. Carpet and underlay saturated, no wall damage visible…" />
@@ -423,7 +476,7 @@ function ReportForm({
               <span className="font-display text-2xl font-black text-forest">{money(total)}</span>
             </div>
             <p className="mt-2 text-xs text-charcoal/50">
-              Published rates: {money(data.prices.labourPerHour)}/hr M–F · {money(data.prices.labourAfterHours)}/hr after-hours · {money(data.prices.labourSaturday)}/hr Sat · {money(data.prices.labourSunday)}/hr Sun · {money(data.prices.fanPerDay)}/fan/day · {money(data.prices.inspection)} inspection · ${data.prices.travelPerKm.toFixed(2)}/km + {money(data.prices.travelTechPerHour)}/hr travel · {money(data.prices.adminFee)} admin · {money(data.prices.reportFee)} report
+              Published rates: {money(data.prices.labourPerHour)}/hr M–F · {money(data.prices.labourAfterHours)}/hr after-hours · {money(data.prices.labourSaturday)}/hr Sat · {money(data.prices.labourSunday)}/hr Sun · {money(data.prices.fanPerDay)}/fan/day · {money(data.prices.inspection)} inspection · ${data.prices.travelPerKm.toFixed(2)}/km + {money(data.prices.travelTechPerHour)}/hr travel · {money(data.prices.adminFee)} admin · {money(data.prices.reportFee)} report · {money(data.prices.returnCleanPerM2)}/m² recovery clean · {money(data.prices.antimicroPerArea)}/area anti-microbial
             </p>
             <button
               type="button"
@@ -442,6 +495,33 @@ function ReportForm({
             >
               {email.isPending ? "Sending…" : r?.emailedAt ? "Re-email PDF to customer" : "Email PDF to customer"}
             </button>
+            <button
+              type="button"
+              className="mt-3 w-full border-[1.5px] border-charcoal bg-charcoal px-4 py-2.5 font-bold text-white disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={!canEmail || invoice.isPending}
+              title={!data.lead.email ? "No customer email on this job" : !hasSaved ? "Save the report first" : dirty ? "Save your changes first" : undefined}
+              onClick={() => invoice.mutate({ id: data.lead.id })}
+            >
+              {invoice.isPending ? "Sending…" : `Invoice customer — ${money(total)}`}
+            </button>
+            {invoice.isError && <p className="mt-2 text-xs font-semibold text-destructive">{invoice.error.message}</p>}
+            {invoice.isSuccess && invoice.data.invoice.sent && (
+              <p className="mt-2 text-xs font-semibold text-[#15803D]">{invoice.data.invoice.detail}</p>
+            )}
+            {invoice.isSuccess && !invoice.data.invoice.sent && (
+              <p className="mt-2 text-xs font-semibold text-charcoal/60">
+                {invoice.data.invoice.detail}
+                {invoice.data.invoice.alreadySent && (
+                  <button
+                    type="button"
+                    className="ml-1 font-bold text-forest underline"
+                    onClick={() => invoice.mutate({ id: data.lead.id, force: true })}
+                  >
+                    Send again
+                  </button>
+                )}
+              </p>
+            )}
             {dirty && hasSaved && (
               <p className="mt-2 text-xs font-semibold text-charcoal/60">
                 Unsaved changes — save before emailing.
@@ -456,6 +536,9 @@ function ReportForm({
                 Last emailed {new Date(r.emailedAt).toLocaleString("en-AU", { day: "numeric", month: "short", hour: "numeric", minute: "2-digit" })}.
               </p>
             )}
+            <div className="mt-4 border-t-[1.5px] border-charcoal/20 pt-3 text-center">
+              <DeleteFloodJob id={data.lead.id} name={data.lead.name} onDeleted={onBack} />
+            </div>
           </div>
         </aside>
       </div>
@@ -477,6 +560,8 @@ interface ReportFields {
   fans: number;
   fanDays: number;
   inspectionCharged: boolean;
+  returnCleanM2: number;
+  antimicroAreas: number;
   summary: string;
   workDone: string;
   readings: string;
