@@ -30,6 +30,33 @@ const STEPS: { title: string; body: string }[] = [
   },
 ];
 
+const PROCESS: { title: string; body: string }[] = [
+  {
+    title: "Assess & stop the spread",
+    body: "We confirm the source is stopped, map how far the water has travelled, and scope the job — the written price comes before the work.",
+  },
+  {
+    title: "Extract",
+    body: "High-powered extraction pulls the standing water out of the carpet and underlay. Most extractions run one to three hours.",
+  },
+  {
+    title: "Treat while it's wet",
+    body: "Anti-microbial goes down on day one, before the dryers — the drying days are exactly when mould and smells would otherwise start.",
+  },
+  {
+    title: "Set the dryers",
+    body: "Fans (and dehumidifiers where they're needed) are placed and left running — most jobs need two to four fans for one to three days.",
+  },
+  {
+    title: "Check it's dry",
+    body: "We come back and take moisture readings. Nothing moves to the next step until the numbers say the carpet and underlay are dry.",
+  },
+  {
+    title: "The recovery clean",
+    body: "Once it's dry we steam clean the carpet that was soaked, with a final anti-microbial pass — lifting the dirty-water residue and wick-up marks and putting the pile back.",
+  },
+];
+
 const CAUSES = [
   { value: "Burst pipe", label: "Burst pipe" },
   { value: "Storm or rain", label: "Storm / rain" },
@@ -159,6 +186,34 @@ export default function Flood() {
                 </p>
               </div>
             </div>
+          </div>
+        </section>
+
+        {/* ============ how the job runs ============ */}
+        <section className="border-t-[1.5px] border-charcoal py-14 md:py-20">
+          <div className="mx-auto max-w-6xl px-4 md:px-6">
+            <p className="text-sm font-bold uppercase tracking-widest text-forest">The professional sequence</p>
+            <h2 className="mt-2 font-display text-3xl font-black text-charcoal md:text-5xl">
+              What happens once we arrive.
+            </h2>
+            <p className="mt-3 max-w-2xl text-charcoal/75">
+              Two visits, done in the right order — treat it early, clean it
+              last. That's the difference between a carpet that recovers and
+              one that needs replacing.
+            </p>
+            <div className="mt-8 grid gap-5 md:grid-cols-2 lg:grid-cols-3">
+              {PROCESS.map((s, i) => (
+                <div key={s.title} className="border-[1.5px] border-charcoal bg-background p-5">
+                  <p className="font-display text-3xl font-black text-forest">{i + 1}</p>
+                  <p className="mt-2 font-bold text-charcoal">{s.title}</p>
+                  <p className="mt-1 text-sm leading-relaxed text-charcoal/75">{s.body}</p>
+                </div>
+              ))}
+            </div>
+            <p className="mt-6 max-w-2xl text-sm text-charcoal/60">
+              The final clean is priced with the job — there's no second callout
+              fee for the return visit.
+            </p>
           </div>
         </section>
 
