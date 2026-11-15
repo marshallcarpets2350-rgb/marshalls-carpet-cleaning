@@ -302,7 +302,7 @@ export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 export const FLOOD_UNDERCUT_PERCENT = 20;
 
 export const FLOOD_RATES = {
-  inspection: 145, // floor(182 × 0.8) — thermal imaging, moisture readings, insurer-ready scope
+  inspection: 145, // floor(182 × 0.8) — moisture readings, photos, insurer-ready scope
   labourPerHour: 80, // Mon–Fri standard hours, per technician — 2 techs × 2h = $320 vs their $409 (78%)
   labourAfterHours: 120, // Mon–Fri 7 PM – 7 AM, per technician (1.5× standard loading)
   labourSaturday: 159, // floor(199 × 0.8) — Saturday, all day, per technician
@@ -374,7 +374,7 @@ export function floodReportCharges(
   const round = (n: number) => Math.round(n * 100) / 100;
   if (input.inspectionCharged) {
     lines.push({
-      label: "Emergency inspection & assessment — thermal imaging, moisture readings, insurer-ready scope",
+      label: "Emergency inspection & assessment — moisture readings, photos, insurer-ready scope",
       amount: prices.inspection,
     });
   }

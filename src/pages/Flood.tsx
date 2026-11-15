@@ -235,7 +235,7 @@ export default function Flood() {
               <div className="border-[1.5px] border-charcoal bg-background p-6">
                 <p className="font-bold text-charcoal">Inspection &amp; assessment</p>
                 <ul className="mt-3 space-y-1.5 text-sm text-charcoal/75">
-                  <li>• Thermal imaging &amp; moisture readings</li>
+                  <li>• Moisture readings &amp; photos</li>
                   <li>• Scope of works within 24 hours</li>
                   <li>• Written for your insurer</li>
                 </ul>
