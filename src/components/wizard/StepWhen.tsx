@@ -365,10 +365,9 @@ export function StepWhen({
         <p className="border-[1.5px] border-charcoal bg-creamlight px-4 py-3 text-sm text-charcoal/80">
           {rugsOnly ? (
             <>
-              🎄 <strong>Rug pickups are paused</strong> — we're away on
-              holidays, and pickups start again Friday 15 January 2027 (rugs
-              back to you Monday 18 January). Carpet cleans still run right up
-              to Christmas — book those from the main quote page.
+              🎄 <strong>Rug pickups run Fridays until 12 December</strong> —
+              then they pause over Christmas and start again Friday 15 January
+              2027. Rugs come back to you the Monday after each pickup.
             </>
           ) : (
             <>
