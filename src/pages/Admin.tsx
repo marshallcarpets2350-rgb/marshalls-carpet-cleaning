@@ -18,6 +18,7 @@ import {
   SLOT_START_MINUTES,
   driveMinutesFor,
   slotsNeededFor,
+  estimateJobMinutes,
   rugReturnDay,
   paymentDueDay,
   resolveRates,
@@ -84,6 +85,135 @@ function OwingBadge() {
 // purpose (see OwingBadge note): keeps its state off the Admin parent.
 function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
   return <Quote adminMode onStartOver={onStartOver} />;
+}
+
+// Quote-only job actions (17 Nov 2026, Ben: quotes flow quote → booked in →
+// job done → invoiced → paid). Module-level with its own subscriptions (the
+// OwingBadge rule — never subscribe inside the Admin parent). "Book it in"
+// converts to a real booking (calendar blocks, confirmation email optional);
+// "Send invoice" skips straight to invoicing a job that's already done.
+function QuoteOnlyActions({
+  id,
+  suburb,
+  quoteJson,
+  invoiceSentAt,
+}: {
+  id: number;
+  suburb: string | null;
+  quoteJson: string;
+  invoiceSentAt: Date | string | null;
+}) {
+  const utils = trpc.useUtils();
+  const [note, setNote] = useState("");
+  const [date, setDate] = useState("");
+  const [slot, setSlot] = useState<number | null>(null);
+  const [emailConf, setEmailConf] = useState(true);
+  let jobMinutes = 60;
+  try {
+    const q = JSON.parse(quoteJson) as { input?: QuoteInput };
+    if (q?.input) jobMinutes = estimateJobMinutes(q.input);
+  } catch { /* default hour */ }
+  const avail = trpc.public.listAvailability.useQuery({ town: suburb ?? "", jobMinutes });
+  const invalidate = () => utils.admin.listLeads.invalidate();
+  const sendInv = trpc.admin.sendInvoice.useMutation({
+    onSuccess: (r) => {
+      setNote(
+        r.invoice.sent
+          ? `Invoice sent${r.invoice.payUrl ? " with card pay link" : ""} — moved to Awaiting payment`
+          : r.invoice.alreadySent
+            ? "Invoice already sent for this job"
+            : r.invoice.alreadyPaid
+              ? "Already paid — no invoice needed"
+              : `Couldn't send — ${r.invoice.detail || "check Settings"}`,
+      );
+      invalidate();
+    },
+    onError: (e) => setNote(e.message),
+  });
+  const convert = trpc.admin.convertQuoteToBooking.useMutation({
+    onSuccess: (r) => {
+      setNote(
+        `Booked in for ${new Date(r.date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })} · ${TIME_SLOTS[r.slot]}${
+          r.confirmation?.emailSent || r.confirmation?.smsSent ? " — confirmation sent" : ""
+        }`,
+      );
+      invalidate();
+    },
+    onError: (e) => setNote(e.message),
+  });
+  const days = (avail.data ?? []).filter((d) => d.slots.some(Boolean));
+  const slotsFor = date ? ((avail.data ?? []).find((d) => d.date === date)?.slots ?? []) : [];
+  return (
+    <div className="mt-4 border-[1.5px] border-charcoal/40 bg-mintlight p-4 text-sm">
+      <p className="font-bold text-charcoal">Quote only — what's next?</p>
+      <p className="mt-3 font-bold text-charcoal/80">They said yes? Book it in:</p>
+      <div className="mt-2 flex flex-wrap items-end gap-3">
+        <label className="text-sm font-bold text-charcoal">
+          Day
+          <select
+            className="input-sharp mt-1 block !py-1.5"
+            value={date}
+            onChange={(e) => { setDate(e.target.value); setSlot(null); }}
+          >
+            <option value="">Pick a day…</option>
+            {days.map((d) => (
+              <option key={d.date} value={d.date}>
+                {new Date(d.date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+              </option>
+            ))}
+          </select>
+        </label>
+        {date && (
+          <div className="flex flex-wrap gap-1.5">
+            {TIME_SLOTS.map((label, i) =>
+              slotsFor[i] ? (
+                <button
+                  key={i}
+                  type="button"
+                  className={`border-[1.5px] px-2.5 py-1 text-xs font-bold ${slot === i ? "border-forest bg-forest text-background" : "border-charcoal/40 text-charcoal"}`}
+                  onClick={() => setSlot(i)}
+                >
+                  {label}
+                </button>
+              ) : null,
+            )}
+          </div>
+        )}
+      </div>
+      <label className="mt-2 flex items-center gap-2 text-sm font-bold text-charcoal">
+        <input type="checkbox" checked={emailConf} onChange={(e) => setEmailConf(e.target.checked)} />
+        Email them the booking confirmation
+      </label>
+      <button
+        type="button"
+        className="btn-pill-dark mt-3 !px-5 !py-2 text-sm"
+        disabled={!date || slot === null || convert.isPending}
+        onClick={() => convert.mutate({ id, date, slot: slot!, sendConfirmation: emailConf })}
+      >
+        {convert.isPending ? "Booking in…" : "Book it in"}
+      </button>
+      <div className="mt-4 border-t border-charcoal/20 pt-3">
+        <p className="font-bold text-charcoal/80">Job's already done? Skip straight to the invoice:</p>
+        <button
+          type="button"
+          className="btn-pill mt-2 !px-5 !py-2 text-sm"
+          disabled={sendInv.isPending}
+          onClick={() => sendInv.mutate({ id })}
+        >
+          {sendInv.isPending
+            ? "Sending…"
+            : invoiceSentAt
+              ? "Send the invoice again"
+              : "Send invoice — job's done"}
+        </button>
+        <p className="mt-1 text-xs text-charcoal/60">
+          Emails the invoice (PDF + card link, 5-day terms from today) and moves it to
+          Awaiting payment.
+        </p>
+      </div>
+      {note && <p className="mt-3 text-sm font-semibold text-forest">{note}</p>}
+    </div>
+  );
 }
 
 // Invoice tab (17 Nov 2026, Ben): real-estate work orders. Pick the agency
@@ -1339,33 +1469,17 @@ export default function Admin() {
                         <strong>Email:</strong>{" "}
                         <a href={`mailto:${r.email}`} className="text-forest">{r.email}</a>
                       </p>
-                      {/* Quote-only rows (no booking date): invoicing converts
-                          them — finishedAt is stamped server-side and the job
-                          moves to Awaiting payment (17 Nov 2026, Ben). */}
+                      {/* Quote-only rows (no booking date): book it in, or
+                          invoice it if the job's already done — the server
+                          stamps finishedAt and moves it to Awaiting payment
+                          (17 Nov 2026, Ben). */}
                       {!when && !r.paidOnline && !r.paidOfflineAt && (
-                        <div className="mt-4 border-[1.5px] border-charcoal/40 bg-mintlight p-4 text-sm">
-                          <p className="font-bold text-charcoal">Job done? Turn this quote into an invoice.</p>
-                          <p className="mt-1 text-charcoal/80">
-                            Emails the invoice straight away (PDF + card link, 5-day terms
-                            from today) and moves the job to Awaiting payment — no more
-                            "Quote only".
-                          </p>
-                          <button
-                            type="button"
-                            className="btn-pill mt-3 !px-5 !py-2 text-sm"
-                            disabled={sendInv.isPending}
-                            onClick={() => sendInv.mutate({ id: r.id })}
-                          >
-                            {sendInv.isPending
-                              ? "Sending…"
-                              : r.invoiceSentAt
-                                ? "Send the invoice again"
-                                : "Send invoice — job's done"}
-                          </button>
-                          {msgNote[r.id] && (
-                            <p className="mt-2 text-sm font-semibold text-forest">{msgNote[r.id]}</p>
-                          )}
-                        </div>
+                        <QuoteOnlyActions
+                          id={r.id}
+                          suburb={r.suburb}
+                          quoteJson={r.quoteJson}
+                          invoiceSentAt={r.invoiceSentAt}
+                        />
                       )}
                       {where && (
                         <div className="mt-3 border-[1.5px] border-charcoal/40 bg-creamlight p-3">

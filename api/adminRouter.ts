@@ -5,8 +5,9 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, computeQuote, travelFeeForTown, type QuoteInput, type ServiceKind } from "@contracts/rates";
-import { quoteInputSchema } from "./publicRouter";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, computeQuote, travelFeeForTown, estimateJobMinutes, slotsNeededFor, type QuoteInput, type ServiceKind } from "@contracts/rates";
+import { bookableDates, slotAllowedNow, canStart } from "@contracts/calendar";
+import { quoteInputSchema, calendarLoad } from "./publicRouter";
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY, loadRates } from "./queries/settings";
 import { getStripe } from "./payments";
 import { sendReceiptFor } from "./receipts";
@@ -342,6 +343,101 @@ export const adminRouter = createRouter({
     .mutation(async ({ input }) => {
       const invoice = await sendInvoiceFor(input.id, input.force ?? false);
       return { ok: true as const, invoice };
+    }),
+
+  // Convert a quote-only job into a real booking (17 Nov 2026, Ben: quotes
+  // should flow quote → booked in → job done → invoiced → paid). Picks a
+  // date + slot, validates it against the live calendar exactly like the
+  // public form does, keeps any booking meta (work order / invoiceTo), and
+  // sends the customer their booking confirmation unless unticked.
+  convertQuoteToBooking: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        slot: z.number().int().min(0).max(TIME_SLOTS.length - 1),
+        sendConfirmation: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Quote not found" });
+      if (row.finishedAt)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That job's already finished or invoiced" });
+      let quote: { quoteOnly?: boolean; input?: QuoteInput; notes?: string } = {};
+      try { quote = JSON.parse(row.quoteJson); } catch { /* fall through */ }
+      if (!quote.quoteOnly || !quote.input)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only a quote-only job can be booked in" });
+      let meta: Record<string, unknown> = {};
+      try { if (row.bookingJson) meta = JSON.parse(row.bookingJson); } catch { /* fall through */ }
+      if (meta.preferredDate)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Already booked in" });
+      const town = row.suburb || "";
+      const jobMinutes = estimateJobMinutes(quote.input);
+      const span = slotsNeededFor(jobMinutes);
+      const load = await calendarLoad();
+      if (
+        !bookableDates().includes(input.date) ||
+        !slotAllowedNow(input.date, input.slot) ||
+        !canStart(input.date, input.slot, span, town, load.blocked, load.spans)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That time doesn't fit around the other jobs — pick another slot",
+        });
+      }
+      const booking = {
+        ...meta,
+        purpose: meta.purpose ?? null,
+        propertyType: meta.propertyType ?? null,
+        condition: meta.condition ?? {},
+        recommended: meta.recommended ?? null,
+        access: meta.access ?? { method: null, agency: "", spot: "", code: "", name: "", mobile: "", parking: null },
+        payment: meta.payment ?? null,
+        preferredDate: input.date,
+        preferredSlot: input.slot,
+        confirmBy: "either",
+        notes: meta.notes ?? quote.notes ?? "",
+        town,
+        jobMinutes,
+        rugPickup: false,
+        secondVisit: null,
+      };
+      await db
+        .update(leads)
+        .set({ bookingJson: JSON.stringify(booking), status: "booked" })
+        .where(eq(leads.id, row.id));
+      // Confirmation email/SMS unless unticked — same path as the board's
+      // "Send confirmation" button. A mail hiccup must never lose the
+      // booking — it's already saved.
+      let confirmation: { emailSent?: boolean; smsSent?: boolean; detail?: string } = {};
+      if (input.sendConfirmation !== false) {
+        try {
+          const [fresh] = await db.select().from(leads).where(eq(leads.id, row.id)).limit(1);
+          const lead = fresh as never as Parameters<typeof confirmationEmail>[0];
+          const sent = await deliver(lead, confirmationEmail(lead), confirmationSms(lead), {
+            attachTerms: true,
+            html: confirmationEmailHtml(lead),
+          });
+          const channel = [sent.emailSent && "email", sent.smsSent && "SMS"].filter(Boolean).join(" + ");
+          await db
+            .update(leads)
+            .set({
+              confirmationSentAt: sent.emailSent || sent.smsSent ? new Date() : row.confirmationSentAt,
+              confirmationDetail: channel
+                ? `Sent by ${channel}${sent.detail ? ` — ${sent.detail}` : ""}`
+                : sent.detail || "Not sent",
+            })
+            .where(eq(leads.id, row.id));
+          confirmation = sent;
+        } catch (err) {
+          console.error("Convert-quote confirmation failed:", err);
+          confirmation = { detail: String(err).slice(0, 120) };
+        }
+      }
+      const reference = `MCC-${String(row.id).padStart(4, "0")}`;
+      return { ok: true as const, reference, date: input.date, slot: input.slot, confirmation };
     }),
 
   // Manual freshen-up email to a past customer, sent from the Clients tab.

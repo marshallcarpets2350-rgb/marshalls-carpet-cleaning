@@ -123,8 +123,9 @@ const bookingSchema = z.object({
 });
 
 
-/** Manual blocks + every booked job's footprint on the calendar. */
-async function calendarLoad(): Promise<{
+/** Manual blocks + every booked job's footprint on the calendar.
+ *  Exported for the admin quote→booking conversion (17 Nov 2026). */
+export async function calendarLoad(): Promise<{
   blocked: Set<string>;
   spans: BookedSpan[];
 }> {
