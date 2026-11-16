@@ -67,6 +67,7 @@ function snapshotOf(r: ReportFields): ReportFields {
     fanDays: r.fanDays,
     inspectionCharged: r.inspectionCharged,
     returnCleanM2: r.returnCleanM2,
+    returnCleanDate: r.returnCleanDate ?? "",
     antimicroAreas: r.antimicroAreas,
     summary: r.summary,
     workDone: r.workDone,
@@ -582,6 +583,7 @@ function ReportForm({
   const [fanDays, setFanDays] = useState(r?.fanDays ?? 1);
   const [inspectionCharged, setInspectionCharged] = useState(r?.inspectionCharged ?? true);
   const [returnCleanM2, setReturnCleanM2] = useState(r?.returnCleanM2 ?? 0);
+  const [returnCleanDate, setReturnCleanDate] = useState(r?.returnCleanDate ?? "");
   const [antimicroAreas, setAntimicroAreas] = useState(r?.antimicroAreas ?? 0);
   const [summary, setSummary] = useState(r?.summary ?? "");
   const [workDone, setWorkDone] = useState(r?.workDone ?? "");
@@ -593,7 +595,7 @@ function ReportForm({
   const fields: ReportFields = {
     attendedAt, technicians, standardHours, afterHoursHours,
     saturdayHours, sundayHours, travelKm, travelHours, adminCharged, reportCharged,
-    fans, fanDays, inspectionCharged, returnCleanM2, antimicroAreas, summary, workDone, readings, insurerNotes,
+    fans, fanDays, inspectionCharged, returnCleanM2, returnCleanDate, antimicroAreas, summary, workDone, readings, insurerNotes,
   };
   const { lines, total } = floodReportCharges(fields, data.prices);
   const dirty = JSON.stringify(fields) !== savedSnapshot;
@@ -722,7 +724,11 @@ function ReportForm({
               this as a new booking, so their customer cops another $289 minimum
               before the clean even starts.
             </p>
-            <div className="mt-3 grid gap-4 sm:grid-cols-2">
+            <div className="mt-3 grid gap-4 sm:grid-cols-3">
+              <div>
+                <label htmlFor="fr-cleandate" className={labelCls}>Went back on</label>
+                <input id="fr-cleandate" type="date" className={inputCls} value={returnCleanDate} onChange={(e) => setReturnCleanDate(e.target.value)} />
+              </div>
               <div>
                 <label htmlFor="fr-cleanm2" className={labelCls}>Carpet cleaned ({money(data.prices.returnCleanPerM2)}/m²)</label>
                 <input id="fr-cleanm2" type="number" min={0} step={1} className={inputCls} value={returnCleanM2} onChange={(e) => setReturnCleanM2(Math.max(0, num(e.target.valueAsNumber)))} placeholder="m²" />
@@ -856,6 +862,7 @@ interface ReportFields {
   fanDays: number;
   inspectionCharged: boolean;
   returnCleanM2: number;
+  returnCleanDate: string;
   antimicroAreas: number;
   summary: string;
   workDone: string;

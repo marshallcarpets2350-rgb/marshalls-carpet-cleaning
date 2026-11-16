@@ -44,6 +44,7 @@ export interface FloodReportData {
   fanDays: number;
   inspectionCharged: boolean;
   returnCleanM2?: number; // after-flood recovery clean, m² (added 15 Nov 2026)
+  returnCleanDate?: string; // yyyy-mm-dd the crew went back for the recovery clean (added 17 Nov 2026)
   antimicroAreas?: number; // anti-microbial areas treated on the return visit
   summary: string; // what we found on arrival
   workDone: string; // extraction, drying, treatment
@@ -114,6 +115,7 @@ export async function floodReportPdfBuffer(
     row("Report ref.", ref);
     row("Report date", fmtDate(report.savedAt.slice(0, 10)));
     row("Date attended", fmtDate(report.attendedAt));
+    if (report.returnCleanDate) row("Return-visit clean", fmtDate(report.returnCleanDate));
     row("Customer", lead.name);
     if (where) row("Property", where);
     row("Contact", [lead.phone, lead.email].filter(Boolean).join("  ·  "));

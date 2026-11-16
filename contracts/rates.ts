@@ -360,6 +360,7 @@ export interface FloodReportInput {
   fanDays: number; // days the fans stayed
   inspectionCharged: boolean; // the flat emergency inspection & assessment
   returnCleanM2?: number; // m² of soaked carpet cleaned on the return visit (added 15 Nov 2026)
+  returnCleanDate?: string; // yyyy-mm-dd the crew went back for the recovery clean (added 17 Nov 2026)
   antimicroAreas?: number; // areas anti-microbial treated on the return visit
 }
 
@@ -412,8 +413,11 @@ export function floodReportCharges(
   }
   const returnCleanM2 = input.returnCleanM2 ?? 0;
   if (returnCleanM2 > 0) {
+    const backWhen = input.returnCleanDate
+      ? ` — back ${new Date(`${input.returnCleanDate}T12:00:00`).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`
+      : "";
     lines.push({
-      label: `Return-visit carpet clean — ${returnCleanM2} m² (after-flood recovery, no second callout fee)`,
+      label: `Return-visit carpet clean${backWhen} — ${returnCleanM2} m² (after-flood recovery, no second callout fee)`,
       amount: round(returnCleanM2 * prices.returnCleanPerM2),
     });
   }
