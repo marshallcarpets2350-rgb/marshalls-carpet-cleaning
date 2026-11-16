@@ -81,7 +81,17 @@ const labelCls = "mb-1 block text-sm font-bold text-charcoal";
 
 export default function FloodReports() {
   const leads = trpc.admin.listLeads.useQuery();
-  const [selected, setSelected] = useState<number | null>(null);
+  // Persist the open report — a page reload mid-send (iOS does this) then
+  // lands him back on the job he was invoicing, not the list.
+  const [selected, setSelectedState] = useState<number | null>(() => {
+    const n = Number(sessionStorage.getItem("mcc_flood_sel"));
+    return Number.isFinite(n) && n > 0 ? n : null;
+  });
+  const setSelected = (id: number | null) => {
+    if (id === null) sessionStorage.removeItem("mcc_flood_sel");
+    else sessionStorage.setItem("mcc_flood_sel", String(id));
+    setSelectedState(id);
+  };
   const [showNew, setShowNew] = useState(false);
 
   const floodLeads = useMemo(

@@ -155,7 +155,19 @@ export default function Quote({
   const [codeError, setCodeError] = useState("");
   const [slotConflict, setSlotConflict] = useState(false);
 
-  const [submitted, setSubmitted] = useState<{ reference: string; total: number; emailed?: boolean } | null>(null);
+  // Admin wizards: keep the "quote saved / invoice created" panel across a
+  // page reload (iOS can reload mid-send, which looked like the page
+  // "collapsing" off the confirmation). Expires after 10 minutes.
+  const [submitted, setSubmitted] = useState<{ reference: string; total: number; emailed?: boolean; email?: string } | null>(() => {
+    if (!adminMode) return null;
+    try {
+      const s = JSON.parse(sessionStorage.getItem("mcc_admin_submitted") ?? "null");
+      if (s && s.invoice === adminInvoice && Date.now() - s.at < 10 * 60 * 1000) {
+        return { reference: s.reference, total: s.total, emailed: s.emailed, email: s.email };
+      }
+    } catch { /* fresh form */ }
+    return null;
+  });
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const paidSession = searchParams.get("paid");
@@ -165,14 +177,16 @@ export default function Quote({
   const [sendQuoteEmail, setSendQuoteEmail] = useState(true);
   const saveQuote = trpc.admin.saveQuote.useMutation({
     onSuccess: async (r) => {
-      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed });
+      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed, email: contact.email });
+      sessionStorage.setItem("mcc_admin_submitted", JSON.stringify({ reference: r.reference, total: r.total, emailed: r.emailed, email: contact.email, invoice: false, at: Date.now() }));
       window.scrollTo({ top: 0, behavior: "smooth" });
       await utils.admin.listLeads.invalidate();
     },
   });
   const saveInvoice = trpc.admin.saveInvoice.useMutation({
     onSuccess: async (r) => {
-      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed });
+      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed, email: contact.email });
+      sessionStorage.setItem("mcc_admin_submitted", JSON.stringify({ reference: r.reference, total: r.total, emailed: r.emailed, email: contact.email, invoice: true, at: Date.now() }));
       window.scrollTo({ top: 0, behavior: "smooth" });
       await utils.admin.listLeads.invalidate();
     },
@@ -521,10 +535,10 @@ export default function Quote({
         </p>
         <p className="mt-1 text-sm font-semibold text-charcoal/60">
           {submitted.emailed
-            ? `${adminInvoice ? "Invoice" : "Quote"} emailed to ${contact.email} ✓`
+            ? `${adminInvoice ? "Invoice" : "Quote"} emailed to ${submitted.email || contact.email} ✓`
             : "Not emailed — their inbox is untouched."}
         </p>
-        <button type="button" className="btn-pill mt-6" onClick={() => onStartOver?.()}>
+        <button type="button" className="btn-pill mt-6" onClick={() => { sessionStorage.removeItem("mcc_admin_submitted"); onStartOver?.(); }}>
           {adminInvoice ? "Invoice another one" : "Price another one"}
         </button>
       </div>

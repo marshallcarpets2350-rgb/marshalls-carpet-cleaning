@@ -95,7 +95,13 @@ function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
 // the tenant when an "addressed to" name is entered.
 function InvoicePanel() {
   const agencies = trpc.admin.listAgencies.useQuery();
-  const [selId, setSelId] = useState<string | null>(null);
+  const [selId, setSelIdState] = useState<string | null>(() => sessionStorage.getItem("mcc_invoice_agency"));
+  // Persist the pick so a page reload mid-invoice keeps the agency selected.
+  const setSelId = (v: string | null) => {
+    if (v === null) sessionStorage.removeItem("mcc_invoice_agency");
+    else sessionStorage.setItem("mcc_invoice_agency", v);
+    setSelIdState(v);
+  };
   const [nonce, setNonce] = useState(0);
   const list = agencies.data ?? [];
   const sel = selId === "new" ? null : (list.find((a) => a.id === selId) ?? null);
@@ -485,7 +491,17 @@ function downloadCsv(filename: string, rows: Record<string, unknown>[]) {
 export default function Admin() {
   const [token, setToken] = useState<string | null>(() => localStorage.getItem(TOKEN_KEY));
   const [password, setPassword] = useState("");
-  const [tab, setTab] = useState<Tab>("overview");
+  // Remember the open tab across a page reload — iOS Safari can reload the
+  // page during a long send (invoice PDF + email) and without this he lands
+  // back on Overview, which felt like "the page collapses you out of it".
+  const [tab, setTabState] = useState<Tab>(() => {
+    const saved = sessionStorage.getItem("mcc_admin_tab");
+    return TABS.some((t) => t.key === saved) ? (saved as Tab) : "overview";
+  });
+  const setTab = (t: Tab) => {
+    sessionStorage.setItem("mcc_admin_tab", t);
+    setTabState(t);
+  };
   // Remount key for the quote-only calculator — bumps when Ben finishes one
   // quote and starts the next.
   const [quoteKey, setQuoteKey] = useState(0);
