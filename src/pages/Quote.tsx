@@ -127,6 +127,10 @@ export default function Quote({
 
   // --- step 8: review ---
   const [notes, setNotes] = useState("");
+  // Admin only (17 Nov 2026, Ben): the agency's work-order number, typed at
+  // the top of the quoting/invoicing wizard — prints on the invoice/receipt
+  // so the real estate's accounts team can match the payment.
+  const [workOrder, setWorkOrder] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<{ code: string; percentOff: number } | null>(null);
   const [codeError, setCodeError] = useState("");
@@ -393,6 +397,7 @@ export default function Quote({
         suburb: travel?.suburb ?? "",
         town: travel?.suburb ?? "",
         notes: notes.trim(),
+        workOrderNumber: workOrder.trim(),
         quote: quoteInput,
         sendEmail: sendQuoteEmail,
       });
@@ -529,6 +534,23 @@ export default function Quote({
               </>
             )}
           </p>
+
+          {adminMode && (
+            <div className="mt-6 max-w-md border-[1.5px] border-charcoal bg-background p-4">
+              <label htmlFor="work-order" className="block text-sm font-bold uppercase tracking-widest text-forest">
+                Work order # <span className="font-normal normal-case tracking-normal text-charcoal/60">(optional — real-estate jobs)</span>
+              </label>
+              <input
+                id="work-order"
+                type="text"
+                value={workOrder}
+                onChange={(e) => setWorkOrder(e.target.value)}
+                placeholder="e.g. PT-10492"
+                className="mt-2 w-full border-[1.5px] border-charcoal bg-creamlight px-3 py-2 text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest"
+              />
+              <p className="mt-1.5 text-xs text-charcoal/60">Prints on the invoice so their accounts team can match the payment.</p>
+            </div>
+          )}
 
           {!adminMode && (
             <div className="mt-8 grid gap-4 border-[1.5px] border-charcoal bg-background p-5 sm:grid-cols-2 lg:grid-cols-4">

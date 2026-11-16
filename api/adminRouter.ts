@@ -468,6 +468,11 @@ export const adminRouter = createRouter({
         suburb: z.string().trim().max(255).optional().or(z.literal("")),
         town: z.string().trim().max(100).optional().or(z.literal("")),
         notes: z.string().trim().max(2000).optional().or(z.literal("")),
+        // Agency work-order number (17 Nov 2026, Ben) — typed straight into
+        // the admin wizard; rides in booking_json (same shape setWorkOrderNumber
+        // writes) so it prints on the invoice/receipt automatically. No dates,
+        // so the calendar and the crons ignore it.
+        workOrderNumber: z.string().trim().max(80).optional().or(z.literal("")),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -497,7 +502,7 @@ export const adminRouter = createRouter({
           quoteOnly: true,
           notes: input.notes || undefined,
         }),
-        bookingJson: null,
+        bookingJson: input.workOrderNumber ? JSON.stringify({ workOrderNumber: input.workOrderNumber }) : null,
         status: "new",
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
@@ -557,6 +562,11 @@ export const adminRouter = createRouter({
         suburb: z.string().trim().max(255).optional().or(z.literal("")),
         town: z.string().trim().max(100).optional().or(z.literal("")),
         notes: z.string().trim().max(2000).optional().or(z.literal("")),
+        // Agency work-order number (17 Nov 2026, Ben) — typed straight into
+        // the admin wizard; rides in booking_json (same shape setWorkOrderNumber
+        // writes) so it prints on the invoice/receipt automatically. No dates,
+        // so the calendar and the crons ignore it.
+        workOrderNumber: z.string().trim().max(80).optional().or(z.literal("")),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -587,7 +597,7 @@ export const adminRouter = createRouter({
           invoiced: true,
           notes: input.notes || undefined,
         }),
-        bookingJson: null,
+        bookingJson: input.workOrderNumber ? JSON.stringify({ workOrderNumber: input.workOrderNumber }) : null,
         finishedAt: new Date(),
         status: "new",
       });
