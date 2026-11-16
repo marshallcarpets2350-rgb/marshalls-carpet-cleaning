@@ -78,6 +78,31 @@ function OwingBadge() {
   );
 }
 
+// Quote / Invoice picker above the admin wizard (16 Nov 2026, Ben): real-estate
+// work-order jobs are done first and invoiced after — "Invoice" mode prices the
+// job in the same wizard and emails the invoice straight out. Module-level on
+// purpose (see OwingBadge note): keeps its state off the Admin parent.
+function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
+  const [kind, setKind] = useState<"quote" | "invoice">("quote");
+  return (
+    <div>
+      <div className="mb-6 inline-flex border-[1.5px] border-charcoal" role="group" aria-label="What are you making?">
+        {(["quote", "invoice"] as const).map((k) => (
+          <button
+            key={k}
+            type="button"
+            onClick={() => setKind(k)}
+            className={`px-6 py-2.5 font-bold ${kind === k ? "bg-charcoal text-white" : "bg-background text-charcoal/70 hover:text-charcoal"}`}
+          >
+            {k === "quote" ? "Quote" : "Invoice (job already done)"}
+          </button>
+        ))}
+      </div>
+      <Quote adminMode adminInvoice={kind === "invoice"} key={kind} onStartOver={onStartOver} />
+    </div>
+  );
+}
+
 // "Invoice to" editor for agency jobs (12 Nov 2026): the booking contact is
 // the real estate, but the invoice/receipt is made out to the tenant or
 // owner and just passes through the agency for payment. Module-level with
@@ -523,9 +548,7 @@ export default function Admin() {
         {tab === "runsheet" && <RunSheet />}
         {tab === "leads" && <Leads />}
         {tab === "owing" && <AwaitingPayment />}
-        {tab === "newquote" && (
-          <Quote adminMode key={quoteKey} onStartOver={() => setQuoteKey((k) => k + 1)} />
-        )}
+        {tab === "newquote" && <NewQuotePanel key={quoteKey} onStartOver={() => setQuoteKey((k) => k + 1)} />}
         {tab === "finished" && <FinishedJobs />}
         {tab === "clients" && <Clients />}
         {tab === "flood" && <FloodReports />}
@@ -2449,12 +2472,18 @@ export default function Admin() {
     const jobDateOf = (r: Row) =>
       parseBooking(r.bookingJson)?.preferredDate ??
       new Date(r.createdAt).toLocaleDateString("en-CA");
-    // Days until due — negative means overdue. Null when there's no job date
-    // to hang the 5-day terms off (shouldn't happen for finished jobs).
-    const daysLeft = (r: Row): number | null => {
+    // Due date (5-day terms). Work-order invoices saved from the wizard have
+    // no booking date — fall back to 5 days from when the job was logged,
+    // matching the invoice PDF + email.
+    const dueIsoOf = (r: Row): string | null => {
       const b = parseBooking(r.bookingJson);
-      if (!b?.preferredDate) return null;
-      const dueIso = paymentDueDay(b);
+      if (b?.preferredDate) return paymentDueDay(b);
+      const d = new Date(r.createdAt);
+      d.setDate(d.getDate() + 5);
+      return d.toLocaleDateString("en-CA");
+    };
+    const daysLeft = (r: Row): number | null => {
+      const dueIso = dueIsoOf(r);
       if (!dueIso) return null;
       return Math.round(
         (new Date(dueIso + "T12:00:00").getTime() - new Date(todayIso + "T12:00:00").getTime()) / 86400000,
@@ -2503,7 +2532,9 @@ export default function Admin() {
               const overdue = days !== null && days < 0;
               const ref = `MCC-${String(r.id).padStart(4, "0")}`;
               const what = (quote?.breakdown?.lines ?? []).map((l) => l.label).join(", ");
-              const watchFor = !booking?.payment || booking.payment === "pay-on-day"
+              const watchFor = quote?.invoiced
+                ? `On invoice terms — watch Hnry/the bank for ${money(r.total)}, reference ${ref}.`
+                : !booking?.payment || booking.payment === "pay-on-day"
                 ? `Watch for cash, or ${money(r.total)} by PayID to ${BUSINESS.payId} — reference ${ref}.`
                 : booking.payment === "payid"
                   ? `Watch Hnry for ${money(r.total)} by PayID — reference ${ref}.`
@@ -2553,10 +2584,10 @@ export default function Admin() {
                         {" · "}
                         <span className={overdue ? "font-bold text-[#B91C1C]" : ""}>
                           {overdue
-                            ? `was due ${dateLabel(paymentDueDay(booking!)!)}`
+                            ? `was due ${dateLabel(dueIsoOf(r)!)}`
                             : days === 0
                               ? "due today"
-                              : `due ${dateLabel(paymentDueDay(booking!)!)} (${days} day${days === 1 ? "" : "s"} left)`}
+                              : `due ${dateLabel(dueIsoOf(r)!)} (${days} day${days === 1 ? "" : "s"} left)`}
                         </span>
                       </>
                     )}

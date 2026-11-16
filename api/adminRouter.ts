@@ -543,6 +543,73 @@ export const adminRouter = createRouter({
       return { ok: true as const, id, reference, total: breakdown.total, emailed };
     }),
 
+  // Work-order invoicing (16 Nov 2026, Ben): real-estate jobs where the
+  // work's already done — price it in the wizard, hit invoice, and the job
+  // lands straight on Awaiting payment (finished_at set, no calendar block,
+  // no automated customer messages) with the invoice emailed.
+  saveInvoice: adminProcedure
+    .input(
+      z.object({
+        name: z.string().trim().min(1).max(255),
+        phone: z.string().trim().max(40).optional().or(z.literal("")),
+        email: z.string().trim().toLowerCase().email().max(320).optional().or(z.literal("")),
+        address: z.string().trim().max(500).optional().or(z.literal("")),
+        suburb: z.string().trim().max(255).optional().or(z.literal("")),
+        town: z.string().trim().max(100).optional().or(z.literal("")),
+        notes: z.string().trim().max(2000).optional().or(z.literal("")),
+        quote: quoteInputSchema,
+        sendEmail: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const rates = await loadRates();
+      const town = input.town || input.suburb || "";
+      const quote: QuoteInput = {
+        ...input.quote,
+        travelFee: travelFeeForTown(town || null, 0, rates),
+        discountPercent: 0,
+      };
+      const breakdown = computeQuote(quote, rates, await loadBfybModel());
+      const result = await db.insert(leads).values({
+        name: input.name,
+        email: input.email || "",
+        phone: input.phone || "",
+        address: input.address || null,
+        suburb: input.suburb || town || null,
+        distanceKm: null,
+        travelFee: breakdown.travelFee,
+        total: breakdown.total,
+        quoteJson: JSON.stringify({
+          input: quote,
+          breakdown,
+          quoteOnly: true,
+          invoiced: true,
+          notes: input.notes || undefined,
+        }),
+        bookingJson: null,
+        finishedAt: new Date(),
+        status: "new",
+      });
+      const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
+      const reference = `MCC-${String(id).padStart(4, "0")}`;
+      // Email the invoice (PDF + card link) unless the box was unticked. A
+      // mail hiccup must never lose the job — it's already saved.
+      let emailed = false;
+      let invoiceDetail = "";
+      if (input.sendEmail !== false && input.email) {
+        try {
+          const inv = await sendInvoiceFor(id);
+          emailed = inv.sent;
+          invoiceDetail = inv.detail;
+        } catch (err) {
+          console.error("Work-order invoice failed:", err);
+          invoiceDetail = String(err).slice(0, 120);
+        }
+      }
+      return { ok: true as const, id, reference, total: breakdown.total, emailed, invoiceDetail };
+    }),
+
   // ── Flood job reports ─────────────────────────────────────────────
   // Ben logs what happened on a flood callout; the report prices itself off
   // the published flood rates (live BFYB model when the watch has one) and

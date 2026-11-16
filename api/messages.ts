@@ -88,6 +88,18 @@ export function parseBooking(lead: LeadRow): BookingDetails | null {
   }
 }
 
+/** Invoice due date (5-day terms). No-booking jobs — work-order invoices
+ *  saved from the admin wizard (16 Nov 2026) — fall back to 5 days from
+ *  when the job was logged, matching invoicePdf.invoiceDueDate. */
+function invoiceDueIso(lead: LeadRow): string | null {
+  const b = parseBooking(lead);
+  const iso = b ? paymentDueDay(b) : null;
+  if (iso) return iso;
+  const d = new Date(lead.createdAt);
+  d.setDate(d.getDate() + 5);
+  return d.toLocaleDateString("en-CA");
+}
+
 function firstName(name: string): string {
   // Titles stripped, caps fixed — "Mr Rob Smith" greets as "Rob" (11 Nov 2026,
   // after a customer booked as "Mr …" and got "Thanks Mr" on /thanks).
@@ -1074,7 +1086,7 @@ export function invoiceEmail(
   const b = parseBooking(lead);
   const input = parseQuote(lead);
   const jobIso = b?.preferredDate ?? null;
-  const dueIso = b ? paymentDueDay(b) : null; // 5-day terms — rugs: 5 days from the Monday return
+  const dueIso = invoiceDueIso(lead); // 5-day terms — rugs: 5 days from the Monday return
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
@@ -1126,7 +1138,7 @@ export function invoiceEmailHtml(lead: LeadRow, payUrl: string | null, reviewUrl
   const b = parseBooking(lead);
   const input = parseQuote(lead);
   const jobIso = b?.preferredDate ?? null;
-  const dueIso = b ? paymentDueDay(b) : null; // 5-day terms — rugs: 5 days from the Monday return
+  const dueIso = invoiceDueIso(lead); // 5-day terms — rugs: 5 days from the Monday return
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
@@ -1203,7 +1215,7 @@ export function jobCompleteEmail(
   const jobDate = jobIso
     ? longDateLabel(jobIso)
     : new Date(lead.createdAt ?? Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
-  const dueIso = b ? paymentDueDay(b) : null;
+  const dueIso = invoiceDueIso(lead);
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;
@@ -1266,7 +1278,7 @@ export function jobCompleteEmailHtml(
   const jobDate = jobIso
     ? longDateLabel(jobIso)
     : new Date(lead.createdAt ?? Date.now()).toLocaleDateString("en-AU", { day: "numeric", month: "long", year: "numeric" });
-  const dueIso = b ? paymentDueDay(b) : null;
+  const dueIso = invoiceDueIso(lead);
   const dueLabel = dueIso
     ? new Date(`${dueIso}T12:00:00`).toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long", year: "numeric" })
     : null;

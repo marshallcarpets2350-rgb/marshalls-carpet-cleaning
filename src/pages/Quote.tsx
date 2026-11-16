@@ -66,11 +66,15 @@ const MISSING_LABELS = [
 
 export default function Quote({
   adminMode = false,
+  adminInvoice = false,
   onStartOver,
 }: {
   /** Admin → New quote: the exact customer calculator, minus the date and
    *  payment steps — saves a quote-only lead, optionally emailed to them. */
   adminMode?: boolean;
+  /** Admin → New quote in "Invoice" mode: the job's already done — saves it
+   *  finished (straight to Awaiting payment) and emails the invoice. */
+  adminInvoice?: boolean;
   /** Called from the saved panel to start a fresh quote (Admin remounts). */
   onStartOver?: () => void;
 } = {}) {
@@ -137,6 +141,13 @@ export default function Quote({
   const utils = trpc.useUtils();
   const [sendQuoteEmail, setSendQuoteEmail] = useState(true);
   const saveQuote = trpc.admin.saveQuote.useMutation({
+    onSuccess: async (r) => {
+      setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed });
+      window.scrollTo({ top: 0, behavior: "smooth" });
+      await utils.admin.listLeads.invalidate();
+    },
+  });
+  const saveInvoice = trpc.admin.saveInvoice.useMutation({
     onSuccess: async (r) => {
       setSubmitted({ reference: r.reference, total: r.total, emailed: r.emailed });
       window.scrollTo({ top: 0, behavior: "smooth" });
@@ -372,8 +383,9 @@ export default function Quote({
 
   const handleSubmit = () => {
     if (adminMode) {
-      if (saveQuote.isPending || !coreValid.every(Boolean)) return;
-      saveQuote.mutate({
+      const saving = adminInvoice ? saveInvoice : saveQuote;
+      if (saving.isPending || !coreValid.every(Boolean)) return;
+      saving.mutate({
         name: contact.name.trim(),
         phone: contact.phone.trim(),
         email: contact.email.trim(),
@@ -467,16 +479,20 @@ export default function Quote({
   if (submitted && adminMode) {
     return (
       <div className="border-[1.5px] border-charcoal bg-creamlight p-8 text-center">
-        <p className="text-sm font-bold uppercase tracking-widest text-forest">Quote saved</p>
+        <p className="text-sm font-bold uppercase tracking-widest text-forest">
+          {adminInvoice ? "Invoice created" : "Quote saved"}
+        </p>
         <p className="mt-3 font-display text-4xl font-black text-charcoal">
           {submitted.reference} — {money(submitted.total)}
         </p>
         <p className="mt-3 text-charcoal/75">
-          No date set, no calendar blocked — it's in Jobs with a "Quote only" badge.
+          {adminInvoice
+            ? "Marked as done — it's on the Awaiting payment tab until the money lands."
+            : "No date set, no calendar blocked — it's in Jobs with a \"Quote only\" badge."}
         </p>
         <p className="mt-1 text-sm font-semibold text-charcoal/60">
           {submitted.emailed
-            ? `Emailed to ${contact.email} ✓`
+            ? `${adminInvoice ? "Invoice" : "Quote"} emailed to ${contact.email} ✓`
             : "Not emailed — their inbox is untouched."}
         </p>
         <button type="button" className="btn-pill mt-6" onClick={() => onStartOver?.()}>
@@ -499,7 +515,9 @@ export default function Quote({
           </h1>
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
             {adminMode
-              ? "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
+              ? adminInvoice
+                ? "The same calculator the customers get — answer your way down, the price moves as you go. For jobs already done: fill it in, hit send, and the invoice goes straight out."
+                : "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
               : "Work your way down the page — the price updates as you answer. Lounges and mattresses can join the same visit further down. Nothing is booked or charged until we confirm it with you."}
             {!adminMode && (
               <>
@@ -674,7 +692,11 @@ export default function Quote({
                       disabled={!allValid}
                       className="btn-pill px-10 py-4 text-xl disabled:cursor-not-allowed disabled:opacity-40"
                     >
-                      {adminMode ? "Continue → check it & save the quote" : "Continue → check it & send"}
+                      {adminMode
+                        ? adminInvoice
+                          ? "Continue → check it & send the invoice"
+                          : "Continue → check it & save the quote"
+                        : "Continue → check it & send"}
                     </button>
                     {!allValid && (
                       <p className="mx-auto mt-3 max-w-md text-sm text-charcoal/60">
@@ -704,16 +726,16 @@ export default function Quote({
                   plan={plan}
                   secondVisit={plan === "two" ? { date: secondDate, slot: secondSlot } : null}
                   rugsOnly={false} hasCarpet={carpetAreaM2 > 0} jobMinutes={jobMinutes}
-                  kicker={adminMode ? "Review & save the quote" : "Nearly done · review & send"}
+                  kicker={adminMode ? (adminInvoice ? "Review & send the invoice" : "Review & save the quote") : "Nearly done · review & send"}
                   stepOf={{ where: 0, job: 1, carpet: 2, extras: 3, when: 5, payment: 6 }}
                   notes={notes} setNotes={setNotes}
                   codeInput={codeInput} setCodeInput={setCodeInput}
                   appliedCode={appliedCode} codeError={codeError} applyCode={applyCode}
-                  submitting={adminMode ? saveQuote.isPending : submitLead.isPending}
+                  submitting={adminMode ? (adminInvoice ? saveInvoice.isPending : saveQuote.isPending) : submitLead.isPending}
                   submitError={
                     adminMode
-                      ? saveQuote.isError
-                        ? `Couldn't save just now — ${saveQuote.error.message}`
+                      ? (adminInvoice ? saveInvoice : saveQuote).isError
+                        ? `Couldn't save just now — ${(adminInvoice ? saveInvoice : saveQuote).error?.message}`
                         : null
                       : submitLead.isError && !slotConflict
                         ? `Couldn't send just now — try again, or call ${BUSINESS.phone}.`
@@ -723,12 +745,19 @@ export default function Quote({
                   canSubmit={allValid}
                   onSubmit={handleSubmit}
                   onGoToStep={backToForm}
-                  submitLabel={adminMode ? `Save quote — ${money(breakdown.total)}` : undefined}
+                  submitLabel={
+                    adminMode
+                      ? adminInvoice
+                        ? `Send invoice — ${money(breakdown.total)}`
+                        : `Save quote — ${money(breakdown.total)}`
+                      : undefined
+                  }
                   submitNote={
                     adminMode ? (
                       <p className="mt-3 text-sm text-charcoal/60">
-                        Saves as quote-only: no date blocked, nothing booked in. It's in Jobs
-                        with a "Quote only" badge — book the day in when they say yes.
+                        {adminInvoice
+                          ? "For jobs already done (real-estate work orders etc.): no date blocked, the invoice goes out now and it sits on Awaiting payment until the money lands."
+                          : "Saves as quote-only: no date blocked, nothing booked in. It's in Jobs with a \"Quote only\" badge — book the day in when they say yes."}
                       </p>
                     ) : undefined
                   }
@@ -741,7 +770,9 @@ export default function Quote({
                           onChange={(e) => setSendQuoteEmail(e.target.checked)}
                           className="h-5 w-5"
                         />
-                        Email this quote to {contact.email || "them"} when I save it
+                        {adminInvoice
+                          ? `Email the invoice to ${contact.email || "them"} now`
+                          : `Email this quote to ${contact.email || "them"} when I save it`}
                       </label>
                     ) : undefined
                   }
