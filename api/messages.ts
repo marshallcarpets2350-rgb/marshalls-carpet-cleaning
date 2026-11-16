@@ -39,6 +39,10 @@ export interface LeadRow {
   bookingJson: string | null;
   paidOnline: boolean;
   paidOfflineAt?: Date | string | null;
+  // Set when the job's ticked off — or when a quote-only job gets invoiced
+  // (invoicing a quote converts it, 17 Nov 2026). Optional: older callers
+  // build partial rows.
+  finishedAt?: Date | string | null;
   createdAt?: Date | string;
 }
 
@@ -95,7 +99,10 @@ function invoiceDueIso(lead: LeadRow): string | null {
   const b = parseBooking(lead);
   const iso = b ? paymentDueDay(b) : null;
   if (iso) return iso;
-  const d = new Date(lead.createdAt);
+  // No booking date (work-order invoices, converted quotes): 5 days from
+  // when the job was finished/invoiced, not from when the quote was typed —
+  // a quote can sit for weeks before the job's done (17 Nov 2026).
+  const d = new Date(lead.finishedAt ?? lead.createdAt ?? Date.now());
   d.setDate(d.getDate() + 5);
   return d.toLocaleDateString("en-CA");
 }

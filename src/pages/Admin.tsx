@@ -1339,6 +1339,34 @@ export default function Admin() {
                         <strong>Email:</strong>{" "}
                         <a href={`mailto:${r.email}`} className="text-forest">{r.email}</a>
                       </p>
+                      {/* Quote-only rows (no booking date): invoicing converts
+                          them — finishedAt is stamped server-side and the job
+                          moves to Awaiting payment (17 Nov 2026, Ben). */}
+                      {!when && !r.paidOnline && !r.paidOfflineAt && (
+                        <div className="mt-4 border-[1.5px] border-charcoal/40 bg-mintlight p-4 text-sm">
+                          <p className="font-bold text-charcoal">Job done? Turn this quote into an invoice.</p>
+                          <p className="mt-1 text-charcoal/80">
+                            Emails the invoice straight away (PDF + card link, 5-day terms
+                            from today) and moves the job to Awaiting payment — no more
+                            "Quote only".
+                          </p>
+                          <button
+                            type="button"
+                            className="btn-pill mt-3 !px-5 !py-2 text-sm"
+                            disabled={sendInv.isPending}
+                            onClick={() => sendInv.mutate({ id: r.id })}
+                          >
+                            {sendInv.isPending
+                              ? "Sending…"
+                              : r.invoiceSentAt
+                                ? "Send the invoice again"
+                                : "Send invoice — job's done"}
+                          </button>
+                          {msgNote[r.id] && (
+                            <p className="mt-2 text-sm font-semibold text-forest">{msgNote[r.id]}</p>
+                          )}
+                        </div>
+                      )}
                       {where && (
                         <div className="mt-3 border-[1.5px] border-charcoal/40 bg-creamlight p-3">
                           <p className="text-sm">
@@ -2542,13 +2570,13 @@ export default function Admin() {
     const jobDateOf = (r: Row) =>
       parseBooking(r.bookingJson)?.preferredDate ??
       new Date(r.createdAt).toLocaleDateString("en-CA");
-    // Due date (5-day terms). Work-order invoices saved from the wizard have
-    // no booking date — fall back to 5 days from when the job was logged,
-    // matching the invoice PDF + email.
+    // Due date (5-day terms). Work-order invoices and converted quotes have
+    // no booking date — 5 days from when the job was finished/invoiced, not
+    // from when the quote was typed (a quote can sit for weeks, 17 Nov 2026).
     const dueIsoOf = (r: Row): string | null => {
       const b = parseBooking(r.bookingJson);
       if (b?.preferredDate) return paymentDueDay(b);
-      const d = new Date(r.createdAt);
+      const d = new Date(r.finishedAt ?? r.createdAt);
       d.setDate(d.getDate() + 5);
       return d.toLocaleDateString("en-CA");
     };

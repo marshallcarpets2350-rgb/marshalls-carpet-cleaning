@@ -32,7 +32,7 @@ async function loadPdfKit(): Promise<typeof PDFDocumentT> {
 
 export type InvoiceLead = Pick<
   LeadRow,
-  "id" | "name" | "address" | "suburb" | "total" | "quoteJson" | "bookingJson"
+  "id" | "name" | "address" | "suburb" | "total" | "quoteJson" | "bookingJson" | "finishedAt"
 > & { createdAt: Date | string };
 
 interface Breakdown {
@@ -57,7 +57,10 @@ function jobDateOf(lead: InvoiceLead): Date {
   try {
     if (lead.bookingJson) iso = (JSON.parse(lead.bookingJson) as { preferredDate?: string }).preferredDate ?? null;
   } catch { /* fall through */ }
-  return iso ? new Date(`${iso}T12:00:00`) : new Date(lead.createdAt);
+  if (iso) return new Date(`${iso}T12:00:00`);
+  // No booking date (work-order invoices, converted quotes): the finished /
+  // invoiced day is the job day — a quote can sit for weeks (17 Nov 2026).
+  return lead.finishedAt ? new Date(lead.finishedAt) : new Date(lead.createdAt);
 }
 
 function auDate(d: Date): string {

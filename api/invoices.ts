@@ -90,7 +90,26 @@ export async function sendInvoiceFor(leadId: number, force = false): Promise<Inv
       { filename: `Invoice-${ref}.pdf`, content: pdf, contentType: "application/pdf" },
       { filename: "logo.png", content: brandLogo(), contentType: "image/png", cid: EMAIL_CID.logo },
     ], html);
-    await db.update(leads).set({ invoiceSentAt: new Date() }).where(eq(leads.id, leadId));
+    const now = new Date();
+    // Invoicing a QUOTE-ONLY job means the job's done (owner call 17 Nov
+    // 2026 — "convert it to invoices when we invoiced them"): stamp
+    // finishedAt so it leaves the Jobs board and lands on Awaiting payment,
+    // and flag the stored quote as invoiced (same shape saveInvoice writes).
+    // Booked jobs are untouched — their tick-off still sets finishedAt.
+    const patch: { invoiceSentAt: Date; finishedAt?: Date; quoteJson?: string } = { invoiceSentAt: now };
+    if (!row.finishedAt) {
+      try {
+        const q = JSON.parse(row.quoteJson) as Record<string, unknown>;
+        if (q && typeof q === "object" && q.quoteOnly) {
+          patch.finishedAt = now;
+          if (!q.invoiced) {
+            q.invoiced = true;
+            patch.quoteJson = JSON.stringify(q);
+          }
+        }
+      } catch { /* keep the stored quote untouched */ }
+    }
+    await db.update(leads).set(patch).where(eq(leads.id, leadId));
     return {
       sent: true,
       payUrl,
