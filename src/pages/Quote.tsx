@@ -68,6 +68,7 @@ export default function Quote({
   adminMode = false,
   adminInvoice = false,
   adminAgency = false,
+  invoicePreset,
   onStartOver,
 }: {
   /** Admin → New quote: the exact customer calculator, minus the date and
@@ -80,6 +81,9 @@ export default function Quote({
    *  real estate"): the lead is the agency (name/email/phone), the paperwork
    *  is addressed to the tenant, work-order number prints on the invoice. */
   adminAgency?: boolean;
+  /** Invoice tab: the picked real estate's saved details — prefills the
+   *  agency name + contact fields (remount via key swaps the agency). */
+  invoicePreset?: { agency: string; contactName: string; email: string; phone: string };
   /** Called from the saved panel to start a fresh quote (Admin remounts). */
   onStartOver?: () => void;
 } = {}) {
@@ -92,7 +96,12 @@ export default function Quote({
   const [review, setReview] = useState(false);
 
   // --- step 1: where & who ---
-  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "", marketingOptIn: false });
+  const [contact, setContact] = useState<Contact>({
+    name: invoicePreset?.contactName ?? "",
+    email: invoicePreset?.email ?? "",
+    phone: invoicePreset?.phone ?? "",
+    marketingOptIn: false,
+  });
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [confirmBy, setConfirmBy] = useState<ConfirmBy>("either");
 
@@ -139,7 +148,7 @@ export default function Quote({
   // Agency mode only: the real estate's name (becomes the job's name so it
   // groups under the agency in Clients) and who the paperwork is addressed
   // to (the tenant/owner — booking_json.invoiceTo).
-  const [agency, setAgency] = useState("");
+  const [agency, setAgency] = useState(invoicePreset?.agency ?? "");
   const [addressedTo, setAddressedTo] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<{ code: string; percentOff: number } | null>(null);
@@ -412,6 +421,7 @@ export default function Quote({
         workOrderNumber: workOrder.trim(),
         invoiceTo: addressedTo.trim(),
         contactName: adminAgency ? contact.name.trim() : "",
+        saveAgency: adminAgency,
         quote: quoteInput,
         sendEmail: sendQuoteEmail,
       });
@@ -549,7 +559,7 @@ export default function Quote({
             )}
           </p>
 
-          {adminMode && (
+          {adminInvoice && (
             <div className="mt-6 max-w-md space-y-4 border-[1.5px] border-charcoal bg-background p-4">
               {adminAgency && (
                 <div>

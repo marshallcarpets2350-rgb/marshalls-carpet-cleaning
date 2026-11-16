@@ -83,51 +83,74 @@ function OwingBadge() {
 // job in the same wizard and emails the invoice straight out. Module-level on
 // purpose (see OwingBadge note): keeps its state off the Admin parent.
 function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
-  // Who-question first (17 Nov 2026, Ben): customer = the wizard as normal;
-  // real estate = agency name + work order # + addressed-to fields up top.
-  const [who, setWho] = useState<"customer" | "agency" | null>(null);
-  const [kind, setKind] = useState<"quote" | "invoice">("quote");
-  if (who === null) {
+  return <Quote adminMode onStartOver={onStartOver} />;
+}
+
+// Invoice tab (17 Nov 2026, Ben): real-estate work orders. Pick the agency
+// from the saved list — their contact person/phone/email autofill the
+// wizard; a new agency or edited details save automatically when the invoice
+// is created, so the next job from them is one click. The wizard runs in
+// invoice mode: rooms/stains/etc. priced as usual, job lands straight on
+// Awaiting payment, invoice emailed to the agency, paperwork addressed to
+// the tenant when an "addressed to" name is entered.
+function InvoicePanel() {
+  const agencies = trpc.admin.listAgencies.useQuery();
+  const [selId, setSelId] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const list = agencies.data ?? [];
+  const sel = selId === "new" ? null : (list.find((a) => a.id === selId) ?? null);
+  const picked = selId !== null;
+
+  if (!picked) {
     return (
-      <div className="max-w-md">
-        <p className="mb-4 font-display text-2xl font-black text-charcoal">Who's this for?</p>
-        <div className="inline-flex border-[1.5px] border-charcoal" role="group" aria-label="Who's this for?">
-          {(["customer", "agency"] as const).map((w) => (
+      <div className="max-w-lg">
+        <p className="mb-4 font-display text-2xl font-black text-charcoal">Which real estate?</p>
+        <div className="space-y-2">
+          {list.map((a) => (
             <button
-              key={w}
+              key={a.id}
               type="button"
-              onClick={() => setWho(w)}
-              className="bg-background px-6 py-3 font-bold text-charcoal/70 first:border-r-[1.5px] first:border-charcoal hover:text-charcoal"
+              onClick={() => setSelId(a.id)}
+              className="block w-full border-[1.5px] border-charcoal bg-background px-4 py-3 text-left font-bold text-charcoal hover:bg-creamlight"
             >
-              {w === "customer" ? "A customer" : "A real estate"}
+              {a.name}
+              {a.contact && <span className="ml-2 text-sm font-normal text-charcoal/60">{a.contact}</span>}
             </button>
           ))}
+          <button
+            type="button"
+            onClick={() => setSelId("new")}
+            className="block w-full border-[1.5px] border-dashed border-charcoal/50 px-4 py-3 text-left font-bold text-charcoal/60 hover:text-charcoal"
+          >
+            + New real estate (not listed)
+          </button>
         </div>
       </div>
     );
   }
+
   return (
     <div>
       <p className="mb-4 text-sm text-charcoal/60">
-        For: <span className="font-bold text-charcoal">{who === "agency" ? "A real estate" : "A customer"}</span>
+        Real estate: <span className="font-bold text-charcoal">{sel ? sel.name : "New (type it in below)"}</span>
         {" · "}
-        <button type="button" onClick={() => setWho(null)} className="font-semibold text-forest underline-offset-2 hover:underline">
+        <button type="button" onClick={() => setSelId(null)} className="font-semibold text-forest underline-offset-2 hover:underline">
           change
         </button>
       </p>
-      <div className="mb-6 inline-flex border-[1.5px] border-charcoal" role="group" aria-label="What are you making?">
-        {(["quote", "invoice"] as const).map((k) => (
-          <button
-            key={k}
-            type="button"
-            onClick={() => setKind(k)}
-            className={`px-6 py-2.5 font-bold ${kind === k ? "bg-charcoal text-white" : "bg-background text-charcoal/70 hover:text-charcoal"}`}
-          >
-            {k === "quote" ? "Quote" : "Invoice (job already done)"}
-          </button>
-        ))}
-      </div>
-      <Quote adminMode adminInvoice={kind === "invoice"} adminAgency={who === "agency"} key={`${who}-${kind}`} onStartOver={onStartOver} />
+      <Quote
+        adminMode
+        adminInvoice
+        adminAgency
+        invoicePreset={{
+          agency: sel?.name ?? "",
+          contactName: sel?.contact ?? "",
+          email: sel?.email ?? "",
+          phone: sel?.phone ?? "",
+        }}
+        key={`${selId}-${nonce}`}
+        onStartOver={() => setNonce((n) => n + 1)}
+      />
     </div>
   );
 }
@@ -387,7 +410,7 @@ function DotLegend() {
 
 const TOKEN_KEY = "mcc_admin_token";
 
-type Tab = "overview" | "runsheet" | "leads" | "owing" | "newquote" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
+type Tab = "overview" | "runsheet" | "leads" | "owing" | "newquote" | "invoice" | "finished" | "clients" | "flood" | "availability" | "subscribers" | "newsletter" | "discounts" | "settings";
 
 const TABS: { key: Tab; label: string }[] = [
   { key: "overview", label: "Overview" },
@@ -395,6 +418,7 @@ const TABS: { key: Tab; label: string }[] = [
   { key: "leads", label: "Jobs" },
   { key: "owing", label: "Awaiting payment" },
   { key: "newquote", label: "New quote" },
+  { key: "invoice", label: "Invoice" },
   { key: "finished", label: "Finished jobs" },
   { key: "clients", label: "Clients" },
   { key: "flood", label: "Flood reports" },
@@ -578,6 +602,7 @@ export default function Admin() {
         {tab === "leads" && <Leads />}
         {tab === "owing" && <AwaitingPayment />}
         {tab === "newquote" && <NewQuotePanel key={quoteKey} onStartOver={() => setQuoteKey((k) => k + 1)} />}
+        {tab === "invoice" && <InvoicePanel />}
         {tab === "finished" && <FinishedJobs />}
         {tab === "clients" && <Clients />}
         {tab === "flood" && <FloodReports />}

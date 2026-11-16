@@ -110,7 +110,50 @@ function bookingMetaJson(input: { workOrderNumber?: string; invoiceTo?: string; 
   return Object.keys(meta).length ? JSON.stringify(meta) : null;
 }
 
+// Saved real estates (Invoice tab). Seeds are names only — public info; Ben
+// fills the contact/phone/email on the first job and they stick from then on.
+interface AgencyEntry { id: string; name: string; contact: string; phone: string; email: string; }
+const AGENCIES_KEY = "agencies";
+const AGENCY_SEED: AgencyEntry[] = [
+  { id: "town-country", name: "Town & Country Real Estate — Armidale", contact: "", phone: "", email: "" },
+  { id: "mcgrath", name: "McGrath — Armidale", contact: "", phone: "", email: "" },
+  { id: "ray-white", name: "Ray White — Armidale", contact: "", phone: "", email: "" },
+  { id: "lj-hooker", name: "LJ Hooker — Armidale", contact: "", phone: "", email: "" },
+  { id: "professionals", name: "The Professionals — Armidale", contact: "", phone: "", email: "" },
+];
+
+async function loadAgencies(): Promise<AgencyEntry[]> {
+  const raw = await getSetting(AGENCIES_KEY);
+  if (!raw) {
+    await setSetting(AGENCIES_KEY, JSON.stringify(AGENCY_SEED));
+    return AGENCY_SEED;
+  }
+  try {
+    const list = JSON.parse(raw) as AgencyEntry[];
+    return Array.isArray(list) ? list : AGENCY_SEED;
+  } catch {
+    return AGENCY_SEED;
+  }
+}
+
+/** Upsert by name (case-insensitive) — a fresh invoice from a known agency
+ *  refreshes their saved details; a new agency joins the list. */
+async function upsertAgency(name: string, contact: string, phone: string, email: string): Promise<void> {
+  const clean = name.trim();
+  if (!clean) return;
+  const list = await loadAgencies();
+  const i = list.findIndex((a) => a.name.trim().toLowerCase() === clean.toLowerCase());
+  const entry: AgencyEntry = { id: i >= 0 ? list[i].id : `a-${Date.now()}`, name: clean, contact, phone, email };
+  if (i >= 0) list[i] = entry;
+  else list.push(entry);
+  await setSetting(AGENCIES_KEY, JSON.stringify(list));
+}
+
 export const adminRouter = createRouter({
+  // Saved real estates for the Invoice tab (17 Nov 2026, Ben): pick the
+  // agency once, their contact details autofill; every agency invoice
+  // upserts the entry so the next job from them is one click.
+  listAgencies: adminProcedure.query(async () => await loadAgencies()),
   login: publicQuery
     .input(z.object({ password: z.string().min(1).max(200) }))
     .mutation(async ({ input }) => {
@@ -493,6 +536,8 @@ export const adminRouter = createRouter({
         // tenants); contactName = the person Ben deals with at the agency.
         invoiceTo: z.string().trim().max(255).optional().or(z.literal("")),
         contactName: z.string().trim().max(255).optional().or(z.literal("")),
+        // Invoice tab: upsert the agency into the saved list for next time.
+        saveAgency: z.boolean().optional(),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -592,6 +637,8 @@ export const adminRouter = createRouter({
         // tenants); contactName = the person Ben deals with at the agency.
         invoiceTo: z.string().trim().max(255).optional().or(z.literal("")),
         contactName: z.string().trim().max(255).optional().or(z.literal("")),
+        // Invoice tab: upsert the agency into the saved list for next time.
+        saveAgency: z.boolean().optional(),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -628,6 +675,15 @@ export const adminRouter = createRouter({
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
       const reference = `MCC-${String(id).padStart(4, "0")}`;
+      // Save/refresh the agency's details so the next invoice from them is
+      // one click. A hiccup here must never lose the job — it's already saved.
+      if (input.saveAgency) {
+        try {
+          await upsertAgency(input.name, input.contactName || "", input.phone || "", input.email || "");
+        } catch (err) {
+          console.error("Agency save failed:", err);
+        }
+      }
       // Email the invoice (PDF + card link) unless the box was unticked. A
       // mail hiccup must never lose the job — it's already saved.
       let emailed = false;
