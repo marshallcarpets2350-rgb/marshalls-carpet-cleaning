@@ -705,9 +705,11 @@ function isoDay(d: Date): string {
 // ---------------------------------------------------------------------------
 // The site's seasonal calendar — one table drives everything: the falling
 // page art in the gutters, the header strip, the footer line, and the
-// automatic promo discount in computeQuote. Christmas NOW CARRIES a 10%
-// promo ("Christmas 10% off" — owner call 13 Nov 2026, reversing the 6 Nov
-// no-promo-at-Christmas call); the other 10% deals fire in the quiet windows
+// automatic promo discount in computeQuote. Christmas carries a 0% promo
+// from 16 Nov 2026 (owner call: "get rid of the Christmas discount but keep
+// the discount images and price tags — we are still cheaper than BFYB") —
+// the tag imagery, banner and hero badge stay up, but nothing comes off the
+// price. The other 10% deals fire in the quiet windows
 // (set 6 Nov 2026, with the 5% price rise so a 10% promo still lands
 // above the old prices' margin). All dates Sydney time; Easter is computed,
 // so the calendar never needs touching.
@@ -728,7 +730,7 @@ const SEASONS: Record<string, SeasonDef> = {
     id: "christmas",
     banner: "🎄 Booked in before Christmas? December is nearly full — grab a spot while there's room 🦌",
     footer: "🎄🦌 Merry Christmas from the Marshall's team — and thanks for backing a local business this year.",
-    promo: { percent: 10, label: "Christmas 10% off" },
+    promo: { percent: 0, label: "Christmas" },
   },
   boxingday: {
     id: "boxingday",
@@ -852,9 +854,11 @@ export function seasonalPromoFor(at: Date = sydneyToday()): { percent: number; l
 }
 
 /** Display text for a promo — appends the percent unless the label already
- *  says it ("Christmas 10% off" stays as-is, "Winter warm-up" → "Winter
- *  warm-up — 10% off"). */
+ *  says it ("Winter warm-up" → "Winter warm-up — 10% off"). A 0% promo
+ *  (Christmas — owner call 16 Nov 2026: tag imagery stays, discount gone,
+ *  "we are still cheaper than BFYB") is just the label, no percent. */
 export function promoText(p: { percent: number; label: string }): string {
+  if (p.percent <= 0) return p.label;
   return p.label.includes("%") ? p.label : `${p.label} — ${p.percent}% off`;
 }
 

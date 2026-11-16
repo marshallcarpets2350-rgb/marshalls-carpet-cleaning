@@ -292,7 +292,9 @@ export function SeasonBanner() {
   const promo = season?.promo ?? null;
   const endLabel = win?.end.toLocaleDateString("en-AU", { day: "numeric", month: "short" });
   const text = promo
-    ? `🏷️ ${promoText(promo)} every clean until ${endLabel}, comes off your quote automatically.`
+    ? promo.percent > 0
+      ? `🏷️ ${promoText(promo)} every clean until ${endLabel}, comes off your quote automatically.`
+      : `🏷️ ${promoText(promo)} — on until ${endLabel}, grab a spot while there's room.`
     : season?.banner;
   if (!text) return null;
   return (
@@ -391,11 +393,13 @@ export function PromoTag() {
   const promo = seasonWindowFor()?.season.promo ?? null;
   if (!promo) return null;
   const line1 = promo.label.replace(/\s*[-–—]?\s*\d+%\s*off\s*$/i, "").trim() || promo.label;
-  const line2 = `${promo.percent}% OFF`;
+  // 0% promos (Christmas 2026 — discount removed 16 Nov, imagery kept) tag
+  // "ON NOW": the tag shape stays, but no % claim the price doesn't honour.
+  const line2 = promo.percent > 0 ? `${promo.percent}% OFF` : "ON NOW";
   return (
     <Link
       to="/quote"
-      aria-label={`${promoText(promo)} — comes off your quote automatically. Book your clean`}
+      aria-label={promo.percent > 0 ? `${promoText(promo)} — comes off your quote automatically. Book your clean` : `${promoText(promo)} — book your clean`}
       className="absolute right-2 top-full z-30 mt-1 block md:right-5 md:mt-2"
     >
       <span
@@ -468,7 +472,7 @@ export function Snowfall({ count = 24 }: { count?: number }) {
           node = <span style={{ fontSize: size + 10, lineHeight: 1 }}>🎅</span>;
           itemSize = size + 10;
         } else if (promo && i % 6 === 5) {
-          node = SHAPES.tag("#B91C1C", "", `${promo.percent}% OFF`);
+          node = SHAPES.tag("#B91C1C", "", promo.percent > 0 ? `${promo.percent}% OFF` : "ON NOW");
           itemSize = size + 8;
           wide = true; // tags are 64×40 — give them their real aspect
         } else if (i % 2 === 1) {
@@ -562,7 +566,7 @@ export function GutterFall({ side }: { side: "left" | "right" }) {
               }}
             >
               {isTag && promo
-                ? SHAPES.tag("#B91C1C", "", `${promo.percent}% OFF`)
+                ? SHAPES.tag("#B91C1C", "", promo.percent > 0 ? `${promo.percent}% OFF` : "ON NOW")
                 : SHAPES[spec.s](spec.c1, spec.c2 ?? "#F8FAFC")}
             </span>
           </span>
