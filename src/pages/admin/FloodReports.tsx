@@ -4,7 +4,7 @@
  * priced off the published flood rates. Save stores it on the job; the
  * email button sends the insurer-ready PDF to the customer.
  */
-import { useMemo, useState } from "react";
+import { useMemo, useRef, useState, type ChangeEvent } from "react";
 import { trpc } from "@/providers/trpc";
 import { floodReportCharges, money, type FloodPrices } from "@contracts/rates";
 
@@ -19,6 +19,8 @@ interface LeadRowLike {
   status: string;
   createdAt: string | Date;
   quoteJson: string;
+  workOrderNumber?: string | null;
+  workOrderDoc?: string | null;
 }
 
 interface FloodRequestLike {
@@ -254,6 +256,253 @@ function DeleteFloodJob({ id, name, onDeleted }: { id: number; name: string; onD
   );
 }
 
+/** Resize helper for uploads (same as the gallery/work-order one in
+ *  Admin.tsx — max side 1200px, JPEG 0.82). */
+function resizeImage(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const url = URL.createObjectURL(file);
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(1, 1200 / Math.max(img.width, img.height));
+      const canvas = document.createElement("canvas");
+      canvas.width = Math.max(1, Math.round(img.width * scale));
+      canvas.height = Math.max(1, Math.round(img.height * scale));
+      canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+      URL.revokeObjectURL(url);
+      resolve(canvas.toDataURL("image/jpeg", 0.82));
+    };
+    img.onerror = () => {
+      URL.revokeObjectURL(url);
+      reject(new Error("unreadable"));
+    };
+    img.src = url;
+  });
+}
+
+/** Open a stored data-URL document in a new tab (blob URL, so the browser
+ *  doesn't choke on a giant address bar). */
+function openDataUrl(dataUrl: string): boolean {
+  const m = /^data:([^;]+);base64,(.+)$/s.exec(dataUrl);
+  if (!m) return false;
+  const bin = atob(m[2].replace(/\s/g, ""));
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  window.open(URL.createObjectURL(new Blob([bytes], { type: m[1] })), "_blank");
+  return true;
+}
+
+/** Real-estate work order on a flood job (16 Nov 2026, Ben: "input work
+ *  orders from Realastate… a screenshot of work order and information"):
+ *  the agency's work-order NUMBER (prints on the invoice automatically) and
+ *  the work-order screenshot/PDF itself, stored against the job so it can be
+ *  pulled up on site. Same storage as regular jobs. Module-level with its
+ *  own subscriptions — the OwingBadge rule. */
+function FloodWorkOrder({ id, number, doc }: { id: number; number?: string | null; doc?: string | null }) {
+  const utils = trpc.useUtils();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [text, setText] = useState("");
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = () => utils.admin.floodReportData.invalidate({ id });
+  const saveNum = trpc.admin.setWorkOrderNumber.useMutation({
+    onSuccess: async () => { setEditing(false); setErr(""); await refresh(); },
+    onError: (e) => setErr(e.message),
+  });
+  const upload = trpc.admin.uploadWorkOrderDoc.useMutation({
+    onSuccess: async () => { setErr(""); await refresh(); },
+    onError: (e) => setErr(e.message),
+  });
+  const remove = trpc.admin.removeWorkOrderDoc.useMutation({
+    onSuccess: async () => { setErr(""); await refresh(); },
+    onError: (e) => setErr(e.message),
+  });
+  const current = number?.trim() || "";
+
+  const openDoc = async () => {
+    setErr("");
+    setBusy(true);
+    try {
+      const d = await utils.admin.getWorkOrderDoc.fetch({ id });
+      if (!d || !openDataUrl(d.dataUrl)) setErr("Couldn't open that document — try uploading it again.");
+    } catch {
+      setErr("Couldn't open that document — try again.");
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const pickFile = async (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = "";
+    if (!file) return;
+    setErr("");
+    try {
+      let dataUrl: string;
+      if (file.type === "application/pdf") {
+        if (file.size > 5 * 1024 * 1024) {
+          setErr("That PDF is over 5 MB — send yourself a smaller copy.");
+          return;
+        }
+        dataUrl = await new Promise<string>((resolve, reject) => {
+          const fr = new FileReader();
+          fr.onload = () => resolve(String(fr.result));
+          fr.onerror = () => reject(new Error("unreadable"));
+          fr.readAsDataURL(file);
+        });
+      } else {
+        dataUrl = await resizeImage(file);
+      }
+      upload.mutate({ id, fileName: file.name, dataUrl });
+    } catch {
+      setErr("Couldn't read that file — use a photo (JPEG/PNG) or a PDF.");
+    }
+  };
+
+  return (
+    <div className="border-[1.5px] border-charcoal bg-creamlight p-4">
+      <p className="font-bold text-charcoal">Work order from the real estate</p>
+      <p className="mt-0.5 text-xs text-charcoal/60">
+        The agency's work-order number prints on the invoice so their accounts
+        team can match the payment; the screenshot or PDF stays on the job.
+      </p>
+      <div className="mt-3 flex flex-wrap items-center gap-3">
+        {editing ? (
+          <>
+            <input
+              value={text}
+              onChange={(e) => setText(e.target.value)}
+              placeholder="e.g. 8017a-4358"
+              className="w-44 max-w-full border-[1.5px] border-charcoal/40 bg-white px-2 py-1.5 text-sm"
+            />
+            <button type="button" className="btn-pill !px-3 !py-1 text-xs" disabled={saveNum.isPending}
+              onClick={() => saveNum.mutate({ id, number: text })}>
+              {saveNum.isPending ? "Saving…" : "Save"}
+            </button>
+            <button type="button" className="text-xs text-charcoal/50 underline" onClick={() => setEditing(false)}>cancel</button>
+          </>
+        ) : (
+          <>
+            <span className="text-sm font-semibold text-charcoal">
+              No. {current || <span className="font-normal text-charcoal/50">not set</span>}
+            </span>
+            <button type="button" className="text-xs font-bold text-forest underline"
+              onClick={() => { setText(current); setEditing(true); }}>
+              {current ? "change" : "add number"}
+            </button>
+          </>
+        )}
+      </div>
+      <div className="mt-2 flex flex-wrap items-center gap-3">
+        {doc ? (
+          <>
+            <button type="button" className="text-sm font-bold text-forest underline disabled:opacity-40" disabled={busy} onClick={openDoc}>
+              {busy ? "Opening…" : `View ${doc}`}
+            </button>
+            <button type="button" className="text-xs text-charcoal/50 underline" disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+              replace
+            </button>
+            <button type="button" className="text-xs font-semibold text-destructive underline" disabled={remove.isPending}
+              onClick={() => { if (window.confirm("Remove the work-order document?")) remove.mutate({ id }); }}>
+              remove
+            </button>
+          </>
+        ) : (
+          <button type="button" className="btn-pill !px-3 !py-1 text-xs" disabled={upload.isPending} onClick={() => fileRef.current?.click()}>
+            {upload.isPending ? "Uploading…" : "Upload work order (screenshot or PDF)"}
+          </button>
+        )}
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png,application/pdf" className="hidden" onChange={pickFile} />
+      </div>
+      {err && <p className="mt-2 text-xs font-semibold text-destructive">{err}</p>}
+    </div>
+  );
+}
+
+/** Photos of the work on a flood job (16 Nov 2026, Ben) — before/after and
+ *  drying-setup shots, stored on the job and embedded at the end of the
+ *  insurer PDF when the report is emailed. Up to 12, JPEG/PNG. Module-level
+ *  with its own query — the OwingBadge rule. */
+function FloodPhotos({ id }: { id: number }) {
+  const utils = trpc.useUtils();
+  const photos = trpc.admin.floodPhotos.useQuery({ id });
+  const fileRef = useRef<HTMLInputElement>(null);
+  const [err, setErr] = useState("");
+  const [busy, setBusy] = useState(false);
+  const refresh = async () => {
+    await photos.refetch();
+    await utils.admin.floodReportData.invalidate({ id });
+  };
+  const add = trpc.admin.addFloodPhoto.useMutation();
+  const remove = trpc.admin.removeFloodPhoto.useMutation({
+    onSuccess: refresh,
+    onError: (e) => setErr(e.message),
+  });
+  const list = photos.data ?? [];
+
+  const pickFiles = async (e: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    if (files.length === 0) return;
+    setErr("");
+    setBusy(true);
+    try {
+      for (const file of files) {
+        const dataUrl = await resizeImage(file);
+        await add.mutateAsync({ id, fileName: file.name, dataUrl });
+      }
+      await refresh();
+    } catch (err2) {
+      setErr(err2 instanceof Error ? err2.message : "Couldn't save that photo — use a JPEG or PNG.");
+      await refresh();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  return (
+    <div className="border-[1.5px] border-charcoal bg-creamlight p-4">
+      <p className="font-bold text-charcoal">Photos of the work</p>
+      <p className="mt-0.5 text-xs text-charcoal/60">
+        Before/after and the drying setup — they're embedded at the end of the
+        insurer PDF, so shoot wide and clear. {list.length}/12 stored.
+      </p>
+      {list.length > 0 && (
+        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4">
+          {list.map((p, i) => (
+            <div key={`${p.fileName}-${i}`} className="relative border border-charcoal/30 bg-white">
+              <button
+                type="button"
+                className="block w-full"
+                title={`Open photo ${i + 1}`}
+                onClick={() => { if (!openDataUrl(p.dataUrl)) setErr("Couldn't open that photo — upload it again."); }}
+              >
+                <img src={p.dataUrl} alt={`Job photo ${i + 1}`} className="h-20 w-full object-cover" />
+              </button>
+              <button
+                type="button"
+                className="absolute right-0.5 top-0.5 bg-charcoal/80 px-1.5 text-xs font-bold text-white"
+                title="Delete this photo"
+                disabled={remove.isPending}
+                onClick={() => { if (window.confirm(`Delete photo ${i + 1}?`)) remove.mutate({ id, index: i }); }}
+              >
+                ×
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+      <div className="mt-3">
+        <button type="button" className="btn-pill !px-3 !py-1 text-xs disabled:opacity-40" disabled={busy || list.length >= 12} onClick={() => fileRef.current?.click()}>
+          {busy ? "Uploading…" : "+ Add photos"}
+        </button>
+        <input ref={fileRef} type="file" accept="image/jpeg,image/png" multiple className="hidden" onChange={pickFiles} />
+      </div>
+      {err && <p className="mt-2 text-xs font-semibold text-destructive">{err}</p>}
+    </div>
+  );
+}
+
 function ReportEditor({ id, onBack }: { id: number; onBack: () => void }) {  const data = trpc.admin.floodReportData.useQuery({ id });
   if (data.isLoading) return <p className="text-charcoal/70">Loading…</p>;
   if (!data.data) return <p className="text-destructive">Couldn't load this job.</p>;
@@ -440,6 +689,8 @@ function ReportForm({
               </div>
             </div>
           </div>
+          <FloodWorkOrder id={data.lead.id} number={data.lead.workOrderNumber} doc={data.lead.workOrderDoc} />
+          <FloodPhotos id={data.lead.id} />
           <div>
             <label htmlFor="fr-summary" className={labelCls}>What we found</label>
             <textarea id="fr-summary" className={`${inputCls} min-h-20`} value={summary} onChange={(e) => setSummary(e.target.value)} placeholder="Water through the kitchen and hallway from a burst flexi hose under the sink. Source stopped before arrival. Carpet and underlay saturated, no wall damage visible…" />

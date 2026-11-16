@@ -71,6 +71,7 @@ export async function floodReportPdfBuffer(
   report: FloodReportData,
   lines: { label: string; amount: number }[],
   total: number,
+  photos: { fileName: string; dataUrl: string }[] = [],
 ): Promise<Buffer> {
   const PDF = await loadPdfKit();
   const ref = bookingReference({ id: lead.id } as never);
@@ -173,6 +174,33 @@ export async function floodReportPdfBuffer(
     y = doc.y + 8;
     doc.font("Helvetica").fontSize(9).fillColor(BRAND.grey)
       .text("Questions about this report: " + `${BUSINESS.phone}  ·  ${BUSINESS.email}`, MARGIN, y, { width: CONTENT_W });
+
+    // ── Job photos (16 Nov 2026, Ben) — the visual evidence an assessor
+    //    signs off on: two per row, numbered, own page(s) at the end.
+    if (photos.length > 0) {
+      doc.addPage();
+      let py = MARGIN;
+      doc.font("Helvetica-Bold").fontSize(11).fillColor(BRAND.blue).text("Job photos", MARGIN, py, { width: CONTENT_W });
+      py = doc.y + 10;
+      const CELL_W = (CONTENT_W - 14) / 2;
+      const IMG_H = 168;
+      const ROW_H = IMG_H + 26;
+      for (let i = 0; i < photos.length; i++) {
+        if (i > 0 && i % 2 === 0) {
+          py += ROW_H;
+          if (py + ROW_H > PAGE_H - MARGIN) { doc.addPage(); py = MARGIN; }
+        }
+        const px = MARGIN + (i % 2) * (CELL_W + 14);
+        const m = /^data:(image\/(?:jpeg|jpg|png));base64,(.+)$/s.exec(photos[i].dataUrl);
+        if (m) {
+          try {
+            doc.image(Buffer.from(m[2].replace(/\s/g, ""), "base64"), px, py, { fit: [CELL_W, IMG_H], align: "center" });
+          } catch { /* a corrupt photo shouldn't kill the report */ }
+        }
+        doc.font("Helvetica").fontSize(8.5).fillColor(BRAND.grey)
+          .text(`Photo ${i + 1}`, px, py + IMG_H + 4, { width: CELL_W, align: "center" });
+      }
+    }
 
     doc.end();
   });

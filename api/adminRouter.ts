@@ -40,6 +40,7 @@ import {
   getWorkOrderDoc as getWorkOrderDocById,
   removeWorkOrderDoc as removeWorkOrderDocDb,
 } from "./workOrders";
+import { addFloodPhoto, getFloodPhotos, removeFloodPhoto } from "./floodPhotos";
 import { floodReportPdfBuffer, type FloodReportData } from "./floodReportPdf";
 import { brandedEmailHtml, EMAIL_CID } from "./emailTemplate";
 import { brandLogo } from "./brand";
@@ -554,7 +555,10 @@ export const adminRouter = createRouter({
       if (!lead) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
       let parsed: { flood?: unknown; floodReport?: FloodReportData } = {};
       try { parsed = JSON.parse(lead.quoteJson); } catch { /* fall through */ }
+      let booking: { workOrderNumber?: string; workOrderDoc?: string } = {};
+      try { if (lead.bookingJson) booking = JSON.parse(lead.bookingJson); } catch { /* fall through */ }
       const prices = floodPrices(await loadBfybModel());
+      const photoCount = (await getFloodPhotos(lead.id)).length;
       return {
         lead: {
           id: lead.id,
@@ -566,11 +570,47 @@ export const adminRouter = createRouter({
           status: lead.status,
           total: lead.total,
           createdAt: lead.createdAt,
+          workOrderNumber: booking.workOrderNumber ?? null,
+          workOrderDoc: booking.workOrderDoc ?? null,
         },
         flood: parsed.flood ?? null,
         report: parsed.floodReport ?? null,
+        photoCount,
         prices,
       };
+    }),
+
+  // Work-done photos on a flood job (16 Nov 2026, Ben) — stored against the
+  // lead, embedded at the end of the insurer PDF when the report is emailed.
+  floodPhotos: adminProcedure
+    .input(z.object({ id: z.number() }))
+    .query(async ({ input }) => {
+      return await getFloodPhotos(input.id);
+    }),
+
+  addFloodPhoto: adminProcedure
+    .input(z.object({ id: z.number(), fileName: z.string().max(140), dataUrl: z.string().max(7_500_000) }))
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Job not found" });
+      try {
+        const count = await addFloodPhoto(input.id, input.fileName, input.dataUrl);
+        return { ok: true as const, count };
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Couldn't store that photo" });
+      }
+    }),
+
+  removeFloodPhoto: adminProcedure
+    .input(z.object({ id: z.number(), index: z.number().int().min(0) }))
+    .mutation(async ({ input }) => {
+      try {
+        const count = await removeFloodPhoto(input.id, input.index);
+        return { ok: true as const, count };
+      } catch (e) {
+        throw new TRPCError({ code: "BAD_REQUEST", message: e instanceof Error ? e.message : "Couldn't remove that photo" });
+      }
     }),
 
   saveFloodReport: adminProcedure
@@ -658,7 +698,8 @@ export const adminRouter = createRouter({
       const breakdown = parsed.breakdown as { lines?: { label: string; amount: number }[]; total?: number } | undefined;
       const lines = breakdown?.lines ?? [];
       const total = breakdown?.total ?? lead.total;
-      const pdf = await floodReportPdfBuffer(lead, (parsed.flood as never) ?? null, report, lines, total);
+      const photos = await getFloodPhotos(lead.id);
+      const pdf = await floodReportPdfBuffer(lead, (parsed.flood as never) ?? null, report, lines, total, photos);
       const em = floodReportEmail(lead as never, total, report.attendedAt);
       const ref = bookingReference(lead as never);
       await sendMail(smtp, lead.email, em.subject, em.text, [
