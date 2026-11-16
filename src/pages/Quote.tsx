@@ -525,7 +525,7 @@ export default function Quote({
             : "Not emailed — their inbox is untouched."}
         </p>
         <button type="button" className="btn-pill mt-6" onClick={() => onStartOver?.()}>
-          Price another one
+          {adminInvoice ? "Invoice another one" : "Price another one"}
         </button>
       </div>
     );
@@ -540,12 +540,12 @@ export default function Quote({
       <main className={adminMode ? "" : "bg-creamlight py-12 pb-28 md:py-16 lg:pb-16"}>
         <div className={adminMode ? "" : "mx-auto max-w-6xl px-4 md:px-6"}>
           <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">
-            {adminMode ? "Price a job." : "Book your clean."}
+            {adminMode ? (adminInvoice ? "Invoice a job." : "Price a job.") : "Book your clean."}
           </h1>
           <p className="mt-3 max-w-xl text-lg text-charcoal/75">
             {adminMode
               ? adminInvoice
-                ? "The same calculator the customers get — answer your way down, the price moves as you go. For jobs already done: fill it in, hit send, and the invoice goes straight out."
+                ? "For a job that's already done — answer your way down, the price moves as you go. Hit send and the invoice emails straight out: no date blocked, nothing booked in."
                 : "The same calculator the customers get — answer your way down, the price moves as you go. No date needed: save it as a quote and book the day in later when they say yes."
               : "Work your way down the page — the price updates as you answer. Lounges and mattresses can join the same visit further down. Nothing is booked or charged until we confirm it with you."}
             {!adminMode && (
@@ -825,6 +825,7 @@ export default function Quote({
                   canSubmit={allValid}
                   onSubmit={handleSubmit}
                   onGoToStep={backToForm}
+                  invoiceMode={adminInvoice}
                   submitLabel={
                     adminMode
                       ? adminInvoice
@@ -865,7 +866,7 @@ export default function Quote({
             <aside className="lg:sticky lg:top-24 lg:self-start lg:max-h-[calc(100dvh-7rem)] lg:overflow-y-auto" aria-label="Quote summary">
               <div className="offset-shadow-sm border-[1.5px] border-charcoal bg-background">
                 <div className="border-b-[1.5px] border-charcoal bg-charcoal px-6 py-4">
-                  <p className="text-center font-display text-2xl font-black uppercase tracking-widest text-mint">Your price</p>
+                  <p className="text-center font-display text-2xl font-black uppercase tracking-widest text-mint">{adminInvoice ? "Invoice total" : "Your price"}</p>
                 </div>
                 <div className="px-6 py-5">
                   {breakdown.isEmpty ? (
@@ -1056,7 +1057,7 @@ export default function Quote({
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-charcoal/50">
-              Your price
+              {adminInvoice ? "Invoice total" : "Your price"}
             </p>
             <p className="font-display text-3xl font-black text-forest" aria-live="polite">
               {breakdown.isEmpty ? "—" : money(breakdown.total)}
@@ -1075,10 +1076,16 @@ export default function Quote({
             <button
               type="button"
               onClick={handleSubmit}
-              disabled={submitLead.isPending || !allValid}
+              disabled={(adminMode ? (adminInvoice ? saveInvoice.isPending : saveQuote.isPending) : submitLead.isPending) || !allValid}
               className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
             >
-              {submitLead.isPending ? "Sending…" : "Send booking"}
+              {(adminMode ? (adminInvoice ? saveInvoice.isPending : saveQuote.isPending) : submitLead.isPending)
+                ? "Sending…"
+                : adminMode
+                  ? adminInvoice
+                    ? "Send invoice"
+                    : "Save quote"
+                  : "Send booking"}
             </button>
           )}
         </div>

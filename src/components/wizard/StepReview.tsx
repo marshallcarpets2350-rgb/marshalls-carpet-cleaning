@@ -62,7 +62,7 @@ export function StepReview({
   notes, setNotes,
   codeInput, setCodeInput, appliedCode, codeError, applyCode,
   submitting, submitError, slotConflict, canSubmit, onSubmit, onGoToStep,
-  submitLabel, submitNote, aboveSubmit,
+  submitLabel, submitNote, aboveSubmit, invoiceMode = false,
 }: {
   contact: Contact;
   confirmBy: ConfirmBy;
@@ -106,6 +106,8 @@ export function StepReview({
   submitNote?: ReactNode;
   /** Extra content rendered just above the submit button. */
   aboveSubmit?: ReactNode;
+  /** Admin invoice mode — job is already done: no date/payment rows. */
+  invoiceMode?: boolean;
 }) {
   const fmtDay = (iso: string) =>
     new Date(iso + "T12:00:00").toLocaleDateString("en-AU", { weekday: "long", day: "numeric", month: "long" });
@@ -126,26 +128,32 @@ export function StepReview({
 
   return (
     <div className="space-y-8">
-      <StepHeading kicker={kicker} title="Check it, then send." sub="This goes straight to our phone. We confirm the time and the price before anything is locked in." />
+      <StepHeading
+        kicker={kicker}
+        title={invoiceMode ? "Check it, then send the invoice." : "Check it, then send."}
+        sub={invoiceMode
+          ? "The job's done — this just adds it up. Hit send and the invoice emails straight to them, then it sits on Awaiting payment until the money lands."
+          : "This goes straight to our phone. We confirm the time and the price before anything is locked in."}
+      />
 
       <div className="border-[1.5px] border-charcoal bg-background px-5 py-2">
-        <Row label="Your details" value={`${contact.name} · ${contact.phone} · ${contact.email}${travel?.addressLabel ? ` — ${travel.addressLabel}` : ""} · confirm by ${CONFIRM_LABELS[confirmBy]}`} onEdit={() => onGoToStep(stepOf.where)} />
-        <Row label={hasCarpet ? "Your home" : "The items"} value={jobBits.join(" · ")} onEdit={() => onGoToStep(stepOf.job)} />
+        <Row label={invoiceMode ? "Review details" : "Your details"} value={`${contact.name} · ${contact.phone} · ${contact.email}${travel?.addressLabel ? ` — ${travel.addressLabel}` : ""} · confirm by ${CONFIRM_LABELS[confirmBy]}`} onEdit={() => onGoToStep(stepOf.where)} />
+        <Row label={invoiceMode ? "The job" : hasCarpet ? "Your home" : "The items"} value={jobBits.join(" · ")} onEdit={() => onGoToStep(stepOf.job)} />
         {hasCarpet && (
           <Row label="Carpet condition" value={`${DIRTINESS_LABELS[dirtiness]} — ${conditionSummary(condition)}`} onEdit={() => onGoToStep(stepOf.carpet)} />
         )}
         {(extras.length > 0 || hasCarpet) && (
           <Row label="Add-ons" value={extras.length ? extras.join(" · ") : "None"} onEdit={() => onGoToStep(stepOf.extras)} />
         )}
-        <Row label="Date & time" value={whenLabel} onEdit={() => onGoToStep(stepOf.when)} />
-        {plan && plan !== "none" && (
+        {!invoiceMode && <Row label="Date & time" value={whenLabel} onEdit={() => onGoToStep(stepOf.when)} />}
+        {!invoiceMode && plan && plan !== "none" && (
           <Row
             label="Plan"
             value={`2 cleans a year — 10% off every clean${secondVisit?.date ? ` · visit 2: ${fmtDay(secondVisit.date)}${secondVisit.slot !== null ? `, ${TIME_SLOTS[secondVisit.slot]}` : ""}` : ""}`}
             onEdit={() => onGoToStep(stepOf.when)}
           />
         )}
-        <Row label="Payment" value={payment ? PAYMENT_LABELS[payment] : "—"} onEdit={() => onGoToStep(stepOf.payment)} />
+        {!invoiceMode && <Row label="Payment" value={payment ? PAYMENT_LABELS[payment] : "—"} onEdit={() => onGoToStep(stepOf.payment)} />}
       </div>
 
       <div>
