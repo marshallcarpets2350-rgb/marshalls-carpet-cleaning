@@ -161,6 +161,13 @@ export default function FloodReports() {
  *  becomes a normal flood job, ready for the report after the callout. */
 function NewFloodJob({ onCreated }: { onCreated: (id: number) => void }) {
   const utils = trpc.useUtils();
+  // Same who-question as the quote wizard (17 Nov 2026, Ben): agency jobs
+  // record the real estate as the job's name, plus work order # and who the
+  // paperwork is addressed to.
+  const [who, setWho] = useState<"customer" | "agency">("customer");
+  const [agency, setAgency] = useState("");
+  const [workOrder, setWorkOrder] = useState("");
+  const [addressedTo, setAddressedTo] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
@@ -175,7 +182,10 @@ function NewFloodJob({ onCreated }: { onCreated: (id: number) => void }) {
     },
   });
 
-  const valid = name.trim().length > 0 && phone.trim().length >= 6 && address.trim().length >= 3;
+  const valid =
+    (who === "agency" ? agency.trim().length > 0 : name.trim().length > 0) &&
+    phone.trim().length >= 6 &&
+    address.trim().length >= 3;
 
   return (
     <form
@@ -184,19 +194,53 @@ function NewFloodJob({ onCreated }: { onCreated: (id: number) => void }) {
         e.preventDefault();
         if (!valid || create.isPending) return;
         create.mutate({
-          name: name.trim(),
+          name: who === "agency" ? agency.trim() : name.trim(),
           phone: phone.trim(),
           email: email.trim() || "",
           address: address.trim(),
           suburb: suburb.trim() || undefined,
           notes: notes.trim() || undefined,
+          workOrderNumber: workOrder.trim(),
+          invoiceTo: addressedTo.trim(),
+          contactName: who === "agency" ? name.trim() : "",
         });
       }}
     >
       <p className="font-bold text-charcoal">New flood job — phoned in</p>
+      <div>
+        <p className={labelCls}>Who's this job for?</p>
+        <div className="inline-flex border-[1.5px] border-charcoal" role="group" aria-label="Who's this job for?">
+          {(["customer", "agency"] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setWho(w)}
+              className={`px-5 py-2 font-bold first:border-r-[1.5px] first:border-charcoal ${who === w ? "bg-charcoal text-white" : "bg-background text-charcoal/70 hover:text-charcoal"}`}
+            >
+              {w === "customer" ? "A customer" : "A real estate"}
+            </button>
+          ))}
+        </div>
+      </div>
+      {who === "agency" && (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <label htmlFor="nf-agency" className={labelCls}>Real estate name</label>
+            <input id="nf-agency" className={inputCls} value={agency} onChange={(e) => setAgency(e.target.value)} placeholder="e.g. Town & Country Armidale" />
+          </div>
+          <div>
+            <label htmlFor="nf-wo" className={labelCls}>Work order # (optional)</label>
+            <input id="nf-wo" className={inputCls} value={workOrder} onChange={(e) => setWorkOrder(e.target.value)} placeholder="e.g. PT-10492" />
+          </div>
+          <div className="sm:col-span-2">
+            <label htmlFor="nf-to" className={labelCls}>Addressed to (optional — e.g. the tenants)</label>
+            <input id="nf-to" className={inputCls} value={addressedTo} onChange={(e) => setAddressedTo(e.target.value)} placeholder="Their name goes on the paperwork; emails go to the agency" />
+          </div>
+        </div>
+      )}
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label htmlFor="nf-name" className={labelCls}>Name</label>
+          <label htmlFor="nf-name" className={labelCls}>{who === "agency" ? "Contact person at the agency" : "Name"}</label>
           <input id="nf-name" className={inputCls} value={name} onChange={(e) => setName(e.target.value)} />
         </div>
         <div>

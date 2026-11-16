@@ -67,6 +67,7 @@ const MISSING_LABELS = [
 export default function Quote({
   adminMode = false,
   adminInvoice = false,
+  adminAgency = false,
   onStartOver,
 }: {
   /** Admin → New quote: the exact customer calculator, minus the date and
@@ -75,6 +76,10 @@ export default function Quote({
   /** Admin → New quote in "Invoice" mode: the job's already done — saves it
    *  finished (straight to Awaiting payment) and emails the invoice. */
   adminInvoice?: boolean;
+  /** Admin → agency mode (17 Nov 2026, Ben: "who's this for — customer or
+   *  real estate"): the lead is the agency (name/email/phone), the paperwork
+   *  is addressed to the tenant, work-order number prints on the invoice. */
+  adminAgency?: boolean;
   /** Called from the saved panel to start a fresh quote (Admin remounts). */
   onStartOver?: () => void;
 } = {}) {
@@ -131,6 +136,11 @@ export default function Quote({
   // the top of the quoting/invoicing wizard — prints on the invoice/receipt
   // so the real estate's accounts team can match the payment.
   const [workOrder, setWorkOrder] = useState("");
+  // Agency mode only: the real estate's name (becomes the job's name so it
+  // groups under the agency in Clients) and who the paperwork is addressed
+  // to (the tenant/owner — booking_json.invoiceTo).
+  const [agency, setAgency] = useState("");
+  const [addressedTo, setAddressedTo] = useState("");
   const [codeInput, setCodeInput] = useState("");
   const [appliedCode, setAppliedCode] = useState<{ code: string; percentOff: number } | null>(null);
   const [codeError, setCodeError] = useState("");
@@ -337,7 +347,7 @@ export default function Quote({
   // The plan locks in BOTH cleans — picking it means visit 2 needs a slot too.
   const planValid = plan === "none" || (secondDate !== null && secondSlot !== null);
   const coreValid = [
-    contactValid(contact) && travel !== null,
+    contactValid(contact) && travel !== null && (!adminAgency || agency.trim().length > 0),
     purpose !== null && !breakdown.isEmpty,
     carpetAreaM2 === 0 || conditionComplete(condition),
     true,
@@ -390,7 +400,9 @@ export default function Quote({
       const saving = adminInvoice ? saveInvoice : saveQuote;
       if (saving.isPending || !coreValid.every(Boolean)) return;
       saving.mutate({
-        name: contact.name.trim(),
+        // Agency mode: the job's name is the agency (so it groups under them
+        // in Clients); the contact person rides along in booking_json.
+        name: adminAgency && agency.trim() ? agency.trim() : contact.name.trim(),
         phone: contact.phone.trim(),
         email: contact.email.trim(),
         address: travel?.addressLabel ?? "",
@@ -398,6 +410,8 @@ export default function Quote({
         town: travel?.suburb ?? "",
         notes: notes.trim(),
         workOrderNumber: workOrder.trim(),
+        invoiceTo: addressedTo.trim(),
+        contactName: adminAgency ? contact.name.trim() : "",
         quote: quoteInput,
         sendEmail: sendQuoteEmail,
       });
@@ -536,19 +550,52 @@ export default function Quote({
           </p>
 
           {adminMode && (
-            <div className="mt-6 max-w-md border-[1.5px] border-charcoal bg-background p-4">
-              <label htmlFor="work-order" className="block text-sm font-bold uppercase tracking-widest text-forest">
-                Work order # <span className="font-normal normal-case tracking-normal text-charcoal/60">(optional — real-estate jobs)</span>
-              </label>
-              <input
-                id="work-order"
-                type="text"
-                value={workOrder}
-                onChange={(e) => setWorkOrder(e.target.value)}
-                placeholder="e.g. PT-10492"
-                className="mt-2 w-full border-[1.5px] border-charcoal bg-creamlight px-3 py-2 text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest"
-              />
-              <p className="mt-1.5 text-xs text-charcoal/60">Prints on the invoice so their accounts team can match the payment.</p>
+            <div className="mt-6 max-w-md space-y-4 border-[1.5px] border-charcoal bg-background p-4">
+              {adminAgency && (
+                <div>
+                  <label htmlFor="agency-name" className="block text-sm font-bold uppercase tracking-widest text-forest">
+                    Real estate name
+                  </label>
+                  <input
+                    id="agency-name"
+                    type="text"
+                    value={agency}
+                    onChange={(e) => setAgency(e.target.value)}
+                    placeholder="e.g. Town & Country Armidale"
+                    className="mt-2 w-full border-[1.5px] border-charcoal bg-creamlight px-3 py-2 text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest"
+                  />
+                </div>
+              )}
+              <div>
+                <label htmlFor="work-order" className="block text-sm font-bold uppercase tracking-widest text-forest">
+                  Work order # <span className="font-normal normal-case tracking-normal text-charcoal/60">(optional — real-estate jobs)</span>
+                </label>
+                <input
+                  id="work-order"
+                  type="text"
+                  value={workOrder}
+                  onChange={(e) => setWorkOrder(e.target.value)}
+                  placeholder="e.g. PT-10492"
+                  className="mt-2 w-full border-[1.5px] border-charcoal bg-creamlight px-3 py-2 text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest"
+                />
+                <p className="mt-1.5 text-xs text-charcoal/60">Prints on the invoice so their accounts team can match the payment.</p>
+              </div>
+              {adminAgency && (
+                <div>
+                  <label htmlFor="addressed-to" className="block text-sm font-bold uppercase tracking-widest text-forest">
+                    Addressed to <span className="font-normal normal-case tracking-normal text-charcoal/60">(optional — e.g. the tenants)</span>
+                  </label>
+                  <input
+                    id="addressed-to"
+                    type="text"
+                    value={addressedTo}
+                    onChange={(e) => setAddressedTo(e.target.value)}
+                    placeholder="e.g. J. Smith — tenant"
+                    className="mt-2 w-full border-[1.5px] border-charcoal bg-creamlight px-3 py-2 text-charcoal placeholder:text-charcoal/40 focus:outline-none focus:ring-2 focus:ring-forest"
+                  />
+                  <p className="mt-1.5 text-xs text-charcoal/60">Their name goes on the paperwork; the emails still go to the agency.</p>
+                </div>
+              )}
             </div>
           )}
 
@@ -586,6 +633,7 @@ export default function Quote({
                         contact={contact} setContact={setContact}
                         travel={travel} setTravel={setTravel}
                         confirmBy={confirmBy} setConfirmBy={setConfirmBy}
+                        forAgency={adminAgency}
                       />
                     </section>
                     <section id="q-job">

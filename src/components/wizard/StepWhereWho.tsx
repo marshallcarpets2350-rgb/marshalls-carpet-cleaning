@@ -26,6 +26,7 @@ export default function StepWhereWho({
   setTravel,
   confirmBy,
   setConfirmBy,
+  forAgency = false,
 }: {
   contact: Contact;
   setContact: (c: Contact) => void;
@@ -33,6 +34,9 @@ export default function StepWhereWho({
   setTravel: (t: TravelResult | null) => void;
   confirmBy: ConfirmBy;
   setConfirmBy: (c: ConfirmBy) => void;
+  /** Admin agency mode (17 Nov 2026): the contact details are the real
+   *  estate's — confirmations and invoices go to the agency, not the tenant. */
+  forAgency?: boolean;
 }) {
   // Text confirmations only appear once SMS is connected in admin settings —
   // until then every booking confirms by email, so nobody's promised a text
@@ -48,9 +52,11 @@ export default function StepWhereWho({
   return (
     <div className="space-y-8">
       <StepHeading
-        kicker="Step 1 · Your details"
+        kicker={forAgency ? "Step 1 · Job & agency details" : "Step 1 · Your details"}
         title="Where are we coming?"
-        sub="Your address works out any travel fee. The rest is just so we can confirm your booking."
+        sub={forAgency
+          ? "The property address works out any travel fee. The phone and email are the agency's — that's where the paperwork goes."
+          : "Your address works out any travel fee. The rest is just so we can confirm your booking."}
       />
 
       <div className="border-[1.5px] border-charcoal bg-background p-5 md:p-6">
@@ -58,7 +64,7 @@ export default function StepWhereWho({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="cname" label="Your name">
+        <Field id="cname" label={forAgency ? "Contact person at the agency" : "Your name"}>
           <input
             id="cname"
             className="input-sharp"

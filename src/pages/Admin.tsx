@@ -83,9 +83,38 @@ function OwingBadge() {
 // job in the same wizard and emails the invoice straight out. Module-level on
 // purpose (see OwingBadge note): keeps its state off the Admin parent.
 function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
+  // Who-question first (17 Nov 2026, Ben): customer = the wizard as normal;
+  // real estate = agency name + work order # + addressed-to fields up top.
+  const [who, setWho] = useState<"customer" | "agency" | null>(null);
   const [kind, setKind] = useState<"quote" | "invoice">("quote");
+  if (who === null) {
+    return (
+      <div className="max-w-md">
+        <p className="mb-4 font-display text-2xl font-black text-charcoal">Who's this for?</p>
+        <div className="inline-flex border-[1.5px] border-charcoal" role="group" aria-label="Who's this for?">
+          {(["customer", "agency"] as const).map((w) => (
+            <button
+              key={w}
+              type="button"
+              onClick={() => setWho(w)}
+              className="bg-background px-6 py-3 font-bold text-charcoal/70 first:border-r-[1.5px] first:border-charcoal hover:text-charcoal"
+            >
+              {w === "customer" ? "A customer" : "A real estate"}
+            </button>
+          ))}
+        </div>
+      </div>
+    );
+  }
   return (
     <div>
+      <p className="mb-4 text-sm text-charcoal/60">
+        For: <span className="font-bold text-charcoal">{who === "agency" ? "A real estate" : "A customer"}</span>
+        {" · "}
+        <button type="button" onClick={() => setWho(null)} className="font-semibold text-forest underline-offset-2 hover:underline">
+          change
+        </button>
+      </p>
       <div className="mb-6 inline-flex border-[1.5px] border-charcoal" role="group" aria-label="What are you making?">
         {(["quote", "invoice"] as const).map((k) => (
           <button
@@ -98,7 +127,7 @@ function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
           </button>
         ))}
       </div>
-      <Quote adminMode adminInvoice={kind === "invoice"} key={kind} onStartOver={onStartOver} />
+      <Quote adminMode adminInvoice={kind === "invoice"} adminAgency={who === "agency"} key={`${who}-${kind}`} onStartOver={onStartOver} />
     </div>
   );
 }

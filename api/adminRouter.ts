@@ -99,6 +99,17 @@ const rateOverridesSchema = z.object({
   maintenanceTwoOff: z.number().min(0).max(1).optional(),
 });
 
+/** booking_json metadata for admin-made quotes/invoices (and phoned-in agency
+ *  flood jobs): work-order number, invoice addressee, agency contact — NO
+ *  dates, so the calendar and the automated-message crons ignore the row. */
+function bookingMetaJson(input: { workOrderNumber?: string; invoiceTo?: string; contactName?: string }): string | null {
+  const meta: Record<string, string> = {};
+  if (input.workOrderNumber?.trim()) meta.workOrderNumber = input.workOrderNumber.trim();
+  if (input.invoiceTo?.trim()) meta.invoiceTo = input.invoiceTo.trim();
+  if (input.contactName?.trim()) meta.contactName = input.contactName.trim();
+  return Object.keys(meta).length ? JSON.stringify(meta) : null;
+}
+
 export const adminRouter = createRouter({
   login: publicQuery
     .input(z.object({ password: z.string().min(1).max(200) }))
@@ -406,6 +417,10 @@ export const adminRouter = createRouter({
         activeLeak: z.string().trim().max(30).optional(),
         insurance: z.string().trim().max(30).optional(),
         notes: z.string().trim().max(2000).optional(),
+        // Agency flow (17 Nov 2026) — same fields as saveQuote/saveInvoice.
+        workOrderNumber: z.string().trim().max(80).optional().or(z.literal("")),
+        invoiceTo: z.string().trim().max(255).optional().or(z.literal("")),
+        contactName: z.string().trim().max(255).optional().or(z.literal("")),
       }),
     )
     .mutation(async ({ input }) => {
@@ -446,7 +461,7 @@ export const adminRouter = createRouter({
             notes: input.notes || undefined,
           },
         }),
-        bookingJson: null,
+        bookingJson: bookingMetaJson(input),
         status: "new",
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
@@ -473,6 +488,11 @@ export const adminRouter = createRouter({
         // writes) so it prints on the invoice/receipt automatically. No dates,
         // so the calendar and the crons ignore it.
         workOrderNumber: z.string().trim().max(80).optional().or(z.literal("")),
+        // Agency flow (17 Nov 2026, Ben: "who's this for — customer or real
+        // estate"): invoiceTo = who the paperwork is addressed to (e.g. the
+        // tenants); contactName = the person Ben deals with at the agency.
+        invoiceTo: z.string().trim().max(255).optional().or(z.literal("")),
+        contactName: z.string().trim().max(255).optional().or(z.literal("")),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -502,7 +522,7 @@ export const adminRouter = createRouter({
           quoteOnly: true,
           notes: input.notes || undefined,
         }),
-        bookingJson: input.workOrderNumber ? JSON.stringify({ workOrderNumber: input.workOrderNumber }) : null,
+        bookingJson: bookingMetaJson(input),
         status: "new",
       });
       const id = Number((result[0] as { insertId?: number }).insertId ?? 0);
@@ -567,6 +587,11 @@ export const adminRouter = createRouter({
         // writes) so it prints on the invoice/receipt automatically. No dates,
         // so the calendar and the crons ignore it.
         workOrderNumber: z.string().trim().max(80).optional().or(z.literal("")),
+        // Agency flow (17 Nov 2026, Ben: "who's this for — customer or real
+        // estate"): invoiceTo = who the paperwork is addressed to (e.g. the
+        // tenants); contactName = the person Ben deals with at the agency.
+        invoiceTo: z.string().trim().max(255).optional().or(z.literal("")),
+        contactName: z.string().trim().max(255).optional().or(z.literal("")),
         quote: quoteInputSchema,
         sendEmail: z.boolean().optional(),
       }),
@@ -597,7 +622,7 @@ export const adminRouter = createRouter({
           invoiced: true,
           notes: input.notes || undefined,
         }),
-        bookingJson: input.workOrderNumber ? JSON.stringify({ workOrderNumber: input.workOrderNumber }) : null,
+        bookingJson: bookingMetaJson(input),
         finishedAt: new Date(),
         status: "new",
       });
