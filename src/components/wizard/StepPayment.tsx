@@ -1,9 +1,10 @@
 // Step 6 — payment: the customer's choice. Card runs through Stripe's hosted
 // checkout; PayID and bank transfer go to the Hnry account (details ride in
 // the confirmation email). 9 Nov 2026 (Ben): the "invoice me after the job"
-// option is GONE — every booking now has a concrete way to pay. The bank-
+// option is GONE — every booking now has a concrete way to pay. 17 Nov 2026
+// (Ben): "Cash or PayID on the day" is back as a first-class option. The bank-
 // transfer card appears only once the Hnry account numbers are in BUSINESS
-// (contracts/rates.ts); until then it's card or PayID.
+// (contracts/rates.ts); until then it's card, PayID or cash.
 import { trpc } from "@/providers/trpc";
 import type { PaymentChoice } from "@contracts/rates";
 import { BUSINESS, PAYMENT_LABELS } from "@contracts/rates";
@@ -33,6 +34,13 @@ export function StepPayment({ payment, setPayment, kicker = "Step 6 · Payment" 
           },
         ]
       : []),
+    // 17 Nov 2026 (Ben): cash is back as a first-class choice for customers
+    // who don't bank online — wording/receipts/admin all handled it already
+    // as a legacy value, so this card is the only change needed.
+    {
+      value: "cash",
+      hint: "Pay in cash when the job's done — for rug pick-ups, that's when we drop them back. We'll write your receipt on the spot.",
+    },
   ];
 
   return (
