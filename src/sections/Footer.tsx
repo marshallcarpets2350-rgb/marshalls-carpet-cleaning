@@ -8,7 +8,7 @@ export default function Footer() {
     <footer id="contact" className="border-t-[1.5px] border-charcoal bg-charcoal text-background">
       <div className="mx-auto max-w-6xl px-4 py-16 md:px-6 md:py-20">
         <div className="grid gap-12 md:grid-cols-12">
-          <div className="md:col-span-5">
+          <div className="md:col-span-4">
             <img
               src={logo}
               alt="Marshall's Carpet Cleaning"
@@ -53,11 +53,15 @@ export default function Footer() {
             </ul>
           </div>
 
-          <div className="md:col-span-2">
+          <div className="md:col-span-3">
             <h3 className="text-sm font-bold uppercase tracking-widest text-mint">
               Monthly deals, one email
             </h3>
-            <div className="mt-4 [&_input]:border-background [&_input]:bg-transparent [&_input]:text-background [&_input]:placeholder:text-background/50">
+            {/* The footer column is too narrow for the form's 3-across layout —
+                the "Get the deals" button used to stick 18px past the viewport
+                edge on desktop (fixed 18 Nov 2026). Stack it vertically here;
+                the inline newsletter section keeps the wide 3-across layout. */}
+            <div className="mt-4 [&_form]:sm:grid-cols-1 [&_input]:border-background [&_input]:bg-transparent [&_input]:text-background [&_input]:placeholder:text-background/50">
               <NewsletterForm source="footer" />
             </div>
           </div>
