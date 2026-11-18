@@ -31,7 +31,7 @@ export const RATES = {
     perM2: { light: 4.2, medium: 4.6, heavy: 7.8 } as Record<Dirtiness, number>, // display only
     multiplier: { light: 1, medium: 1.1, heavy: 1.85 } as Record<Dirtiness, number>,
   },
-  minimumCharge: 150, // BFYB's minimum callout is $289
+  minimumCharge: 175, // BFYB's minimum callout is $289 — we're still ~40% under (raised $150→$175 18 Nov 2026, owner call)
   lounge: {
     perSeat: { light: 63, medium: 69, heavy: 79 } as Record<Dirtiness, number>, // BFYB: $97/seat flat
     reclinerPerSeat: 16,
@@ -1113,7 +1113,7 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   // breakdown (always 0) so stored quotes and receipts keep their shape.
   const crossSellDiscount = 0;
 
-  // The $150 minimum covers the truck and the trip — it exists for on-site
+  // The $175 minimum covers the truck and the trip — it exists for on-site
   // work. A rug-only pickup runs with the Friday pickup run, so it
   // doesn't carry the minimum.
   const onsiteWork =
