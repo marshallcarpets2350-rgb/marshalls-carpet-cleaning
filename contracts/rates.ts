@@ -21,12 +21,16 @@ export const RATES = {
     // stay multipliers on the stepped figure.
     // 6 Nov 2026: 5% price rise across the board (owner call) — the old
     // $4.00/$3.80/$3.60/$3.40 ladder becomes $4.20/$4.00/$3.80/$3.60.
+    // 18 Nov 2026 (owner call — "tier nudge"): top band $3.60 → $3.90/m².
+    // The ladder was leaving ~27% gaps under BFYB on 100m²+ jobs; $3.90
+    // keeps every big job 20%+ under them but banks ~$25–60 more per job.
+    // Small jobs and the $150 minimum untouched.
     // Seasonal promos (below) then take 10% off at the quiet times of year.
     tiers: [
       { upTo: 40, perM2: 4.2 },
       { upTo: 60, perM2: 4.0 },
       { upTo: 80, perM2: 3.8 },
-      { upTo: Infinity, perM2: 3.6 },
+      { upTo: Infinity, perM2: 3.9 },
     ] as { upTo: number; perM2: number }[],
     perM2: { light: 4.2, medium: 4.6, heavy: 7.8 } as Record<Dirtiness, number>, // display only
     multiplier: { light: 1, medium: 1.1, heavy: 1.85 } as Record<Dirtiness, number>,
@@ -972,8 +976,8 @@ export function rugPickupTravelFee(
 
 /**
  * Standard-clean carpet figure for an area, before the clean-level
- * multiplier. Walks the stepped rate ladder: $4.00/m² to 40m², $3.80 to
- * 60m², $3.60 to 80m², $3.40 beyond — each band prices only its own metres.
+ * multiplier. Walks the stepped rate ladder: $4.20/m² to 40m², $4.00 to
+ * 60m², $3.80 to 80m², $3.90 beyond — each band prices only its own metres.
  */
 export function carpetStandardForArea(areaM2: number, rates: Rates = DEFAULT_RATES): number {
   let remaining = areaM2;
