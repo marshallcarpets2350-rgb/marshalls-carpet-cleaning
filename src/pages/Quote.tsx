@@ -34,7 +34,7 @@ import {
   type MaintenancePlan,
   type MattressItem,
 } from "@contracts/rates";
-import StepWhereWho, { contactValid, type Contact } from "@/components/wizard/StepWhereWho";
+import StepWhereWho, { contactValid, fullName, type Contact } from "@/components/wizard/StepWhereWho";
 import StepJob, { ROOMS } from "@/components/wizard/StepJob";
 import { StepCarpet } from "@/components/wizard/StepCarpet";
 import { StepExtras } from "@/components/wizard/StepExtras";
@@ -96,8 +96,12 @@ export default function Quote({
   const [review, setReview] = useState(false);
 
   // --- step 1: where & who ---
+  // Split first/last name boxes (18 Nov 2026, owner call) — an agency preset
+  // arrives as one string, so first word = first name, the rest = last.
+  const presetName = (invoicePreset?.contactName ?? "").trim().split(/\s+/);
   const [contact, setContact] = useState<Contact>({
-    name: invoicePreset?.contactName ?? "",
+    firstName: invoicePreset?.contactName ? presetName[0] : "",
+    lastName: invoicePreset?.contactName ? presetName.slice(1).join(" ") : "",
     email: invoicePreset?.email ?? "",
     phone: invoicePreset?.phone ?? "",
     marketingOptIn: false,
@@ -199,7 +203,7 @@ export default function Quote({
       stashThanks({
         reference: r.reference,
         total: r.total,
-        firstName: firstNameOf(contact.name),
+        firstName: firstNameOf(fullName(contact)),
         date: whenFlexible ? null : whenDate,
         slot: whenFlexible ? null : whenSlot,
         flexible: whenFlexible,
@@ -425,7 +429,7 @@ export default function Quote({
       saving.mutate({
         // Agency mode: the job's name is the agency (so it groups under them
         // in Clients); the contact person rides along in booking_json.
-        name: adminAgency && agency.trim() ? agency.trim() : contact.name.trim(),
+        name: adminAgency && agency.trim() ? agency.trim() : fullName(contact),
         phone: contact.phone.trim(),
         email: contact.email.trim(),
         address: travel?.addressLabel ?? "",
@@ -434,7 +438,7 @@ export default function Quote({
         notes: notes.trim(),
         workOrderNumber: workOrder.trim(),
         invoiceTo: addressedTo.trim(),
-        contactName: adminAgency ? contact.name.trim() : "",
+        contactName: adminAgency ? fullName(contact) : "",
         saveAgency: adminAgency,
         quote: quoteInput,
         sendEmail: sendQuoteEmail,
@@ -463,7 +467,7 @@ export default function Quote({
           : null,
     };
     submitLead.mutate({
-      name: contact.name.trim(),
+      name: fullName(contact),
       email: contact.email.trim(),
       phone: contact.phone.trim(),
       address: travel?.addressLabel,

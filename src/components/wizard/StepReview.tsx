@@ -5,7 +5,7 @@ import type { ReactNode } from "react";
 import type { ConditionAnswers, Dirtiness, MaintenancePlan, PaymentChoice, QuoteBreakdown, ConfirmBy } from "@contracts/rates";
 import { CONFIRM_LABELS, PAYMENT_LABELS, PURPOSE_LABELS, RATES, TIME_SLOTS, SLOT_MINUTES, money, rugReturnDay } from "@contracts/rates";
 import type { TravelResult } from "@/components/AddressField";
-import type { Contact } from "./StepWhereWho";
+import { fullName, type Contact } from "./StepWhereWho";
 import { StepHeading } from "./ui";
 
 const DIRTINESS_LABELS: Record<Dirtiness, string> = {
@@ -137,7 +137,7 @@ export function StepReview({
       />
 
       <div className="border-[1.5px] border-charcoal bg-background px-5 py-2">
-        <Row label={invoiceMode ? "Review details" : "Your details"} value={`${contact.name} · ${contact.phone} · ${contact.email}${travel?.addressLabel ? ` — ${travel.addressLabel}` : ""} · confirm by ${CONFIRM_LABELS[confirmBy]}`} onEdit={() => onGoToStep(stepOf.where)} />
+        <Row label={invoiceMode ? "Review details" : "Your details"} value={`${fullName(contact)} · ${contact.phone} · ${contact.email}${travel?.addressLabel ? ` — ${travel.addressLabel}` : ""} · confirm by ${CONFIRM_LABELS[confirmBy]}`} onEdit={() => onGoToStep(stepOf.where)} />
         <Row label={invoiceMode ? "The job" : hasCarpet ? "Your home" : "The items"} value={jobBits.join(" · ")} onEdit={() => onGoToStep(stepOf.job)} />
         {hasCarpet && (
           <Row label="Carpet condition" value={`${DIRTINESS_LABELS[dirtiness]} — ${conditionSummary(condition)}`} onEdit={() => onGoToStep(stepOf.carpet)} />

@@ -2,20 +2,28 @@ import { useEffect } from "react";
 import AddressField, { type TravelResult } from "@/components/AddressField";
 import { Field, StepHeading, PillGroup } from "./ui";
 import { trpc } from "@/providers/trpc";
-import type { ConfirmBy } from "@contracts/rates";
+import { phoneOk, type ConfirmBy } from "@contracts/rates";
 
 export interface Contact {
-  name: string;
+  firstName: string;
+  lastName: string;
   email: string;
   phone: string;
   marketingOptIn: boolean;
 }
 
+/** "First Last" for the leads row + every email greeting (18 Nov 2026, owner:
+ *  split the name box so we always capture both). */
+export function fullName(c: Pick<Contact, "firstName" | "lastName">): string {
+  return `${c.firstName.trim()} ${c.lastName.trim()}`.replace(/\s+/g, " ").trim();
+}
+
 export function contactValid(c: Contact): boolean {
   return (
-    c.name.trim().length > 0 &&
+    c.firstName.trim().length > 0 &&
+    c.lastName.trim().length > 0 &&
     /\S+@\S+\.\S+/.test(c.email) &&
-    c.phone.trim().length >= 6
+    phoneOk(c.phone)
   );
 }
 
@@ -64,37 +72,55 @@ export default function StepWhereWho({
       </div>
 
       <div className="grid gap-4 sm:grid-cols-2">
-        <Field id="cname" label={forAgency ? "Contact person at the agency" : "Your name"}>
+        <Field id="cfname" label={forAgency ? "Contact first name" : "First name"}>
           <input
-            id="cname"
+            id="cfname"
             className="input-sharp"
-            autoComplete="name"
-            value={contact.name}
-            onChange={(e) => setContact({ ...contact, name: e.target.value })}
+            autoComplete="given-name"
+            value={contact.firstName}
+            onChange={(e) => setContact({ ...contact, firstName: e.target.value })}
           />
         </Field>
-        <Field id="cphone" label="Phone">
+        <Field id="clname" label={forAgency ? "Contact last name" : "Last name"}>
+          <input
+            id="clname"
+            className="input-sharp"
+            autoComplete="family-name"
+            value={contact.lastName}
+            onChange={(e) => setContact({ ...contact, lastName: e.target.value })}
+          />
+        </Field>
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field id="cphone" label="Phone — mobile's best">
           <input
             id="cphone"
             className="input-sharp"
             type="tel"
             autoComplete="tel"
+            inputMode="tel"
+            placeholder="04xx xxx xxx"
             value={contact.phone}
             onChange={(e) => setContact({ ...contact, phone: e.target.value })}
           />
         </Field>
+        <Field id="cemail" label="Email">
+          <input
+            id="cemail"
+            className="input-sharp"
+            type="email"
+            autoComplete="email"
+            value={contact.email}
+            onChange={(e) => setContact({ ...contact, email: e.target.value })}
+          />
+        </Field>
       </div>
-      <Field id="cemail" label="Email">
-        <input
-          id="cemail"
-          className="input-sharp max-w-md"
-          type="email"
-          autoComplete="email"
-          value={contact.email}
-          onChange={(e) => setContact({ ...contact, email: e.target.value })}
-        />
-      </Field>
-
+      {contact.phone.trim().length > 0 && !phoneOk(contact.phone) && (
+        <p className="-mt-4 text-sm font-semibold text-destructive" role="alert">
+          That doesn't look like an Aussie number — we need a real one so we can
+          confirm your booking (e.g. 04xx xxx xxx).
+        </p>
+      )}
       <div>
         {smsAvailable ? (
           <>

@@ -1209,6 +1209,15 @@ export const money = (n: number) =>
  * their title or SHOUTS in caps is still greeted by their actual first name.
  * Returns "there" when nothing usable is left ("Hi there," reads fine).
  */
+// AU phone check — shared by the wizard and the server (18 Nov 2026, owner:
+// "make correct phone number mandatory" after a booking arrived with a word
+// in the phone field). Accepts mobiles + landlines: 04xx xxx xxx,
+// 0x xxxx xxxx, +61… — spaces, dashes and brackets are fine.
+export function phoneOk(raw: string): boolean {
+  const n = raw.replace(/[\s()-]/g, "");
+  return /^(\+61|61|0)\d{9}$/.test(n);
+}
+
 export function firstNameOf(fullName: string): string {
   const TITLES = new Set([
     "mr", "mrs", "ms", "miss", "mx", "dr", "prof", "rev", "fr", "sir",

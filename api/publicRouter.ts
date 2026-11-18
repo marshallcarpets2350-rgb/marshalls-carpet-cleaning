@@ -30,6 +30,7 @@ import {
   travelFeeForTown,
   rugPickupTravelFee,
   RATES,
+  phoneOk,
   BOOKING_DAYS_AHEAD,
   BOOKING_NOTICE_DAYS,
   TIME_SLOTS,
@@ -316,7 +317,14 @@ export const publicRouter = createRouter({
       z.object({
         name: z.string().trim().min(1).max(255),
         email: emailSchema,
-        phone: z.string().trim().min(6).max(40),
+        // Real AU numbers only (18 Nov 2026, owner: a booking once arrived
+        // with a word in the phone field). Flood endpoints stay loose —
+        // emergencies keep the friction low.
+        phone: z
+          .string()
+          .trim()
+          .max(40)
+          .refine(phoneOk, "That doesn't look like an Australian phone number."),
         address: z.string().trim().max(500).optional(),
         suburb: z.string().trim().max(255).optional(),
         distanceKm: z.number().min(0).max(500).nullable(),

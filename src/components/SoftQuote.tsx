@@ -37,7 +37,7 @@ import {
   type QuoteInput,
   type RugItem,
 } from "@contracts/rates";
-import StepWhereWho, { contactValid, type Contact } from "@/components/wizard/StepWhereWho";
+import StepWhereWho, { contactValid, fullName, type Contact } from "@/components/wizard/StepWhereWho";
 import StepItems from "@/components/wizard/StepItems";
 import { StepExtras } from "@/components/wizard/StepExtras";
 import { StepWhen } from "@/components/wizard/StepWhen";
@@ -99,7 +99,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
   const [review, setReview] = useState(false);
 
   // --- where & who ---
-  const [contact, setContact] = useState<Contact>({ name: "", email: "", phone: "", marketingOptIn: false });
+  const [contact, setContact] = useState<Contact>({ firstName: "", lastName: "", email: "", phone: "", marketingOptIn: false });
   const [travel, setTravel] = useState<TravelResult | null>(null);
   const [confirmBy, setConfirmBy] = useState<ConfirmBy>("either");
 
@@ -149,7 +149,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       stashThanks({
         reference: r.reference,
         total: r.total,
-        firstName: firstNameOf(contact.name),
+        firstName: firstNameOf(fullName(contact)),
         date: whenFlexible ? null : whenDate,
         slot: whenFlexible || isRugs ? null : whenSlot,
         flexible: whenFlexible,
@@ -345,7 +345,7 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
       secondVisit: null,
     };
     submitLead.mutate({
-      name: contact.name.trim(),
+      name: fullName(contact),
       email: contact.email.trim(),
       phone: contact.phone.trim(),
       address: travel?.addressLabel,
