@@ -2756,6 +2756,15 @@ export default function Admin() {
               const overdue = days !== null && days < 0;
               const ref = `MCC-${String(r.id).padStart(4, "0")}`;
               const what = (quote?.breakdown?.lines ?? []).map((l) => l.label).join(", ");
+              // Suburb only gets appended when the address doesn't already
+              // include it (Google-style addresses end with it anyway).
+              const addr = (r.address ?? "").trim();
+              const sub = (r.suburb ?? "").trim();
+              const where = addr
+                ? sub && !addr.toLowerCase().includes(sub.toLowerCase())
+                  ? `${addr}, ${sub}`
+                  : addr
+                : sub;
               const watchFor = quote?.invoiced
                 ? `On invoice terms — watch Hnry/the bank for ${money(r.total)}, reference ${ref}.`
                 : !booking?.payment || booking.payment === "pay-on-day"
@@ -2781,6 +2790,9 @@ export default function Admin() {
                         {booking?.town || r.suburb || "Location n/a"}
                         {what ? ` · ${what}` : ""}
                       </span>
+                      {where && (
+                        <span className="block text-sm text-charcoal/60">📍 {where}</span>
+                      )}
                       <span className="mt-1 block text-sm">
                         <a href={`tel:${r.phone}`} className="font-semibold text-forest">{r.phone}</a>
                         {" · "}
@@ -2989,6 +3001,9 @@ export default function Admin() {
                         {r.finishedAt &&
                           ` · ticked off ${new Date(r.finishedAt).toLocaleDateString("en-AU", { day: "numeric", month: "short", year: "numeric" })}`}
                       </span>
+                      {where && (
+                        <span className="block text-sm text-charcoal/60">📍 {where}</span>
+                      )}
                     </span>
                     <span className="flex items-center gap-4">
                       <span className="font-display text-xl font-black text-forest">{money(r.total)}</span>
