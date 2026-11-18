@@ -1406,6 +1406,38 @@ export const emptyCondition: ConditionAnswers = {
   vacuumed: null,
 };
 
+/**
+ * One glanceable line for the admin Jobs list + run sheet (17 Nov 2026, Ben —
+ * "tells me key details like amount of stains, restoration clean or what
+ * types of clean"): "5+ stains (pet accidents) · indoor pets · noticeable
+ * smell · last vacuumed over a month ago". Only the answered parts show.
+ */
+export function conditionLine(c: ConditionAnswers | null | undefined): string | null {
+  if (!c) return null;
+  const parts: string[] = [];
+  const STAINS: Record<StainsAnswer, string> = {
+    none: "no stains",
+    "under-5": "a few stains",
+    "over-5": "5+ stains",
+    "ten-plus": "10+ stains",
+  };
+  if (c.stains) {
+    let s = STAINS[c.stains];
+    if (c.stains !== "none" && c.stainTypes.length > 0)
+      s += ` (${c.stainTypes.map((t) => STAIN_TYPE_LABELS[t]).join(", ")})`;
+    parts.push(s);
+  }
+  if (c.pets === "inside") parts.push("indoor pets");
+  else if (c.pets === "outside") parts.push("outdoor pets");
+  else if (c.pets === "none") parts.push("no pets");
+  if (c.smell === "noticeable") parts.push("noticeable smell");
+  else if (c.smell === "up-close") parts.push("slight smell up close");
+  if (c.vacuumed === "week") parts.push("vacuumed this week");
+  else if (c.vacuumed === "month") parts.push("vacuumed this month");
+  else if (c.vacuumed === "longer") parts.push("not vacuumed in over a month");
+  return parts.length ? parts.join(" · ") : null;
+}
+
 export function conditionComplete(c: ConditionAnswers): boolean {
   return Boolean(
     c.pets &&

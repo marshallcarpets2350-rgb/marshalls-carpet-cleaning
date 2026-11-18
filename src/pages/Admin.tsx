@@ -26,6 +26,7 @@ import {
   RUG_SIZES,
   serviceSummary,
   serviceKinds,
+  conditionLine,
   type BookingDetails,
   type QuoteInput,
   type Rates,
@@ -1015,6 +1016,11 @@ export default function Admin() {
                         <li key={li}>• {line}</li>
                       ))}
                     </ul>
+                    {j.condition && (
+                      <p className="mt-2.5 border-[1.5px] border-charcoal/30 bg-creamlight px-3 py-2 text-sm font-semibold text-charcoal/80">
+                        🔎 {j.condition}
+                      </p>
+                    )}
                     {j.extras.length > 0 && (
                       <p className="mt-2.5 border-[1.5px] border-forest/40 bg-mintlight px-3 py-2 text-sm font-bold text-forest">
                         ✚ Extras booked: {j.extras.join(" · ")}
@@ -1328,6 +1334,11 @@ export default function Admin() {
                       <span className="mt-0.5 block text-sm font-semibold text-charcoal/80">
                         {serviceSummary(quote?.input ?? null, booking?.rugPickup ?? false)}
                       </span>
+                      {conditionLine(booking?.condition) && (
+                        <span className="block text-sm text-charcoal/60">
+                          🔎 {conditionLine(booking?.condition)}
+                        </span>
+                      )}
                     </span>
                     <span className="flex items-center gap-4">
                       {!when && (

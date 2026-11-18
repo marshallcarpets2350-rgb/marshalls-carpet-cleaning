@@ -5,7 +5,7 @@ import { publicQuery } from "./middleware";
 import { getDb } from "./queries/connection";
 import { subscribers, leads, campaigns, discountCodes, availabilityBlocks } from "@db/schema";
 import { eq, desc, count, gte, isNotNull } from "drizzle-orm";
-import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, floodPrices, floodReportCharges, computeQuote, travelFeeForTown, estimateJobMinutes, slotsNeededFor, type QuoteInput, type ServiceKind } from "@contracts/rates";
+import { TIME_SLOTS, SLOT_START_MINUTES, HOME_BASE, driveMinutesFor, driveBetween, serviceSummary, serviceParts, serviceKinds, conditionLine, floodPrices, floodReportCharges, computeQuote, travelFeeForTown, estimateJobMinutes, slotsNeededFor, type QuoteInput, type ServiceKind } from "@contracts/rates";
 import { bookableDates, slotAllowedNow, canStart } from "@contracts/calendar";
 import { quoteInputSchema, calendarLoad } from "./publicRouter";
 import { getSetting, getSettings, setSetting, RATE_OVERRIDES_KEY, loadRates } from "./queries/settings";
@@ -1407,6 +1407,7 @@ export const adminRouter = createRouter({
         town: string;
         lines: string[]; // main work items, one per line
         extras: string[]; // treatment/extras the customer chose
+        condition: string | null; // stains/pets/smell/vacuum at a glance
         warning: string | null; // e.g. pet stains without stain treatment
         notes: string | null;
         kinds: ServiceKind[];
@@ -1477,6 +1478,7 @@ export const adminRouter = createRouter({
           town: b.town || row.suburb || "Armidale",
           lines: sp.main,
           extras: sp.extras,
+          condition: conditionLine(cond ?? null),
           warning:
             petStain && !treatmentBooked
               ? "Pet stains on this one, but no stain treatment booked — straight clean only, no stain chemicals."
