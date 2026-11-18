@@ -291,6 +291,18 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
     setReview(true);
     window.scrollTo({ top: 0, behavior: "smooth" });
   };
+  // Never a dead button — tapping Continue with gaps scrolls straight to the
+  // first unfinished section (18 Nov 2026, owner: "it won't let me send").
+  const tapContinue = () => {
+    if (allValid) {
+      openReview();
+      return;
+    }
+    const k = sectionKeys.find((key) => !validByKey[key]);
+    document
+      .getElementById(SECTION_IDS[sectionKeys.indexOf(k ?? sectionKeys[0])] ?? "")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const backToForm = (section?: number) => {
     setSlotConflict(false);
     setReview(false);
@@ -507,15 +519,14 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
                   <div className="mt-12 text-center">
                     <button
                       type="button"
-                      onClick={openReview}
-                      disabled={!allValid}
-                      className="btn-pill px-10 py-4 text-xl disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={tapContinue}
+                      className={`btn-pill px-10 py-4 text-xl ${allValid ? "" : "opacity-60"}`}
                     >
                       Continue → check it &amp; send
                     </button>
                     {!allValid && (
-                      <p className="mx-auto mt-3 max-w-md text-sm text-charcoal/60">
-                        Still needed: {missing.join(" · ")}
+                      <p className="mx-auto mt-3 max-w-md text-base font-bold text-destructive">
+                        Still needed: {missing.join(" · ")} — tap Continue and we'll take you straight to it.
                       </p>
                     )}
                   </div>
@@ -768,9 +779,8 @@ export default function SoftQuote({ kind }: { kind: "lounge" | "rugs" }) {
           {!review ? (
             <button
               type="button"
-              onClick={openReview}
-              disabled={!allValid}
-              className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={tapContinue}
+              className={`btn-pill ${allValid ? "" : "opacity-60"}`}
             >
               Continue →
             </button>

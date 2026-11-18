@@ -373,16 +373,32 @@ export default function Quote({
   const whenValid = whenFlexible || (whenDate !== null && whenSlot !== null);
   // The plan locks in BOTH cleans — picking it means visit 2 needs a slot too.
   const planValid = plan === "none" || (secondDate !== null && secondSlot !== null);
+  // Admin quotes/invoices don't need the reason or the carpet questions —
+  // Benji often quotes over the phone without knowing pets/odour/stains
+  // (18 Nov 2026, owner: "it won't let me send the quote"). Condition still
+  // drives the recommended clean on the PUBLIC form.
   const coreValid = [
     contactValid(contact) && travel !== null && (!adminAgency || agency.trim().length > 0),
-    purpose !== null && !breakdown.isEmpty,
-    carpetAreaM2 === 0 || conditionComplete(condition),
+    (purpose !== null || adminMode) && !breakdown.isEmpty,
+    carpetAreaM2 === 0 || conditionComplete(condition) || adminMode,
     true,
     true, // soft furnishings are optional — nothing to validate
     (whenValid && planValid) || adminMode,
     payment !== null || adminMode,
   ];
   const allValid = coreValid.every(Boolean);
+  const firstMissing = coreValid.findIndex((v) => !v);
+  // Never a dead button: tapping Continue with gaps scrolls you straight to
+  // the first unfinished section (public + admin, 18 Nov 2026).
+  const tapContinue = () => {
+    if (allValid) {
+      openReview();
+      return;
+    }
+    document
+      .getElementById(SECTION_IDS[firstMissing] ?? "")
+      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+  };
   const missingLabels = [...MISSING_LABELS];
   if (whenValid && !planValid) missingLabels[5] = "visit 2's day and time";
   const missing = missingLabels.filter((l, i) => l && !coreValid[i]);
@@ -786,9 +802,8 @@ export default function Quote({
                   <div className="mt-12 text-center">
                     <button
                       type="button"
-                      onClick={openReview}
-                      disabled={!allValid}
-                      className="btn-pill px-10 py-4 text-xl disabled:cursor-not-allowed disabled:opacity-40"
+                      onClick={tapContinue}
+                      className={`btn-pill px-10 py-4 text-xl ${allValid ? "" : "opacity-60"}`}
                     >
                       {adminMode
                         ? adminInvoice
@@ -797,8 +812,8 @@ export default function Quote({
                         : "Continue → check it & send"}
                     </button>
                     {!allValid && (
-                      <p className="mx-auto mt-3 max-w-md text-sm text-charcoal/60">
-                        Still needed: {missing.join(" · ")}
+                      <p className="mx-auto mt-3 max-w-md text-base font-bold text-destructive">
+                        Still needed: {missing.join(" · ")} — tap Continue and we'll take you straight to it.
                       </p>
                     )}
                   </div>
@@ -1084,9 +1099,8 @@ export default function Quote({
           {!review ? (
             <button
               type="button"
-              onClick={openReview}
-              disabled={!allValid}
-              className="btn-pill disabled:cursor-not-allowed disabled:opacity-40"
+              onClick={tapContinue}
+              className={`btn-pill ${allValid ? "" : "opacity-60"}`}
             >
               Continue →
             </button>
