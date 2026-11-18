@@ -33,7 +33,7 @@ export const RATES = {
   },
   minimumCharge: 150, // BFYB's minimum callout is $289 (trialled $175 briefly on 18 Nov 2026, owner reverted same day — keep $150)
   lounge: {
-    perSeat: { light: 63, medium: 69, heavy: 79 } as Record<Dirtiness, number>, // BFYB: $97/seat flat
+    perSeat: { light: 60, medium: 69, heavy: 79 } as Record<Dirtiness, number>, // BFYB: $97/seat flat. Light $63→$60 on 18 Nov 2026 (owner call) — round marketable number, keeps every lounge 15%+ under BOTH BFYB and Electrodry.
     reclinerPerSeat: 16,
   },
   mattress: {
