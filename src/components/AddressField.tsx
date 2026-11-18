@@ -461,6 +461,18 @@ export default function AddressField({ value, onChange }: Props) {
         </div>
       )}
 
+      {/**
+        * 18 Nov 2026 (owner: "the red writing is blocking the send button"):
+        * the #1 invisible blocker was a typed-but-never-picked address —
+        * travel stays unresolved and the gate fails with no hint why.
+        * Say so right under the field the moment matches are sitting there.
+        */}
+      {!value && !searching && query.trim().length >= 6 && suggestions.length > 0 && (
+        <p className="mt-2 text-sm font-bold text-destructive">
+          Nearly there — tap your address in the list so we can work out the travel.
+        </p>
+      )}
+
       {(failed || (!value && query.length >= 4 && !searching && suggestions.length === 0)) && (
         <div className="mt-3">
           <p className="text-sm font-semibold text-charcoal/80">

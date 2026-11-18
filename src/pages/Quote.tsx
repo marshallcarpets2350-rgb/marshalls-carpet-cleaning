@@ -23,6 +23,7 @@ import {
   emptyCondition,
   emptyAccess,
   firstNameOf,
+  phoneOk,
   type BookingDetails,
   type CleanPurpose,
   type ConditionAnswers,
@@ -407,8 +408,26 @@ export default function Quote({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const missingLabels = [...MISSING_LABELS];
-  if (adminMode) missingLabels[0] = "the customer's name and address (pick the address from the list)";
   if (whenValid && !planValid) missingLabels[5] = "visit 2's day and time";
+  // Spell out exactly which contact detail is the problem — the old lump
+  // ("your address, name, phone and email") read like a wall and left
+  // customers (and Benji on phone quotes) stuck with no idea what to fix
+  // (18 Nov 2026, owner: "the red writing is blocking the send button").
+  // Usual culprit: address typed but never picked from the dropdown list.
+  if (!coreValid[0]) {
+    const gaps: string[] = [];
+    const nameMissing = adminMode
+      ? fullName(contact).length === 0
+      : !(contact.firstName.trim() && contact.lastName.trim());
+    if (nameMissing) gaps.push("the name");
+    if (!adminMode) {
+      if (!/\S+@\S+\.\S+/.test(contact.email)) gaps.push("a valid email");
+      if (!phoneOk(contact.phone)) gaps.push("a valid mobile number");
+    }
+    if (travel === null) gaps.push("the address — tap it in the list that pops up as you type");
+    if (adminAgency && agency.trim().length === 0) gaps.push("the real estate's name");
+    if (gaps.length > 0) missingLabels[0] = gaps.join(" · ");
+  }
   const missing = missingLabels.filter((l, i) => l && !coreValid[i]);
 
   const openReview = () => {
