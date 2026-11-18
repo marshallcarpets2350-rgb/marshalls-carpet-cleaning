@@ -16,6 +16,7 @@
 import {
   BFYB_MODEL,
   BFYB_UNDERCUT_PERCENT,
+  FLOOD_UNDERCUT_PERCENT,
   ELECTRO_MODEL,
   ELECTRO_VERIFY_MAX_AGE_MS,
   RATES,
@@ -85,8 +86,10 @@ export interface PriceWatchMargin {
   /** Our list price before the automatic undercut discount, for context. */
   oursList: number;
   theirs: number;
-  /** Our price as a % of theirs — must stay under 100 - BFYB_UNDERCUT_PERCENT. */
+  /** Our price as a % of theirs — must stay under 100 - (undercut ?? BFYB_UNDERCUT_PERCENT). */
   pctOfTheirs: number;
+  /** Rows priced off a different promise (flood runs its own undercut). */
+  undercut?: number;
 }
 
 export interface PriceWatchReport {
@@ -528,7 +531,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         pctOfTheirs: Math.round(((3 * RATES.lounge.perSeat.light) / (3 * upholstery.from)) * 100),
       });
     }
-    // Flood: our inspection and fan hire run 20% under their published rates,
+    // Flood: our rates run FLOOD_UNDERCUT_PERCENT under their published ones,
     // and our hourly labour must land under their "starts at" extraction
     // callouts on a typical 2-hour extraction — verify all of it held.
     if (effectiveModel.flood) {
@@ -539,6 +542,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         oursList: our,
         theirs: their,
         pctOfTheirs: Math.round((our / their) * 100),
+        undercut: FLOOD_UNDERCUT_PERCENT,
       });
       margins.push(row("Flood inspection", ours.inspection, effectiveModel.flood.inspection));
       margins.push(
@@ -653,12 +657,13 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   }
 
   const undercutHolds = margins.every(
-    (m) => m.pctOfTheirs <= 100 - BFYB_UNDERCUT_PERCENT,
-  ) && !drifts.some((d) => d.includes("under the 17% rule"));
+    (m) => m.pctOfTheirs <= 100 - (m.undercut ?? BFYB_UNDERCUT_PERCENT),
+  ) && !drifts.some((d) => d.includes(`under the ${BFYB_UNDERCUT_PERCENT}% rule`));
   for (const m of margins) {
-    if (m.pctOfTheirs > 100 - BFYB_UNDERCUT_PERCENT) {
+    const need = m.undercut ?? BFYB_UNDERCUT_PERCENT;
+    if (m.pctOfTheirs > 100 - need) {
       drifts.push(
-        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${BFYB_UNDERCUT_PERCENT}% promise needs a rates review`,
+        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${need}% promise needs a rates review`,
       );
     }
   }

@@ -129,10 +129,11 @@ export const BUSINESS = {
 /** Every quote stays at least this far under BFYB's comparable total.
  *  Launch strategy (first 6 months): a full 17% under, so the specialised
  *  and expensive cleans undercut them hardest while we build the name.
- *  18 Nov 2026 (owner call): relaxed 17% → 15% now the name's building. */
+ *  18 Nov 2026 (owner calls): tried 15% for a few hours, then settled on a
+ *  full 20% under to win the bookings while the name's still building. */
 // Launch strategy (first 6 months): every quote stays at least this far
 // under BFYB's live price for the same job. Re-checked daily by priceWatch.
-export const BFYB_UNDERCUT_PERCENT = 15;
+export const BFYB_UNDERCUT_PERCENT = 20;
 // ---------------------------------------------------------------------------
 
 export interface BfybModel {
@@ -290,7 +291,7 @@ export const ELECTRO_MODEL: ElectroModel = {
 export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
-// Flood & water damage — published prices, 20% under BFYB's published flood
+// Flood & water damage — published prices, 15% under BFYB's published flood
 // rates ($182 inspection, extraction from $289/$409 — read off their booking
 // config). The daily price watch re-reads theirs; floodPrices() follows their
 // moves automatically. These constants are the fallbacks (verified 3 Nov 2026).
@@ -299,29 +300,31 @@ export const ELECTRO_VERIFY_MAX_AGE_MS = 48 * 60 * 60 * 1000;
 // stay flat — verified from their site 12 Nov) also publishes labour bands
 // ($120 weekday / $168 after-hours / $199 Sat / $229 Sun per tech), travel
 // ($1.30/km + $84/hr tech time from Armidale) and admin ($77) / insurer
-// report ($264) fees. Ours added at 20% under each.
-export const FLOOD_UNDERCUT_PERCENT = 20;
+// report ($264) fees. Ours added at 20% under each; 18 Nov 2026 (owner call)
+// every flood line moved to 15% under (insurer-paid work is less
+// price-sensitive than retail).
+export const FLOOD_UNDERCUT_PERCENT = 15;
 
 export const FLOOD_RATES = {
-  inspection: 145, // floor(182 × 0.8) — moisture readings, photos, insurer-ready scope
-  labourPerHour: 80, // Mon–Fri standard hours, per technician — 2 techs × 2h = $320 vs their $409 (78%)
-  labourAfterHours: 120, // Mon–Fri 7 PM – 7 AM, per technician (1.5× standard loading)
-  labourSaturday: 159, // floor(199 × 0.8) — Saturday, all day, per technician
-  labourSunday: 183, // floor(229 × 0.8) — Sunday, all day, per technician
-  fanPerDay: 32, // floor(41 × 0.8) — drying fans, per fan per day
-  travelPerKm: 1.04, // 1.30 × 0.8 — distance from Armidale, insurer-itemised
-  travelTechPerHour: 67, // floor(84 × 0.8) — technician time on the road
-  adminFee: 61, // floor(77 × 0.8) — administration & job coordination
-  reportFee: 211, // floor(264 × 0.8) — written insurer report
+  inspection: 154, // floor(182 × 0.85) — moisture readings, photos, insurer-ready scope
+  labourPerHour: 102, // floor(120 × 0.85) — Mon–Fri standard hours, per technician
+  labourAfterHours: 142, // floor(168 × 0.85) — Mon–Fri 7 PM – 7 AM, per technician
+  labourSaturday: 169, // floor(199 × 0.85) — Saturday, all day, per technician
+  labourSunday: 194, // floor(229 × 0.85) — Sunday, all day, per technician
+  fanPerDay: 34, // floor(41 × 0.85) — drying fans, per fan per day
+  travelPerKm: 1.1, // 1.30 × 0.85 — distance from Armidale, insurer-itemised
+  travelTechPerHour: 71, // floor(84 × 0.85) — technician time on the road
+  adminFee: 65, // floor(77 × 0.85) — administration & job coordination
+  reportFee: 224, // floor(264 × 0.85) — written insurer report
   // After-flood recovery clean (added 15 Nov 2026). BFYB treat the return
   // visit as a fresh booking — their $289 minimum callout hits AGAIN, so a
   // hallway clean + antimicrobial costs their customer another $289+.
   // Ours rides on the same job at the standard carpet rate, no second callout.
   returnCleanPerM2: 4, // per m² of soaked carpet cleaned on the return visit
-  antimicroPerArea: 31, // floor(39 × 0.8) — anti-microbial treatment, per area
+  antimicroPerArea: 33, // floor(39 × 0.85) — anti-microbial treatment, per area
 };
 
-/** Our flood prices: inspection and fan hire always 20% under BFYB's CURRENT
+/** Our flood prices: inspection and fan hire always 15% under BFYB's CURRENT
  *  published rates when the daily watch has a live model; the rest are flat
  *  (their labour/travel/admin/report rates live on their flood page, not in
  *  the config the watch reads). Falls back to the verified constants. */
