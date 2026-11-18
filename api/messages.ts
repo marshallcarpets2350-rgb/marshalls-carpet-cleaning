@@ -670,7 +670,7 @@ export function reminderEmail(lead: LeadRow): { subject: string; text: string } 
   const pickup = b?.rugPickup ?? false;
   const prep = pickup
     ? `• Roll the rugs up near the door if you can — we'll be in and out in a couple of minutes.\n• They come back washed, dried and ready for the floor on Monday.`
-    : `• A quick pick-up of small things off the floor (toys, shoes, lamps) helps us get straight into it — we shift lounges and light furniture ourselves.\n• Cracking a window or two on the day speeds up the drying.\n• Parking close to the door is a big help with the equipment.`;
+    : `• Have furniture, tables and clothing off the carpet areas we're cleaning before we arrive — anything left in place gets cleaned around.\n• Cracking a window or two on the day speeds up the drying.\n• Parking close to the door is a big help with the equipment.`;
   return {
     subject: `See you tomorrow — ${BUSINESS.name} (${ref})`,
     text: `Hi ${firstName(lead.name)},
@@ -683,7 +683,7 @@ THE JOB
 • Total: ${money(lead.total)} — ${b ? paymentLine(b, lead) : "pay on the day"}
 • Reference: ${ref}
 
-A couple of things that help on the day:
+Getting ready for your booked-in clean:
 ${prep}
 
 Anything changed? Call or text ${BUSINESS.phone} and we'll sort it.
@@ -708,7 +708,7 @@ export function reminderEmailHtml(lead: LeadRow): string {
         "They come back washed, dried and ready for the floor on Monday.",
       ]
     : [
-        "A quick pick-up of small things off the floor (toys, shoes, lamps) helps us get straight into it — we shift lounges and light furniture ourselves.",
+        "Have furniture, tables and clothing off the carpet areas we're cleaning before we arrive — anything left in place gets cleaned around.",
         "Cracking a window or two on the day speeds up the drying.",
         "Parking close to the door is a big help with the equipment.",
       ];
@@ -726,7 +726,7 @@ export function reminderEmailHtml(lead: LeadRow): string {
 
   ${totalBox(lead.total, b ? paymentLine(b, lead) : "pay on the day")}
 
-  <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">A COUPLE OF THINGS THAT HELP ON THE DAY</div>
+  <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">GETTING READY FOR YOUR BOOKED-IN CLEAN</div>
   ${bulletList(prep.map(esc))}
 
   ${ctaBox(`Anything changed? Call or text

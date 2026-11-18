@@ -97,7 +97,7 @@ export const TERMS_SECTIONS: TermsSection[] = [
     title: "7. Access, preparation and on-site requirements",
     body: [
       "7.1 The Client will provide access to the Premises at the agreed time, along with electricity and hot water for our equipment.",
-      "7.2 Please have the areas to be cleaned reasonably clear of small items, breakables and clutter. We'll move light furniture as needed; heavy items (wall units, pianos, pool tables, large entertainment units) are cleaned around unless moving them was arranged beforehand.",
+      "7.2 Please have the areas to be cleaned clear of furniture, tables, clothing, breakables and clutter before we arrive. Furniture left in place is cleaned around. Heavy items (wall units, pianos, pool tables, large entertainment units) are always cleaned around unless moving them was arranged beforehand.",
       "7.3 Please secure pets and let us know about anything that needs special care — loose carpet edges, previous damage, or delicate fibres.",
       "7.4 Safe parking close to the Premises helps us run hoses and equipment; if parking is tricky, let us know at booking.",
     ],
