@@ -307,7 +307,11 @@ export const FLOOD_UNDERCUT_PERCENT = 15;
 
 export const FLOOD_RATES = {
   inspection: 154, // floor(182 × 0.85) — moisture readings, photos, insurer-ready scope
-  labourPerHour: 102, // floor(120 × 0.85) — Mon–Fri standard hours, per technician
+  labourPerHour: 86, // Mon–Fri standard hours, per technician — 18 Nov pm:
+  // capped so the TYPICAL extraction also holds 15% under their bundle:
+  // their 2-tech 2h callout is $409 flat (cheaper than their own 2×2×$120
+  // hourly = $480), so 15% under that bundle = $347 → 347/4 = $86/hr. Still
+  // 28% under their $120 hourly line. (Price watch caught this same day.)
   labourAfterHours: 142, // floor(168 × 0.85) — Mon–Fri 7 PM – 7 AM, per technician
   labourSaturday: 169, // floor(199 × 0.85) — Saturday, all day, per technician
   labourSunday: 194, // floor(229 × 0.85) — Sunday, all day, per technician
