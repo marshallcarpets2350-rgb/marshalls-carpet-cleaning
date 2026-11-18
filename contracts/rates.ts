@@ -123,15 +123,16 @@ export const BUSINESS = {
 // ---------------------------------------------------------------------------
 // BFYB's live rate card — read off their booking page (booking-config.js,
 // terms effective 11 Oct 2026). Powers the competitor comparison panel and
-// the 17%-under backstop below; the daily price watch (api/priceWatch.ts)
+// the undercut backstop below; the daily price watch (api/priceWatch.ts)
 // re-reads their config and flags any drift.
 
 /** Every quote stays at least this far under BFYB's comparable total.
  *  Launch strategy (first 6 months): a full 17% under, so the specialised
- *  and expensive cleans undercut them hardest while we build the name. */
+ *  and expensive cleans undercut them hardest while we build the name.
+ *  18 Nov 2026 (owner call): relaxed 17% → 15% now the name's building. */
 // Launch strategy (first 6 months): every quote stays at least this far
 // under BFYB's live price for the same job. Re-checked daily by priceWatch.
-export const BFYB_UNDERCUT_PERCENT = 17;
+export const BFYB_UNDERCUT_PERCENT = 15;
 // ---------------------------------------------------------------------------
 
 export interface BfybModel {
@@ -912,7 +913,7 @@ export interface QuoteBreakdown {
   seasonalPromo: { percent: number; label: string } | null; // what fired (for labels on quotes, invoices)
   crossSellDiscount: number; // always 0 — added-service discount removed 8 Nov 2026
   volumeDiscount: number; // $10 off every full $150
-  undercutDiscount: number; // the 17%-under-BFYB backstop, when it fires
+  undercutDiscount: number; // the under-BFYB backstop, when it fires
   bfybTotal: number | null; // their comparable total, for the check + panel
   minimumApplied: boolean;
   onsiteWork: boolean; // false = rug-only pickup (no minimum charge)
@@ -1150,8 +1151,8 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
     minimumApplied = true;
   }
 
-  // The 17%-under-BFYB check, run live on every quote: if their comparable
-  // total exists and ours isn't at least 17% under it after our own
+  // The under-BFYB check, run live on every quote: if their comparable
+  // total exists and ours isn't at least BFYB_UNDERCUT_PERCENT under after our own
   // discounts, the difference comes off automatically. The comparison is
   // CORE CLEAN ONLY (carpet + lounges): their displayed price never includes
   // their add-ons, so our add-ons (enzyme, stain treatment) stay out too —

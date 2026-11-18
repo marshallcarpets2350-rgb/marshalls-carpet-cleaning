@@ -2,11 +2,11 @@
 //
 // Re-reads Bang For Ya Buck's live booking config (the same file their
 // online calculator runs on), diffs it against the competitor model our
-// comparison panel and 17%-under backstop price from, and — when their
+// comparison panel and undercut backstop price from, and — when their
 // numbers move and pass sanity checks — updates that model automatically, so
 // our quotes and published comparison track their CURRENT prices with no
 // human in the loop. It then re-prices a set of reference jobs through their
-// live numbers to confirm every quote still lands at least 17% under theirs.
+// live numbers to confirm every quote still lands BFYB_UNDERCUT_PERCENT under theirs.
 //
 // The report is stored in the settings table (key "bfyb_price_watch") and
 // surfaced on the admin dashboard; the live model under "bfyb_model_live".
@@ -80,7 +80,7 @@ function hasTodaysEvidence(): boolean {
 
 export interface PriceWatchMargin {
   label: string;
-  /** What the customer actually pays — after the automatic 17%-under check. */
+  /** What the customer actually pays — after the automatic under-BFYB check. */
   ours: number;
   /** Our list price before the automatic undercut discount, for context. */
   oursList: number;
@@ -94,7 +94,7 @@ export interface PriceWatchReport {
   fetchOk: boolean;
   /** False when any published BFYB figure differs from our model. */
   modelMatches: boolean;
-  /** False when any reference job lands less than 17% under their live price. */
+  /** False when any reference job lands less than BFYB_UNDERCUT_PERCENT under their live price. */
   undercutHolds: boolean;
   drifts: string[];
   margins: PriceWatchMargin[];
@@ -265,7 +265,7 @@ export async function loadBfybModel(): Promise<BfybModel> {
  *  Their extras are never in their DISPLAYED price (their booking flow only
  *  recommends them and auto-ticks nothing), so the comparison panel and the
  *  variation sweep pass extraIds=[] — but the margin reference jobs pass the
- *  extras a same-job customer would actually pay for, so the 17% promise is
+ *  extras a same-job customer would actually pay for, so the undercut promise is
  *  checked like-for-like (fixed 7 Nov 2026: our side was charged for extras
  *  while theirs wasn't, which false-alarmed after our 5% rise). */
 function liveBfybTotal(
@@ -403,7 +403,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   // --- 1b. Follow their moves automatically ---
   // Build a full model from their live config. If every number passes sanity
   // bounds it becomes the model every quote and the comparison table price
-  // from — the 17%-under promise then tracks their CURRENT prices with no
+  // from — the under-BFYB promise then tracks their CURRENT prices with no
   // human in the loop. If anything looks off (structure changed, nonsense
   // values) the update is refused and the site keeps the last good model.
   {
@@ -486,7 +486,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
       const oursList =
         Math.round(carpetStandardForArea(j.m2) * ourMult[j.level]) + ourExtras;
       // What the customer ACTUALLY pays — the same computeQuote the site runs,
-      // volume discount and automatic 17%-under backstop included. Their side
+      // volume discount and automatic under-BFYB backstop included. Their side
       // is re-priced from the LIVE config, so if BFYB move a number and our
       // model of them goes stale, the final price here stops matching the
       // promise and the flag below fires.
@@ -561,7 +561,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
 
   // --- 2b. Strict variation sweep: every room-count × clean-level combo,
   // plus lounge sizes 1–6, priced through BOTH sides. Any combination where
-  // our final price (automatic discounts included) lands less than 17% under
+  // our final price (automatic discounts included) lands less than the undercut% under
   // their live price is flagged — the promise must hold on EVERY variation,
   // not just the reference jobs above.
   let variationsChecked = 0;
@@ -613,7 +613,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
           const label = Object.entries(rooms).map(([k, n]) => `${n}×${k}`).join("+");
           drifts.push(
-            `Variation ${label} ${level}: ours lands at $${ours} vs their $${theirs} — under the 17% rule, needs a rates review`,
+            `Variation ${label} ${level}: ours lands at $${ours} vs their $${theirs} — under the ${BFYB_UNDERCUT_PERCENT}% rule, needs a rates review`,
           );
         }
       }
@@ -645,7 +645,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         const theirs = Math.max(seats * Number(upholstery.from), Number(carpet.minimum));
         if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
           drifts.push(
-            `Variation ${seats}-seat lounge: ours lands at $${ours} vs their $${theirs} — under the 17% rule, needs a rates review`,
+            `Variation ${seats}-seat lounge: ours lands at $${ours} vs their $${theirs} — under the ${BFYB_UNDERCUT_PERCENT}% rule, needs a rates review`,
           );
         }
       }
@@ -658,7 +658,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   for (const m of margins) {
     if (m.pctOfTheirs > 100 - BFYB_UNDERCUT_PERCENT) {
       drifts.push(
-        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the 17% promise needs a rates review`,
+        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${BFYB_UNDERCUT_PERCENT}% promise needs a rates review`,
       );
     }
   }
@@ -668,7 +668,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   // keep them separate so the owner email never cries "they changed prices"
   // when they didn't (happened 7 Nov 2026 after our 5% rise).
   const isMarginDrift = (d: string) =>
-    d.includes("needs a rates review") || d.includes("under the 17% rule");
+    d.includes("needs a rates review") || d.includes(`under the ${BFYB_UNDERCUT_PERCENT}% rule`);
   const isRefusal = (d: string) => d.includes("Auto-update refused");
   const priceDrifts = drifts.filter((d) => !isMarginDrift(d) && !isRefusal(d));
   const marginDrifts = drifts.filter(isMarginDrift);
@@ -837,7 +837,7 @@ export async function loadElectroModel(): Promise<ElectroLive | null> {
   return live;
 }
 
-/** Reference jobs re-priced through Electrodry's verified specials. No 17%
+/** Reference jobs re-priced through Electrodry's verified specials. No undercut
  *  promise here — we just flag any job where we'd show as DEARER in the
  *  comparison panel, so the owner can decide whether to say anything. */
 async function electroMargins(model: ElectroModel): Promise<PriceWatchMargin[]> {

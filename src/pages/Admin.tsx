@@ -4,6 +4,7 @@ import { trpc } from "@/providers/trpc";
 import FloodReports from "@/pages/admin/FloodReports";
 import Quote from "@/pages/Quote";
 import {
+  BFYB_UNDERCUT_PERCENT,
   BUSINESS,
   money,
   TIME_SLOTS,
@@ -839,8 +840,8 @@ export default function Admin() {
         </div>
         <p className="mt-1 text-sm text-charcoal/60">
           Reads Bang For Ya Buck's live calculator once a day and confirms every
-          quote stays at least 17% under theirs. If they move a price and your
-          email is set up, you'll get a message about it.
+          quote stays at least {BFYB_UNDERCUT_PERCENT}% under theirs. If they move
+          a price and your email is set up, you'll get a message about it.
         </p>
         {report.isPending ? (
           <p className="mt-4 text-charcoal/70">Loading…</p>
@@ -858,8 +859,8 @@ export default function Admin() {
               </p>
             ) : r.drifts.length === 0 ? (
               <p className="mt-3 border-[1.5px] border-forest bg-mintlight p-3 text-sm font-semibold text-forest" role="status">
-                Their live prices match our model — and every reference job is at least
-                17% under theirs.
+                Their live prices match our model — and every reference job is at
+                least {BFYB_UNDERCUT_PERCENT}% under theirs.
               </p>
             ) : (
               <ul className="mt-3 space-y-1.5 border-[1.5px] border-charcoal bg-cream p-4 text-sm font-semibold text-charcoal" role="alert">
