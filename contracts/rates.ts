@@ -129,11 +129,12 @@ export const BUSINESS = {
 /** Every quote stays at least this far under BFYB's comparable total.
  *  Launch strategy (first 6 months): a full 17% under, so the specialised
  *  and expensive cleans undercut them hardest while we build the name.
- *  18 Nov 2026 (owner calls): tried 15% for a few hours, then settled on a
- *  full 20% under to win the bookings while the name's still building. */
+ *  18 Nov 2026 (owner calls): tried 15% for a few hours, went to a full 20%
+ *  under to win bookings, then settled back on 15% under the same evening —
+ *  his final call ("15% cheaper for carpet jobs, everything else stays"). */
 // Launch strategy (first 6 months): every quote stays at least this far
 // under BFYB's live price for the same job. Re-checked daily by priceWatch.
-export const BFYB_UNDERCUT_PERCENT = 20;
+export const BFYB_UNDERCUT_PERCENT = 15;
 // ---------------------------------------------------------------------------
 
 export interface BfybModel {
