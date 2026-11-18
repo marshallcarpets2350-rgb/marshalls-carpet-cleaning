@@ -36,7 +36,7 @@ export default function NewsletterForm({ source }: { source: string }) {
       <label className="sr-only" htmlFor={`nl-name-${source}`}>Name</label>
       <input
         id={`nl-name-${source}`}
-        className="input-sharp"
+        className="input-sharp min-w-0"
         placeholder="First name"
         value={name}
         onChange={(e) => setName(e.target.value)}
@@ -45,7 +45,7 @@ export default function NewsletterForm({ source }: { source: string }) {
       <label className="sr-only" htmlFor={`nl-email-${source}`}>Email</label>
       <input
         id={`nl-email-${source}`}
-        className="input-sharp"
+        className="input-sharp min-w-0"
         type="email"
         required
         placeholder="you@email.com"
