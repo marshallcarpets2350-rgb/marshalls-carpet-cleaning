@@ -377,8 +377,15 @@ export default function Quote({
   // Benji often quotes over the phone without knowing pets/odour/stains
   // (18 Nov 2026, owner: "it won't let me send the quote"). Condition still
   // drives the recommended clean on the PUBLIC form.
+  // The admin contact gate is looser too (18 Nov 2026, owner: "all details
+  // filled in but it still won't let me submit" — the strict public
+  // phone/email regexes were rejecting real customer details typed in a
+  // hurry). Admin just needs a name + a resolved address; the server
+  // already treats phone/email as optional and only emails the quote when
+  // an email address is actually there.
+  const contactOk = adminMode ? fullName(contact).length > 0 : contactValid(contact);
   const coreValid = [
-    contactValid(contact) && travel !== null && (!adminAgency || agency.trim().length > 0),
+    contactOk && travel !== null && (!adminAgency || agency.trim().length > 0),
     (purpose !== null || adminMode) && !breakdown.isEmpty,
     carpetAreaM2 === 0 || conditionComplete(condition) || adminMode,
     true,
@@ -400,6 +407,7 @@ export default function Quote({
       ?.scrollIntoView({ behavior: "smooth", block: "start" });
   };
   const missingLabels = [...MISSING_LABELS];
+  if (adminMode) missingLabels[0] = "the customer's name and address (pick the address from the list)";
   if (whenValid && !planValid) missingLabels[5] = "visit 2's day and time";
   const missing = missingLabels.filter((l, i) => l && !coreValid[i]);
 
