@@ -41,6 +41,18 @@ const CANONICAL_PATHS = new Set([
 export function serveStaticFiles(app: App) {
   const distPath = path.resolve(import.meta.dirname, "../dist/public");
 
+  // Trailing-slash URLs ("/quote/") serve the same prerendered page as
+  // "/quote" — Google treats them as duplicates and picks its own canonical
+  // ("Duplicate, Google chose different canonical than user", Search Console
+  // 20 Nov 2026). 301 them onto the slash-free canonical instead.
+  app.use("*", async (c, next) => {
+    const url = new URL(c.req.url);
+    if (url.pathname.length > 1 && url.pathname.endsWith("/")) {
+      return c.redirect(url.pathname.replace(/\/+$/, "") + url.search, 301);
+    }
+    return next();
+  });
+
   app.use("*", serveStatic({ root: "./dist/public" }));
 
   app.notFound((c) => {
