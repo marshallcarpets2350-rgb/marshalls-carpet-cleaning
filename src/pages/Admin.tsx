@@ -85,8 +85,95 @@ function OwingBadge() {
 // work-order jobs are done first and invoiced after — "Invoice" mode prices the
 // job in the same wizard and emails the invoice straight out. Module-level on
 // purpose (see OwingBadge note): keeps its state off the Admin parent.
+// 19 Nov 2026, Benji: New quote was customer-only — agency QUOTES (pick the
+// real estate, tenant "addressed to", work order #) were impossible here even
+// though the wizard + saveQuote already supported them (Invoice tab only).
+// Added the Customer / Real estate toggle with the same saved-agency picker.
 function NewQuotePanel({ onStartOver }: { onStartOver: () => void }) {
-  return <Quote adminMode onStartOver={onStartOver} />;
+  const [forAgency, setForAgency] = useState(false);
+  const agencies = trpc.admin.listAgencies.useQuery(undefined, { enabled: forAgency });
+  const [selId, setSelId] = useState<string | null>(null);
+  const [nonce, setNonce] = useState(0);
+  const toggle = (
+    <div className="mb-5 flex gap-2">
+      {([["customer", "Customer"], ["agency", "Real estate"]] as const).map(([k, label]) => (
+        <button
+          key={k}
+          type="button"
+          onClick={() => { setForAgency(k === "agency"); setSelId(null); }}
+          className={`border-[1.5px] px-4 py-2 text-sm font-bold ${
+            forAgency === (k === "agency")
+              ? "border-forest bg-forest text-background"
+              : "border-charcoal/40 text-charcoal/60 hover:text-charcoal"
+          }`}
+        >
+          {label}
+        </button>
+      ))}
+    </div>
+  );
+  if (!forAgency) {
+    return (
+      <div>
+        {toggle}
+        <Quote adminMode onStartOver={onStartOver} />
+      </div>
+    );
+  }
+  const list = agencies.data ?? [];
+  const sel = selId === "new" ? null : (list.find((a) => a.id === selId) ?? null);
+  if (selId === null) {
+    return (
+      <div className="max-w-lg">
+        {toggle}
+        <p className="mb-4 font-display text-2xl font-black text-charcoal">Which real estate?</p>
+        <div className="space-y-2">
+          {list.map((a) => (
+            <button
+              key={a.id}
+              type="button"
+              onClick={() => setSelId(a.id)}
+              className="block w-full border-[1.5px] border-charcoal bg-background px-4 py-3 text-left font-bold text-charcoal hover:bg-creamlight"
+            >
+              {a.name}
+              {a.contact && <span className="ml-2 text-sm font-normal text-charcoal/60">{a.contact}</span>}
+            </button>
+          ))}
+          <button
+            type="button"
+            onClick={() => setSelId("new")}
+            className="block w-full border-[1.5px] border-dashed border-charcoal/50 px-4 py-3 text-left font-bold text-charcoal/60 hover:text-charcoal"
+          >
+            + New real estate (not listed)
+          </button>
+        </div>
+      </div>
+    );
+  }
+  return (
+    <div>
+      {toggle}
+      <p className="mb-4 text-sm text-charcoal/60">
+        Real estate: <span className="font-bold text-charcoal">{sel ? sel.name : "New (type it in below)"}</span>
+        {" · "}
+        <button type="button" onClick={() => setSelId(null)} className="font-semibold text-forest underline-offset-2 hover:underline">
+          change
+        </button>
+      </p>
+      <Quote
+        adminMode
+        adminAgency
+        invoicePreset={{
+          agency: sel?.name ?? "",
+          contactName: sel?.contact ?? "",
+          email: sel?.email ?? "",
+          phone: sel?.phone ?? "",
+        }}
+        key={`${selId}-${nonce}`}
+        onStartOver={() => setNonce((n) => n + 1)}
+      />
+    </div>
+  );
 }
 
 // Quote-only job actions (17 Nov 2026, Ben: quotes flow quote → booked in →

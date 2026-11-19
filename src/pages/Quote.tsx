@@ -620,7 +620,7 @@ export default function Quote({
             )}
           </p>
 
-          {adminInvoice && (
+          {(adminInvoice || adminAgency) && (
             <div className="mt-6 max-w-md space-y-4 border-[1.5px] border-charcoal bg-background p-4">
               {adminAgency && (
                 <div>
