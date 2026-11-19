@@ -6,7 +6,9 @@
 // numbers move and pass sanity checks — updates that model automatically, so
 // our quotes and published comparison track their CURRENT prices with no
 // human in the loop. It then re-prices a set of reference jobs through their
-// live numbers to confirm every quote still lands BFYB_UNDERCUT_PERCENT under theirs.
+// live numbers to confirm every quote still lands the tapered under-BFYB
+// margin under theirs (BFYB_UNDERCUT_PERCENT up to their $500, easing to the
+// BFYB_UNDERCUT_MIN_PERCENT floor on $1,000+ jobs).
 //
 // The report is stored in the settings table (key "bfyb_price_watch") and
 // surfaced on the admin dashboard; the live model under "bfyb_model_live".
@@ -16,6 +18,9 @@
 import {
   BFYB_MODEL,
   BFYB_UNDERCUT_PERCENT,
+  BFYB_UNDERCUT_MIN_PERCENT,
+  BFYB_UNDERCUT_TAPER_FROM,
+  bfybUndercutPercent,
   FLOOD_UNDERCUT_PERCENT,
   ELECTRO_MODEL,
   ELECTRO_VERIFY_MAX_AGE_MS,
@@ -614,10 +619,14 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         };
         const ours = computeQuote(q, liveRates, effectiveModel).cleaningTotal;
         const theirs = liveBfybTotal(carpet, rooms, level, []);
-        if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
+        // Same tapered promise the live quote engine enforces (19 Nov 2026):
+        // 15% under up to their $500, easing 1.5 points per $100 over,
+        // floored at 7.5% — so big-job variations don't false-alarm.
+        const need = bfybUndercutPercent(theirs);
+        if (ours > Math.floor(theirs * (1 - need / 100))) {
           const label = Object.entries(rooms).map(([k, n]) => `${n}×${k}`).join("+");
           drifts.push(
-            `Variation ${label} ${level}: ours lands at $${ours} vs their $${theirs} — under the ${BFYB_UNDERCUT_PERCENT}% rule, needs a rates review`,
+            `Variation ${label} ${level}: ours lands at $${ours} vs their $${theirs} — under the ${Math.round(need * 10) / 10}% rule, needs a rates review`,
           );
         }
       }
@@ -647,9 +656,10 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
         ).cleaningTotal;
         // Their minimum callout applies to a lounge-only booking too.
         const theirs = Math.max(seats * Number(upholstery.from), Number(carpet.minimum));
-        if (ours > Math.floor(theirs * (1 - BFYB_UNDERCUT_PERCENT / 100))) {
+        const need = bfybUndercutPercent(theirs);
+        if (ours > Math.floor(theirs * (1 - need / 100))) {
           drifts.push(
-            `Variation ${seats}-seat lounge: ours lands at $${ours} vs their $${theirs} — under the ${BFYB_UNDERCUT_PERCENT}% rule, needs a rates review`,
+            `Variation ${seats}-seat lounge: ours lands at $${ours} vs their $${theirs} — under the ${Math.round(need * 10) / 10}% rule, needs a rates review`,
           );
         }
       }
@@ -657,13 +667,13 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   }
 
   const undercutHolds = margins.every(
-    (m) => m.pctOfTheirs <= 100 - (m.undercut ?? BFYB_UNDERCUT_PERCENT),
-  ) && !drifts.some((d) => d.includes(`under the ${BFYB_UNDERCUT_PERCENT}% rule`));
+    (m) => m.pctOfTheirs <= 100 - (m.undercut ?? bfybUndercutPercent(m.theirs)),
+  ) && !drifts.some((d) => d.includes("needs a rates review"));
   for (const m of margins) {
-    const need = m.undercut ?? BFYB_UNDERCUT_PERCENT;
+    const need = m.undercut ?? bfybUndercutPercent(m.theirs);
     if (m.pctOfTheirs > 100 - need) {
       drifts.push(
-        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${need}% promise needs a rates review`,
+        `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${Math.round(need * 10) / 10}% promise needs a rates review`,
       );
     }
   }
@@ -672,8 +682,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
   // OUR price landing too close to theirs (often after our own rate moves) —
   // keep them separate so the owner email never cries "they changed prices"
   // when they didn't (happened 7 Nov 2026 after our 5% rise).
-  const isMarginDrift = (d: string) =>
-    d.includes("needs a rates review") || d.includes(`under the ${BFYB_UNDERCUT_PERCENT}% rule`);
+  const isMarginDrift = (d: string) => d.includes("needs a rates review");
   const isRefusal = (d: string) => d.includes("Auto-update refused");
   const priceDrifts = drifts.filter((d) => !isMarginDrift(d) && !isRefusal(d));
   const marginDrifts = drifts.filter(isMarginDrift);
@@ -717,7 +726,7 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
             : `Price watch — margin check needs a look (BFYB prices unchanged)`,
           sections.join("\n\n") +
             (modelUpdated && priceDrifts.length > 0
-              ? `\n\nNo action needed — the quote calculator and the comparison table now price off their new numbers automatically, so every quote still lands at least ${BFYB_UNDERCUT_PERCENT}% under theirs.`
+              ? `\n\nNo action needed — the quote calculator and the comparison table now price off their new numbers automatically, so every quote still lands at least ${BFYB_UNDERCUT_PERCENT}% under theirs (easing to ${BFYB_UNDERCUT_MIN_PERCENT}% on jobs over $${BFYB_UNDERCUT_TAPER_FROM}).`
               : "") +
             `\n\nChecked ${checkedAt}.\nOpen the admin dashboard → Price watch for the full report.`,
         );

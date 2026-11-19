@@ -139,6 +139,23 @@ export const BUSINESS = {
 // Launch strategy (first 6 months): every quote stays at least this far
 // under BFYB's live price for the same job. Re-checked daily by priceWatch.
 export const BFYB_UNDERCUT_PERCENT = 15;
+// Size taper (19 Nov 2026, owner call): big jobs don't need the full 15%
+// giveaway to win, and that's where the real dollars leak. The beat stays at
+// 15% up to their $500, then eases 1.5 points per $100 over — 13.5% at $600,
+// 12% at $700, 10.5% at $800 — floored at 7.5% (their $1,000+, so we never
+// drift to parity and break the promise). priceWatch checks the SAME curve,
+// so big reference jobs don't false-alarm the margin emails.
+export const BFYB_UNDERCUT_TAPER_FROM = 500; // their comparable total where the taper starts
+export const BFYB_UNDERCUT_TAPER_STEP = 1.5; // points off per $100 over
+export const BFYB_UNDERCUT_MIN_PERCENT = 7.5; // floor — never beat by less than this
+export function bfybUndercutPercent(theirTotal: number): number {
+  if (theirTotal <= BFYB_UNDERCUT_TAPER_FROM) return BFYB_UNDERCUT_PERCENT;
+  const over = (theirTotal - BFYB_UNDERCUT_TAPER_FROM) / 100;
+  return Math.max(
+    BFYB_UNDERCUT_MIN_PERCENT,
+    BFYB_UNDERCUT_PERCENT - over * BFYB_UNDERCUT_TAPER_STEP,
+  );
+}
 // ---------------------------------------------------------------------------
 
 export interface BfybModel {
@@ -1174,17 +1191,20 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
   }
 
   // The under-BFYB check, run live on every quote: if their comparable
-  // total exists and ours isn't at least BFYB_UNDERCUT_PERCENT under after our own
-  // discounts, the difference comes off automatically. The comparison covers
-  // the WHOLE carpet job — every clean level plus any matched treatments
-  // (19 Nov 2026, owner call: "15% price beat on all carpet cleaning and
-  // variations of carpet cleaning"). Their side carries their published
-  // price for the same treatments (stain product $39, anti-microbial $39),
-  // so an add-on can only be discounted down to 15% under what BFYB charge
-  // for the same thing — never swallowed whole (the 7 Nov 2026 bug: 100m² +
-  // pet stains + enzyme totalled $424 with or without the $39 enzyme).
-  // Mattresses and rugs stay out (BFYB publish no rate for them); travel
-  // stays out of both sides.
+  // total exists and ours isn't at least the required margin under after our
+  // own discounts, the difference comes off automatically. The comparison
+  // covers the WHOLE carpet job — every clean level plus any matched
+  // treatments (19 Nov 2026, owner call: "15% price beat on all carpet
+  // cleaning and variations of carpet cleaning"). Their side carries their
+  // published price for the same treatments (stain product $39,
+  // anti-microbial $39), so an add-on can only be discounted down to the
+  // required margin under what BFYB charge for the same thing — never
+  // swallowed whole (the 7 Nov 2026 bug: 100m² + pet stains + enzyme
+  // totalled $424 with or without the $39 enzyme). The required margin
+  // TAPERS with job size (bfybUndercutPercent — same 19 Nov owner call):
+  // 15% under up to their $500, easing 1.5 points per $100 over, floored at
+  // 7.5%. Mattresses and rugs stay out (BFYB publish no rate for them);
+  // travel stays out of both sides.
   const bfybTotal = isEmpty ? null : bfybComparableTotal(input, bfybModel);
   let undercutDiscount = 0;
   if (bfybTotal !== null && cleaningSubtotal > 0) {
@@ -1192,7 +1212,7 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
     const oursComparable = round(
       comparableSubtotal(input, carpetSubtotal, rates, true) * discountRatio,
     );
-    const target = Math.floor(bfybTotal * (1 - BFYB_UNDERCUT_PERCENT / 100));
+    const target = Math.floor(bfybTotal * (1 - bfybUndercutPercent(bfybTotal) / 100));
     if (oursComparable > target) {
       undercutDiscount = Math.min(oursComparable - target, cleaningTotal);
       cleaningTotal -= undercutDiscount;
