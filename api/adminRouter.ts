@@ -440,6 +440,83 @@ export const adminRouter = createRouter({
       return { ok: true as const, reference, date: input.date, slot: input.slot, confirmation };
     }),
 
+  // Move an existing booking to a new day/slot (19 Nov 2026, Benji: "should
+  // have a button I click to reschedule someone"). Same calendar validation
+  // as convertQuoteToBooking, except the lead's own current span is excluded
+  // so it can't block its own move. Everything else in booking_json (payment,
+  // notes, work order, stored jobMinutes) carries over untouched; the
+  // customer gets a fresh confirmation with the new time unless unticked.
+  rescheduleLead: adminProcedure
+    .input(
+      z.object({
+        id: z.number(),
+        date: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
+        slot: z.number().int().min(0).max(TIME_SLOTS.length - 1),
+        sendConfirmation: z.boolean().optional(),
+      }),
+    )
+    .mutation(async ({ input }) => {
+      const db = getDb();
+      const [row] = await db.select().from(leads).where(eq(leads.id, input.id)).limit(1);
+      if (!row) throw new TRPCError({ code: "NOT_FOUND", message: "Booking not found" });
+      if (row.finishedAt)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "That job's already finished or invoiced" });
+      let meta: Record<string, unknown> = {};
+      try { if (row.bookingJson) meta = JSON.parse(row.bookingJson); } catch { /* fall through */ }
+      if (!meta.preferredDate || meta.preferredSlot === null || meta.preferredSlot === undefined)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Only a booked-in job can be rescheduled" });
+      if (meta.rugPickup)
+        throw new TRPCError({ code: "BAD_REQUEST", message: "Rug pickups stay on the Friday run — book the job for the next available Friday instead" });
+      const town = (meta.town as string) || row.suburb || "";
+      const jobMinutes = (meta.jobMinutes as number) ?? 60; // existing bookings keep their stored minutes
+      const span = slotsNeededFor(jobMinutes);
+      const load = await calendarLoad(input.id);
+      if (
+        !bookableDates().includes(input.date) ||
+        !slotAllowedNow(input.date, input.slot) ||
+        !canStart(input.date, input.slot, span, town, load.blocked, load.spans)
+      ) {
+        throw new TRPCError({
+          code: "CONFLICT",
+          message: "That time doesn't fit around the other jobs — pick another slot",
+        });
+      }
+      const booking = { ...meta, preferredDate: input.date, preferredSlot: input.slot };
+      await db
+        .update(leads)
+        .set({ bookingJson: JSON.stringify(booking) })
+        .where(eq(leads.id, row.id));
+      // Fresh confirmation with the new date unless unticked — a mail hiccup
+      // must never lose the move; it's already saved.
+      let confirmation: { emailSent?: boolean; smsSent?: boolean; detail?: string } = {};
+      if (input.sendConfirmation !== false) {
+        try {
+          const [fresh] = await db.select().from(leads).where(eq(leads.id, row.id)).limit(1);
+          const lead = fresh as never as Parameters<typeof confirmationEmail>[0];
+          const sent = await deliver(lead, confirmationEmail(lead), confirmationSms(lead), {
+            attachTerms: true,
+            html: confirmationEmailHtml(lead),
+          });
+          const channel = [sent.emailSent && "email", sent.smsSent && "SMS"].filter(Boolean).join(" + ");
+          await db
+            .update(leads)
+            .set({
+              confirmationSentAt: sent.emailSent || sent.smsSent ? new Date() : row.confirmationSentAt,
+              confirmationDetail: channel
+                ? `Reschedule sent by ${channel}${sent.detail ? ` — ${sent.detail}` : ""}`
+                : sent.detail || "Not sent",
+            })
+            .where(eq(leads.id, row.id));
+          confirmation = sent;
+        } catch (err) {
+          console.error("Reschedule confirmation failed:", err);
+          confirmation = { detail: String(err).slice(0, 120) };
+        }
+      }
+      const reference = `MCC-${String(row.id).padStart(4, "0")}`;
+      return { ok: true as const, reference, date: input.date, slot: input.slot, confirmation };
+    }),
+
   // Manual freshen-up email to a past customer, sent from the Clients tab.
   // Season-aware copy (pre-Christmas version November → 18 Dec). Stamps
   // nudgeSentAt so the automatic 6-month sweep won't email them again

@@ -529,9 +529,9 @@ export const RUG_SIZES: {
   area: string;
   price: number;
 }[] = [
-  { id: "xs", label: "Extra Small", area: "up to 1.5 m²", price: 37 },
-  { id: "s", label: "Small", area: "up to 2.5 m²", price: 47 },
-  { id: "m", label: "Medium", area: "up to 4 m²", price: 68 },
+  { id: "xs", label: "Extra Small", area: "up to 1.5 m²", price: 32 },
+  { id: "s", label: "Small", area: "up to 2.5 m²", price: 42 },
+  { id: "m", label: "Medium", area: "up to 4 m²", price: 63 },
   { id: "l", label: "Large", area: "up to 6 m²", price: 89 },
   { id: "xl", label: "Extra Large", area: "over 6 m²", price: 105 },
 ];

@@ -382,6 +382,116 @@ function InvoicePanel() {
   );
 }
 
+// Reschedule editor for booked jobs (19 Nov 2026, Benji: "should have a
+// button I click to reschedule someone"). Day + slot picker fed by the same
+// availability query as the public calendar; the server re-validates with
+// the job's own span excluded so it can't block its own move. Everything
+// else on the booking (payment, notes, work order, stored jobMinutes) is
+// untouched; the customer gets a fresh confirmation unless unticked.
+// Module-level with its own mutation + state (OwingBadge pattern) so a
+// listLeads refresh never wipes it mid-pick.
+function RescheduleEditor({ id, suburb, bookingJson }: { id: number; suburb: string | null; bookingJson: string | null }) {
+  const utils = trpc.useUtils();
+  const [open, setOpen] = useState(false);
+  const [date, setDate] = useState("");
+  const [slot, setSlot] = useState<number | null>(null);
+  const [emailConf, setEmailConf] = useState(true);
+  const [note, setNote] = useState("");
+  let jobMinutes = 60;
+  let rugPickup = false;
+  try {
+    const b = JSON.parse(bookingJson ?? "") as { jobMinutes?: number; rugPickup?: boolean };
+    if (b?.jobMinutes) jobMinutes = b.jobMinutes;
+    if (b?.rugPickup) rugPickup = true;
+  } catch { /* default hour */ }
+  const avail = trpc.public.listAvailability.useQuery(
+    { town: suburb ?? "", jobMinutes },
+    { enabled: open },
+  );
+  const reschedule = trpc.admin.rescheduleLead.useMutation({
+    onSuccess: (r) => {
+      setNote(
+        `Moved to ${new Date(r.date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })} · ${TIME_SLOTS[r.slot]}${
+          r.confirmation?.emailSent || r.confirmation?.smsSent ? " — customer got the new time" : ""
+        }`,
+      );
+      setOpen(false);
+      setDate("");
+      setSlot(null);
+      utils.admin.listLeads.invalidate();
+    },
+    onError: (e) => setNote(e.message),
+  });
+  if (rugPickup) return null; // rug pickups ride the Friday run
+  if (!open) {
+    return (
+      <span>
+        <button type="button" className="font-bold text-forest underline" onClick={() => { setOpen(true); setNote(""); }}>
+          Reschedule
+        </button>
+        {note ? <span className="text-charcoal/70"> — {note}</span> : null}
+      </span>
+    );
+  }
+  const days = (avail.data ?? []).filter((d) => d.slots.some(Boolean));
+  const slotsFor = date ? ((avail.data ?? []).find((d) => d.date === date)?.slots ?? []) : [];
+  return (
+    <span className="mt-2 block border-[1.5px] border-charcoal/40 bg-mintlight p-3">
+      <span className="flex flex-wrap items-end gap-3">
+        <label className="text-sm font-bold text-charcoal">
+          New day
+          <select
+            className="input-sharp mt-1 block !py-1.5"
+            value={date}
+            onChange={(e) => { setDate(e.target.value); setSlot(null); }}
+          >
+            <option value="">Pick a day…</option>
+            {days.map((d) => (
+              <option key={d.date} value={d.date}>
+                {new Date(d.date + "T12:00:00").toLocaleDateString("en-AU", { weekday: "short", day: "numeric", month: "short" })}
+              </option>
+            ))}
+          </select>
+        </label>
+        {date && (
+          <span className="flex flex-wrap gap-1.5">
+            {TIME_SLOTS.map((label, i) =>
+              slotsFor[i] ? (
+                <button
+                  key={i}
+                  type="button"
+                  className={`border-[1.5px] px-2.5 py-1 text-xs font-bold ${slot === i ? "border-forest bg-forest text-background" : "border-charcoal/40 text-charcoal"}`}
+                  onClick={() => setSlot(i)}
+                >
+                  {label}
+                </button>
+              ) : null,
+            )}
+          </span>
+        )}
+      </span>
+      <label className="mt-2 flex items-center gap-2 text-sm font-bold text-charcoal">
+        <input type="checkbox" checked={emailConf} onChange={(e) => setEmailConf(e.target.checked)} />
+        Email them the new time
+      </label>
+      <span className="mt-2 flex flex-wrap gap-2">
+        <button
+          type="button"
+          className="btn-pill-dark !px-5 !py-2 text-sm"
+          disabled={!date || slot === null || reschedule.isPending}
+          onClick={() => reschedule.mutate({ id, date, slot: slot!, sendConfirmation: emailConf })}
+        >
+          {reschedule.isPending ? "Moving…" : "Move the job"}
+        </button>
+        <button type="button" className="btn-pill !px-5 !py-2 text-sm" onClick={() => setOpen(false)}>
+          Cancel
+        </button>
+      </span>
+      {note ? <p className="mt-2 text-sm font-bold text-charcoal/70">{note}</p> : null}
+    </span>
+  );
+}
+
 // "Invoice to" editor for agency jobs (12 Nov 2026): the booking contact is
 // the real estate, but the invoice/receipt is made out to the tenant or
 // owner and just passes through the agency for payment. Module-level with
@@ -1720,6 +1830,7 @@ export default function Admin() {
                             {booking.notes && <li><strong>Notes:</strong> {booking.notes}</li>}
                             <li><InvoiceToEditor id={r.id} name={r.name} invoiceTo={booking.invoiceTo} /></li>
                             <li><WorkOrderEditor id={r.id} number={booking.workOrderNumber} doc={booking.workOrderDoc} /></li>
+                            <li><RescheduleEditor id={r.id} suburb={r.suburb} bookingJson={r.bookingJson} /></li>
                           </ul>
                         </div>
                       )}

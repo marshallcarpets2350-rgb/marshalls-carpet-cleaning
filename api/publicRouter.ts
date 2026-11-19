@@ -126,7 +126,7 @@ const bookingSchema = z.object({
 
 /** Manual blocks + every booked job's footprint on the calendar.
  *  Exported for the admin quote→booking conversion (17 Nov 2026). */
-export async function calendarLoad(): Promise<{
+export async function calendarLoad(excludeLeadId?: number): Promise<{
   blocked: Set<string>;
   spans: BookedSpan[];
 }> {
@@ -138,11 +138,13 @@ export async function calendarLoad(): Promise<{
     .where(gte(availabilityBlocks.date, isoDay(sydneyToday())));
   for (const b of blocks) blocked.add(`${b.date}:${b.slot}`);
   const booked = await db
-    .select({ bookingJson: leads.bookingJson })
+    .select({ id: leads.id, bookingJson: leads.bookingJson })
     .from(leads)
     .where(isNotNull(leads.bookingJson));
   const spans: BookedSpan[] = [];
   for (const l of booked) {
+    // A booking being rescheduled must not block its own new slot.
+    if (excludeLeadId !== undefined && l.id === excludeLeadId) continue;
     try {
       const b = JSON.parse(l.bookingJson!) as Partial<BookingDetails>;
       if (
