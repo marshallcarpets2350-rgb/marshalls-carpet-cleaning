@@ -463,7 +463,9 @@ export const adminRouter = createRouter({
         throw new TRPCError({ code: "BAD_REQUEST", message: "That job's already finished or invoiced" });
       let meta: Record<string, unknown> = {};
       try { if (row.bookingJson) meta = JSON.parse(row.bookingJson); } catch { /* fall through */ }
-      if (!meta.preferredDate || meta.preferredSlot === null || meta.preferredSlot === undefined)
+      // A booking with no preferredDate has been pulled off the run sheet
+      // (customer postponed, date TBA) — reschedule books it back in.
+      if (!row.bookingJson || meta.quoteOnly)
         throw new TRPCError({ code: "BAD_REQUEST", message: "Only a booked-in job can be rescheduled" });
       if (meta.rugPickup)
         throw new TRPCError({ code: "BAD_REQUEST", message: "Rug pickups stay on the Friday run — book the job for the next available Friday instead" });
