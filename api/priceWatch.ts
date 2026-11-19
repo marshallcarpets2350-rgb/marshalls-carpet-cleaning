@@ -666,12 +666,17 @@ export async function runPriceWatch(): Promise<PriceWatchReport> {
     }
   }
 
+  // Compare DOLLARS, not the rounded pctOfTheirs display figure: a job priced
+  // exactly at the tapered target rounds up a point (85.79% → 86) and would
+  // false-alarm. $1 tolerance absorbs the engine's own rounding.
+  const targetFor = (m: PriceWatchMargin) =>
+    Math.floor(m.theirs * (1 - (m.undercut ?? bfybUndercutPercent(m.theirs)) / 100));
   const undercutHolds = margins.every(
-    (m) => m.pctOfTheirs <= 100 - (m.undercut ?? bfybUndercutPercent(m.theirs)),
+    (m) => m.ours <= targetFor(m) + 1,
   ) && !drifts.some((d) => d.includes("needs a rates review"));
   for (const m of margins) {
     const need = m.undercut ?? bfybUndercutPercent(m.theirs);
-    if (m.pctOfTheirs > 100 - need) {
+    if (m.ours > targetFor(m) + 1) {
       drifts.push(
         `${m.label}: even after the automatic discount ours lands at $${m.ours} (list $${m.oursList}), only ${100 - m.pctOfTheirs}% under their live $${m.theirs} — the ${Math.round(need * 10) / 10}% promise needs a rates review`,
       );
