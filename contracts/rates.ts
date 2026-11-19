@@ -216,27 +216,37 @@ export function bfybComparableTotal(q: QuoteInput, model: BfybModel = BFYB_MODEL
     // 19/10/2026): service fee joins the rooms and the SUM is floored at the
     // minimum; the condition multiplier scales the whole standard-priced job;
     // travel stays out. Their add-ons — pre-vacuum $17/room, stain product
-    // $39, anti-microbial $39, fans $41 — are NEVER in their displayed price:
-    // booking.js syncRecommended() deliberately ticks nothing, so even "ten or
-    // more stains" or pet urine only RECOMMENDS a product on a later screen.
-    // We therefore add zero extras to their number; the difference is
-    // explained in words next to the comparison instead.
+    // $39, anti-microbial $39, fans $41 — are never AUTO-TICKED in their
+    // booking flow (syncRecommended() only recommends them on a later
+    // screen), but the prices are published in the same config. 19 Nov 2026
+    // (owner call: the 15% price beat covers ALL carpet cleaning and its
+    // variations — the whole job total): when the job includes a treatment
+    // we charge for, their published price for the SAME treatment joins
+    // their side below — same job, same inclusions, both sides.
     const tickedTotal = roomsTotal + model.base;
     const standardTotal =
       tickedTotal < model.minimum ? model.minimum : tickedTotal;
     carpet = Math.round(standardTotal * model.soilingMultiplier[q.carpetDirtiness]);
   }
   const seats = q.lounges.reduce((s, l) => s + l.seats + l.reclinerSeats, 0);
-  const total = carpet + seats * model.loungePerSeat;
+  let total = carpet + seats * model.loungePerSeat;
+  if (q.carpetAreaM2 > 0) {
+    // Extras add after the condition multiplier and never count toward their
+    // minimum (their booking.js rule). Restoration (our heavy) already
+    // includes stain treatment, so no stain extra lands on either side.
+    if (stainTreatmentFee(q) > 0 || q.stainPackage) total += model.extras.stain;
+    if (q.enzymePreSpray) total += model.extras.antimicro;
+  }
   if (total <= 0) return null;
   return total;
 }
 
-/** Our side of the same comparable scope (used by the comparison panel).
- *  Pass includeExtras=false for the price-beat check: BFYB's displayed price
- *  never includes their add-ons (their calculator deliberately ticks nothing),
- *  so ours stay out of the comparison too — otherwise an add-on would be
- *  swallowed by a bigger price-beat discount instead of adding to the total. */
+/** Our side of the same comparable scope (used by the price-beat check and
+ *  the comparison panel). Extras stay IN when they map to a published BFYB
+ *  extra (stain product $39, anti-microbial $39): since 19 Nov 2026 the
+ *  price beat covers the whole carpet job, so both sides carry the same
+ *  treatments. Upholstery-only jobs carry no extras here — BFYB publish no
+ *  fabric-treatment rate, so there'd be nothing like-for-like on their side. */
 export function comparableSubtotal(
   q: QuoteInput,
   carpetSubtotal: number,
@@ -251,7 +261,7 @@ export function comparableSubtotal(
         l.reclinerSeats * rates.lounge.reclinerPerSeat,
     );
   }
-  if (includeExtras) {
+  if (includeExtras && q.carpetAreaM2 > 0) {
     ours += stainTreatmentFee(q, rates);
     if (q.stainPackage) ours += rates.extras.stainPackage; // legacy fabric add-on
     if (q.enzymePreSpray) ours += rates.extras.enzymePreSpray;
@@ -1165,18 +1175,22 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
 
   // The under-BFYB check, run live on every quote: if their comparable
   // total exists and ours isn't at least BFYB_UNDERCUT_PERCENT under after our own
-  // discounts, the difference comes off automatically. The comparison is
-  // CORE CLEAN ONLY (carpet + lounges): their displayed price never includes
-  // their add-ons, so our add-ons (enzyme, stain treatment) stay out too —
-  // they stack on top at full price instead of being eaten by a bigger
-  // price-beat discount (bug found 7 Nov 2026: 100m² + pet stains + enzyme
-  // totalled $424 with or without the $39 enzyme).
+  // discounts, the difference comes off automatically. The comparison covers
+  // the WHOLE carpet job — every clean level plus any matched treatments
+  // (19 Nov 2026, owner call: "15% price beat on all carpet cleaning and
+  // variations of carpet cleaning"). Their side carries their published
+  // price for the same treatments (stain product $39, anti-microbial $39),
+  // so an add-on can only be discounted down to 15% under what BFYB charge
+  // for the same thing — never swallowed whole (the 7 Nov 2026 bug: 100m² +
+  // pet stains + enzyme totalled $424 with or without the $39 enzyme).
+  // Mattresses and rugs stay out (BFYB publish no rate for them); travel
+  // stays out of both sides.
   const bfybTotal = isEmpty ? null : bfybComparableTotal(input, bfybModel);
   let undercutDiscount = 0;
   if (bfybTotal !== null && cleaningSubtotal > 0) {
     const discountRatio = cleaningTotal / cleaningSubtotal;
     const oursComparable = round(
-      comparableSubtotal(input, carpetSubtotal, rates, false) * discountRatio,
+      comparableSubtotal(input, carpetSubtotal, rates, true) * discountRatio,
     );
     const target = Math.floor(bfybTotal * (1 - BFYB_UNDERCUT_PERCENT / 100));
     if (oursComparable > target) {

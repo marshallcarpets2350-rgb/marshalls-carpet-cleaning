@@ -80,6 +80,7 @@ function bfybView(model: BfybModel) {
     base: model.base,
     loungePerSeat: model.loungePerSeat,
     stainProduct: model.extras.stain,
+    antimicro: model.extras.antimicro,
     roomRates: model.roomRates,
     soilingMultiplier: model.soilingMultiplier,
     soilingLabel: {
@@ -149,11 +150,11 @@ function estimateBFYB(input: QuoteInput, ctx?: CompareContext, model: BfybModel 
     // Their rule (re-verified from their live booking.js on 19/10/2026): the
     // service fee joins the rooms and that sum is floored at $289; the
     // condition multiplier then scales the whole standard-priced job. Their
-    // add-ons — pre-vacuum $17/room, stain product $39, anti-microbial $39 —
-    // are NEVER in their displayed price: their own flow only recommends them
-    // on a later screen and ticks nothing automatically, even for ten-plus
-    // stains or pet urine. So we add zero extras here and explain the gap in
-    // words under the panel instead of padding their number.
+    // add-ons are never auto-ticked in their flow (only recommended on a
+    // later screen), but the prices are published in the same config — so
+    // when THIS job includes a treatment we charge for, their published
+    // price for the same treatment is added below (19 Nov 2026, owner call:
+    // the 15% price beat covers the whole carpet job, all variations).
     const baseCleaning = roomsTotal + BFYB.base;
     let standardTotal = baseCleaning;
     if (baseCleaning < BFYB.minimum) {
@@ -179,13 +180,30 @@ function estimateBFYB(input: QuoteInput, ctx?: CompareContext, model: BfybModel 
     });
   }
 
+  // Matched treatments at THEIR published extras prices — only on carpet
+  // jobs (they publish no fabric-treatment rate for upholstery-only work).
+  // Restoration-level jobs carry no stain line on either side: our heavy
+  // rate includes stain treatment, and their condition multiplier is their
+  // answer to the same problem.
+  let matchedExtras = 0;
+  if (input.carpetAreaM2 > 0) {
+    if (stainTreatmentFee(input) > 0 || input.stainPackage) {
+      lines.push({ label: "Stain treatment product", amount: BFYB.stainProduct });
+      matchedExtras += BFYB.stainProduct;
+    }
+    if (input.enzymePreSpray) {
+      lines.push({ label: "Anti-microbial treatment", amount: BFYB.antimicro });
+      matchedExtras += BFYB.antimicro;
+    }
+  }
+
   if (input.carpetAreaM2 === 0 && (input.stainPackage || input.enzymePreSpray)) {
     missing.push("Fabric stain/enzyme treatments — not published for upholstery");
   }
   if (input.mattresses.length > 0) missing.push("Mattresses — not published");
   if (input.dirtGum) missing.push("Dirt & gum removal — not published");
 
-  let subtotal = carpet + seatsCost;
+  let subtotal = carpet + seatsCost + matchedExtras;
   const travel = bfybTravel(ctx?.suburb, BFYB);
   const travelAmount = travel && subtotal > 0 ? travel.amount : 0;
   if (travel && subtotal > 0) {
