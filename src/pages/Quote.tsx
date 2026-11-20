@@ -370,6 +370,25 @@ export default function Quote({
   const savingsBaseFor = (_c: (typeof competitors)[number]): number | null =>
     breakdown.cleaningTotal;
 
+  // One-line version of the competitor panel for the sticky mobile bar —
+  // rides the bottom of the screen while you build your rooms (20 Nov 2026,
+  // Benji: "the comparison slides down the page as you work"). Same maths
+  // as the side panel: their displayed total ex-travel vs our cleaning total.
+  const mobileCompare = useMemo(
+    () =>
+      breakdown.isEmpty
+        ? []
+        : competitors
+            .filter((c) => c.total !== null)
+            .map((c) => ({
+              name: c.name,
+              saves: (c.total as number) - c.travelAmount - breakdown.cleaningTotal,
+              partial: c.partial,
+            }))
+            .filter((x) => x.saves > 0),
+    [competitors, breakdown],
+  );
+
   // --- per-section validation ---
   const whenValid = whenFlexible || (whenDate !== null && whenSlot !== null);
   // The plan locks in BOTH cleans — picking it means visit 2 needs a slot too.
@@ -598,7 +617,7 @@ export default function Quote({
     <div className={adminMode ? "" : "min-h-dvh"}>
       {!adminMode && <Header />}
       {!adminMode && <FlowArt />}
-      <main className={adminMode ? "" : "bg-creamlight py-12 pb-28 md:py-16 lg:pb-16"}>
+      <main className={adminMode ? "" : "bg-creamlight py-12 pb-32 md:py-16 md:pb-36 lg:pb-16"}>
         <div className={adminMode ? "" : "mx-auto max-w-6xl px-4 md:px-6"}>
           <h1 className="font-display text-4xl font-black leading-tight text-charcoal md:text-6xl">
             {adminMode ? (adminInvoice ? "Invoice a job." : "Price a job.") : "Book your clean."}
@@ -670,21 +689,9 @@ export default function Quote({
             </div>
           )}
 
-          {!adminMode && (
-            <div className="mt-8 grid gap-4 border-[1.5px] border-charcoal bg-background p-5 sm:grid-cols-2 lg:grid-cols-4">
-              {[
-                ["1 · We arrive in your slot", "We walk the job with you first and confirm the price matches your quote — no surprises on the day."],
-                ["2 · Pre-spray & spots", "Worn tracks and spots get sprayed first, so the deep clean can do its best work."],
-                ["3 · The deep clean", "A deep steam clean flushes the dirt out of the carpet — you can watch it come out."],
-                ["4 · Groomed & drying", "We finish by grooming the carpet so it dries looking neat — most carpets dry in 4–6 hours."],
-              ].map(([title, body]) => (
-                <div key={title}>
-                  <p className="text-sm font-bold uppercase tracking-widest text-forest">{title}</p>
-                  <p className="mt-1.5 text-sm leading-relaxed text-charcoal/75">{body}</p>
-                </div>
-              ))}
-            </div>
-          )}
+          {/* The 4-step "on the day" explainer used to sit here — removed
+              20 Nov 2026 (Benji): it belongs AFTER booking, so it now lives
+              on /thanks and in the confirmation email instead. */}
 
           <div className="mt-10 grid gap-10 lg:grid-cols-[1fr_22rem]">
             {/* ============ LEFT: the one-page form ============ */}
@@ -825,25 +832,10 @@ export default function Quote({
                     )}
                   </div>
 
-                  {/* The one and only Continue — opens the review & send page */}
-                  <div className="mt-12 text-center">
-                    <button
-                      type="button"
-                      onClick={tapContinue}
-                      className={`btn-pill px-10 py-4 text-xl ${allValid ? "" : "opacity-60"}`}
-                    >
-                      {adminMode
-                        ? adminInvoice
-                          ? "Continue → check it & send the invoice"
-                          : "Continue → check it & save the quote"
-                        : "Continue → check it & send"}
-                    </button>
-                    {!allValid && (
-                      <p className="mx-auto mt-3 max-w-md text-base font-bold text-destructive">
-                        Still needed: {missing.join(" · ")} — tap Continue and we'll take you straight to it.
-                      </p>
-                    )}
-                  </div>
+                  {/* Continue lives at the very bottom of the page now —
+                      under the price + competitor comparison (20 Nov 2026,
+                      Benji: "should be down the bottom, under the bfyb
+                      comparison"). See the aside below. */}
                 </>
               ) : (
                 <>
@@ -1107,6 +1099,31 @@ export default function Quote({
                   — we'll beat it. Residential or commercial.
                 </p>
               </div>
+
+              {/* The one and only Continue — sits at the very bottom of the
+                  page, under the price card and the competitor comparison
+                  (20 Nov 2026, Benji). Hidden on the review screen, which has
+                  its own send button. */}
+              {!review && (
+                <div className="mt-6 text-center">
+                  <button
+                    type="button"
+                    onClick={tapContinue}
+                    className={`btn-pill px-10 py-4 text-xl ${allValid ? "" : "opacity-60"}`}
+                  >
+                    {adminMode
+                      ? adminInvoice
+                        ? "Continue → check it & send the invoice"
+                        : "Continue → check it & save the quote"
+                      : "Continue → check it & send"}
+                  </button>
+                  {!allValid && (
+                    <p className="mx-auto mt-3 max-w-md text-base font-bold text-destructive">
+                      Still needed: {missing.join(" · ")} — tap Continue and we'll take you straight to it.
+                    </p>
+                  )}
+                </div>
+              )}
             </aside>
           </div>
         </div>
@@ -1114,6 +1131,12 @@ export default function Quote({
 
       {/* ============ mobile bottom price bar ============ */}
       <div className="fixed inset-x-0 bottom-0 z-40 border-t-[1.5px] border-charcoal bg-background lg:hidden">
+        {/* The comparison slides with you while you build — one line, live. */}
+        {!review && mobileCompare.length > 0 && (
+          <p className="border-b border-charcoal/10 px-4 py-1.5 text-center text-xs font-bold text-[#15803D]" aria-live="polite">
+            {mobileCompare.map((x) => `Save ${money(x.saves)}${x.partial ? "+" : ""} vs ${x.name}`).join(" · ")} 🎉
+          </p>
+        )}
         <div className="mx-auto flex max-w-6xl items-center justify-between px-4 py-3">
           <div>
             <p className="text-sm font-bold uppercase tracking-widest text-charcoal/50">

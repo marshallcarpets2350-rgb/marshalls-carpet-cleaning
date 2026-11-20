@@ -58,6 +58,17 @@ export default function Thanks() {
                     ? "Paid in full by card — your receipt is on its way to your email."
                     : "A confirmation email is on its way to you now — check the junk folder if it's hiding."}
                 </p>
+                {!b.rugPickup && (
+                  <div className="mt-6 border-[1.5px] border-charcoal/20 p-5">
+                    <h2 className="text-sm font-bold uppercase tracking-widest text-forest">On the day</h2>
+                    <ul className="mt-3 space-y-2.5 text-sm leading-relaxed text-charcoal/75">
+                      <li><strong className="text-charcoal">1 · We arrive in your slot</strong> — we walk the job with you first and confirm the price matches your quote. No surprises.</li>
+                      <li><strong className="text-charcoal">2 · Pre-spray &amp; spots</strong> — worn tracks and spots get sprayed first, so the deep clean can do its best work.</li>
+                      <li><strong className="text-charcoal">3 · The deep clean</strong> — a deep steam clean flushes the dirt out of the carpet.</li>
+                      <li><strong className="text-charcoal">4 · Groomed &amp; drying</strong> — we finish by grooming the carpet so it dries looking neat — most carpets dry in 4–6 hours.</li>
+                    </ul>
+                  </div>
+                )}
               </>
             ) : (
               <>

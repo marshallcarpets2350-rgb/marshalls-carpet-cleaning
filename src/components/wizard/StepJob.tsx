@@ -6,12 +6,14 @@ import type { CleanPurpose } from "@contracts/rates";
 
 // Room list written in our own words and our own order. The internal keys map
 // to the comparison model, but nothing customer-facing mirrors a competitor.
+// Order is the display order on the room picker (20 Nov 2026, Benji: main
+// bedroom first, then bedrooms, then the living areas, robes, halls, stairs).
 export const ROOMS = [
+  { key: "bedLarge", label: "Main bedroom", hint: "the big one — parents' retreat", m2: 25 },
+  { key: "bed", label: "Bedroom — standard", hint: "a kids' or guest bedroom", m2: 16 },
   { key: "living", label: "Lounge room", hint: "your main living space", m2: 25 },
   { key: "livingLg", label: "Large lounge room", hint: "a big one, or combined lounge & dining", m2: 36 },
   { key: "dining", label: "Dining room", hint: "a separate dining room", m2: 16 },
-  { key: "bed", label: "Bedroom — standard", hint: "a kids' or guest bedroom", m2: 16 },
-  { key: "bedLarge", label: "Main bedroom", hint: "the big one — parents' retreat", m2: 25 },
   { key: "wir", label: "Walk-in robe — standard", hint: "just off the bedroom", m2: 4 },
   { key: "wirLarge", label: "Walk-in robe — large", hint: "dressing-room size", m2: 9 },
   { key: "hall", label: "Hallway — short run", hint: "about 3 m long", m2: 3 },

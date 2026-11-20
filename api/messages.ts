@@ -266,6 +266,17 @@ export function confirmationEmail(lead: LeadRow): { subject: string; text: strin
     ? `\nThis is a big one — a full day on the tools, starting at 8:00 AM sharp. The whole day is yours.\n`
     : "";
   const collection = pt.collection ? `\n• Collection: ${pt.collection}` : "";
+  // The "on the day" walk-through moved off the quote page (20 Nov 2026,
+  // Benji) — it's explained here, after the booking, instead. Rug pickups
+  // run on their own Friday/Monday rhythm, so it doesn't apply to them.
+  const onTheDay = pt.b?.rugPickup
+    ? ""
+    : `\nON THE DAY
+1. We arrive in your slot and walk the job with you first — the price on your quote is the price you pay.
+2. Worn tracks and spots get pre-sprayed, so the deep clean can do its best work.
+3. A deep steam clean flushes the dirt out of the carpet.
+4. We finish by grooming the carpet so it dries looking neat — most carpets dry in 4–6 hours.
+`;
   return {
     subject: `Booking confirmed — ${BUSINESS.name} (${pt.ref})`,
     text: `Hi ${firstName(lead.name)},
@@ -278,7 +289,7 @@ YOUR BOOKING
 • Where: ${pt.where}${collection}
 • Total: ${money(lead.total)} — ${pt.payment}
 • Reference: ${pt.ref}
-${big}
+${big}${onTheDay}
 Every clean includes a commercial pre-vacuum and pre-spray. We'll call or text the day before to confirm the exact arrival time. Anything change? Call or text ${BUSINESS.phone} and we'll sort it.
 
 A copy of our Terms & Conditions is attached as a PDF — plain-English, two pages, yours to keep. They're also on our website any time under "Terms & conditions" in the footer.
@@ -343,6 +354,15 @@ export function confirmationEmailHtml(lead: LeadRow): string {
     <li style="margin:6px 0;font-size:14px;line-height:1.5">We'll call or text the day before to confirm the exact arrival time.</li>
     ${pt.b?.rugPickup ? `<li style="margin:6px 0;font-size:14px;line-height:1.5">Your rugs come back washed, dried and ready for the floor on the Monday.</li>` : ""}
   </ul>
+
+  ${!pt.b?.rugPickup ? `
+  <div style="font-size:13px;font-weight:bold;letter-spacing:1px;color:${BRAND.blue};margin:0 0 6px">ON THE DAY</div>
+  <ul style="margin:0 0 18px;padding-left:20px">
+    <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>We arrive in your slot</strong> and walk the job with you first — the price on your quote is the price you pay.</li>
+    <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>Pre-spray &amp; spots</strong> — worn tracks and spots get sprayed first, so the deep clean can do its best work.</li>
+    <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>The deep clean</strong> — a deep steam clean flushes the dirt out of the carpet.</li>
+    <li style="margin:6px 0;font-size:14px;line-height:1.5"><strong>Groomed &amp; drying</strong> — we finish by grooming the carpet so it dries looking neat. Most carpets dry in 4–6 hours.</li>
+  </ul>` : ""}
 
   <div style="background:${BRAND.light};border-radius:8px;padding:14px 16px;margin:0 0 8px">
     <div style="font-size:14px;line-height:1.6">Anything changed? Call or text
