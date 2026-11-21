@@ -25,14 +25,17 @@ export const RATES = {
     // The ladder was leaving ~27% gaps under BFYB on 100m²+ jobs; $3.90
     // keeps every big job 20%+ under them but banks ~$25–60 more per job.
     // Small jobs and the $150 minimum untouched.
+    // 21 Nov 2026 (owner call — "discount carpet cleaning another 5%"):
+    // ladder ×0.95 → $3.99/$3.80/$3.61/$3.70. Carpet-only cut — lounges,
+    // mattresses, rugs, travel and the $150 minimum all unchanged.
     // Seasonal promos (below) then take 10% off at the quiet times of year.
     tiers: [
-      { upTo: 40, perM2: 4.2 },
-      { upTo: 60, perM2: 4.0 },
-      { upTo: 80, perM2: 3.8 },
-      { upTo: Infinity, perM2: 3.9 },
+      { upTo: 40, perM2: 3.99 },
+      { upTo: 60, perM2: 3.8 },
+      { upTo: 80, perM2: 3.61 },
+      { upTo: Infinity, perM2: 3.7 },
     ] as { upTo: number; perM2: number }[],
-    perM2: { light: 4.2, medium: 4.6, heavy: 7.8 } as Record<Dirtiness, number>, // display only
+    perM2: { light: 3.99, medium: 4.39, heavy: 7.38 } as Record<Dirtiness, number>, // display only
     multiplier: { light: 1, medium: 1.1, heavy: 1.85 } as Record<Dirtiness, number>,
   },
   minimumCharge: 150, // BFYB's minimum callout is $289 (trialled $175 briefly on 18 Nov 2026, owner reverted same day — keep $150)
@@ -55,11 +58,13 @@ export const RATES = {
   // backing), food & drink sits in the middle, mud & heavy traffic the
   // least. Priced for the toughest stain ticked; each extra type half price.
   // On a Restoration Clean all of this is already included — no charge.
+  // 21 Nov 2026 (owner call): 5% off carpet stain fees with the carpet
+  // price cut — $72/$47/$30/$47 → $68/$45/$29/$45 (whole dollars).
   stainCauseFee: {
-    "pet-urine": 72,
-    "food-drink": 47,
-    "mud-traffic": 30,
-    "not-sure": 47,
+    "pet-urine": 68,
+    "food-drink": 45,
+    "mud-traffic": 29,
+    "not-sure": 45,
   } as Record<StainType, number>,
   extras: {
     // Kept for the BFYB comparison maths (their calculator still sells these
