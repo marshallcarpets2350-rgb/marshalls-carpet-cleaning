@@ -1526,8 +1526,17 @@ export function conditionComplete(c: ConditionAnswers): boolean {
 /**
  * Scores the condition answers into a recommended soiling level.
  * Individually small things (a slight whiff, a handful of stains) nudge to
- * medium; pets inside, noticeable odour, pet urine or ten-plus stains stack
- * up quickly to heavy.
+ * medium; it now takes genuinely stacked problems to reach heavy.
+ *
+ * 23 Nov 2026 (owner call — "make it more tiered, don't jump to restoration
+ * straight up, but still make money"): heavy bar raised 5 → 8 points so
+ * everyday family homes (indoor pet + a whiff + a few stains = 5–7 pts) land
+ * on Deep instead of Restoration. One money-protection override keeps the job
+ * we'd lose money on at Deep pricing: urine right through the house
+ * (pet-urine + ten-plus stains). Verified against BFYB's model — theirs keys
+ * off the same level (light ×1.0 / medium ×1.3 / heavy ×2.11 vs ours ×1.0/
+ * 1.1/1.85), so both sides of the comparison move together and the 15%
+ * tapered price beat holds at every level.
  */
 export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
   if (!conditionComplete(c)) return null;
@@ -1541,8 +1550,11 @@ export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
   if (c.stainTypes.includes("pet-urine")) score += 2;
   // 23 Nov 2026 (owner call): the vacuum question no longer moves the price —
   // stains drive the level, vacuuming is info-only (free pre-vac + time est).
+  // Money-protection override: urine through the whole house is restoration
+  // work no matter what the points say — don't let it slip to Deep pricing.
+  if (c.stainTypes.includes("pet-urine") && c.stains === "ten-plus") return "heavy";
   if (score <= 1) return "light";
-  if (score <= 4) return "medium";
+  if (score <= 7) return "medium";
   return "heavy";
 }
 
