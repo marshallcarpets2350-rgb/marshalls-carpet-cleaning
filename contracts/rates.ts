@@ -1133,6 +1133,20 @@ export function computeQuote(input: QuoteInput, rates: Rates = DEFAULT_RATES, bf
           : "Spot-treated with dedicated stain product before the main clean",
       amount,
     });
+  } else if (
+    input.carpetAreaM2 > 0 &&
+    input.carpetDirtiness === "heavy" &&
+    input.stainTypes.length > 0
+  ) {
+    // 23 Nov 2026 (owner confusion, seen on his screenshots): on Restoration
+    // jobs the stain-cause pills never move the price, because the work is
+    // already in the level. Show the $0 line so it's visibly INCLUDED, not
+    // silently dropped.
+    lines.push({
+      label: "Stain treatment",
+      detail: "Included free in the Restoration Clean — every marked spot treated by hand",
+      amount: 0,
+    });
   }
   if (input.enzymePreSpray) {
     lines.push({
