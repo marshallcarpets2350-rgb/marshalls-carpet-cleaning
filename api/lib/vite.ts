@@ -53,6 +53,23 @@ export function serveStaticFiles(app: App) {
     return next();
   });
 
+  // HTML must always revalidate — 23 Nov 2026: pages shipped with no
+  // Cache-Control, so phones heuristically cached index.html and kept running
+  // days-old JS bundles after every deploy ("the fix doesn't work" reports).
+  // no-cache = may store, but must revalidate before reuse (ETag makes it
+  // cheap). Hashed /assets/* filenames stay long-cached and are safe.
+  app.use("*", async (c, next) => {
+    await next();
+    const p = new URL(c.req.url).pathname;
+    const isHtml =
+      p.endsWith(".html") ||
+      (!path.extname(p) &&
+        (c.res.headers.get("content-type") ?? "").includes("text/html"));
+    if (isHtml) c.res.headers.set("Cache-Control", "no-cache");
+    if (p.startsWith("/assets/"))
+      c.res.headers.set("Cache-Control", "public, max-age=31536000, immutable");
+  });
+
   app.use("*", serveStatic({ root: "./dist/public" }));
 
   app.notFound((c) => {
@@ -63,6 +80,7 @@ export function serveStaticFiles(app: App) {
     const indexPath = path.resolve(distPath, "index.html");
     let content = fs.readFileSync(indexPath, "utf-8");
     const routePath = new URL(c.req.url).pathname.replace(/\/+$/, "") || "/";
+    c.header("Cache-Control", "no-cache");
     if (CANONICAL_PATHS.has(routePath)) {
       content = content.replace(
         /<link rel="canonical" href="[^"]*" ?\/>/,
