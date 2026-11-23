@@ -89,10 +89,14 @@ export function StepCarpet({
         }} options={[{ value: "none", label: "None" }, { value: "under-5", label: "Less than 5" }, { value: "over-5", label: "More than 5" }, { value: "ten-plus", label: "Ten or more" }]} />
         {condition.stains && condition.stains !== "none" && (
           <div className="mt-3">
-            <p className="mb-2 text-sm font-bold text-charcoal/70">What caused them? (tick any that apply)</p>
+            <p className="mb-2 text-sm font-bold text-charcoal/70">What caused them? (pick the main one — tap again to clear)</p>
             <PillGroup label="Stain types" multi value={condition.stainTypes} onChange={(v) => {
               const t = v as ConditionAnswers["stainTypes"][number];
-              set({ stainTypes: condition.stainTypes.includes(t) ? condition.stainTypes.filter((x) => x !== t) : [...condition.stainTypes, t] });
+              // 23 Nov 2026 (owner call): single-select swap — picking another
+              // cause replaces the old one so the price re-matches instantly;
+              // tapping the selected cause clears it. Engine still handles
+              // multiple causes for admin-built quotes.
+              set({ stainTypes: condition.stainTypes.includes(t) ? [] : [t] });
             }} options={[
               { value: "pet-urine", label: "Pet accidents" },
               { value: "food-drink", label: "Food & drink spills" },
