@@ -1525,7 +1525,8 @@ export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
   if (c.stains === "over-5") score += 2;
   if (c.stains === "ten-plus") score += 3;
   if (c.stainTypes.includes("pet-urine")) score += 2;
-  if (c.vacuumed === "longer") score += 1;
+  // 23 Nov 2026 (owner call): the vacuum question no longer moves the price —
+  // stains drive the level, vacuuming is info-only (free pre-vac + time est).
   if (score <= 1) return "light";
   if (score <= 4) return "medium";
   return "heavy";
@@ -1541,7 +1542,6 @@ export function recommendationReasons(c: ConditionAnswers): string[] {
   if (c.stains === "over-5") r.push("more than five stains");
   if (c.stains === "ten-plus") r.push("ten or more stains");
   if (c.stainTypes.includes("pet-urine")) r.push("pet urine in the carpet");
-  if (c.vacuumed === "longer") r.push("a while since the last proper vacuum");
   return r;
 }
 
