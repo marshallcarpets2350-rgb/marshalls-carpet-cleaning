@@ -1529,11 +1529,12 @@ export function conditionComplete(c: ConditionAnswers): boolean {
  * medium; pets inside, noticeable odour, pet urine or ten-plus stains stack
  * up quickly to heavy.
  *
- * 23 Nov 2026 (owner call, final): keep the trigger-happy ladder (heavy at 5
- * points, same feel as BFYB's triggers) and win on PRICE, not on cheaper
- * levels — Benji's reasoning: the CBR comes out for any stain anyway, so
- * Deep-priced stain jobs cost Restoration time. The retiered 8-point bar was
- * trialled and reverted same day.
+ * 23 Nov 2026 (owner calls, final): trigger-happy ladder in BFYB's style, win
+ * on PRICE not cheaper levels (CBR comes out for any stain anyway, so
+ * Deep-priced stain jobs cost Restoration time) — with the bar nudged 5 → 6
+ * same evening (Benji: "bump the point up by one") so the lightest 5-point
+ * combos (indoor pets + odour + a few stains) land on Deep. The 8-point
+ * retier was trialled and rejected same day.
  */
 export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
   if (!conditionComplete(c)) return null;
@@ -1548,7 +1549,7 @@ export function recommendDirtiness(c: ConditionAnswers): Dirtiness | null {
   // 23 Nov 2026 (owner call): the vacuum question no longer moves the price —
   // stains drive the level, vacuuming is info-only (free pre-vac + time est).
   if (score <= 1) return "light";
-  if (score <= 4) return "medium";
+  if (score <= 5) return "medium";
   return "heavy";
 }
 
