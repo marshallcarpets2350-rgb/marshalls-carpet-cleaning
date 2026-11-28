@@ -352,7 +352,11 @@ export const FLOOD_RATES = {
   labourAfterHours: 142, // floor(168 × 0.85) — Mon–Fri 7 PM – 7 AM, per technician
   labourSaturday: 169, // floor(199 × 0.85) — Saturday, all day, per technician
   labourSunday: 194, // floor(229 × 0.85) — Sunday, all day, per technician
-  fanPerDay: 34, // floor(41 × 0.85) — drying fans, per fan per day
+  // 27 Nov 2026 (owner call): flat $45/fan/day, $1 under Hubbed Hire
+  // Armidale ($46) — the actual local hire option, and the rate Benji pays
+  // when he has to hire extra fans himself (so $34 was hiring out at a LOSS).
+  // No longer keyed to BFYB's $41 — they don't hire fans in Armidale.
+  fanPerDay: 45, // drying fans, per fan per day
   travelPerKm: 1.1, // 1.30 × 0.85 — distance from Armidale, insurer-itemised
   travelTechPerHour: 71, // floor(84 × 0.85) — technician time on the road
   adminFee: 65, // floor(77 × 0.85) — administration & job coordination
@@ -365,10 +369,13 @@ export const FLOOD_RATES = {
   antimicroPerArea: 33, // floor(39 × 0.85) — anti-microbial treatment, per area
 };
 
-/** Our flood prices: inspection and fan hire always 15% under BFYB's CURRENT
- *  published rates when the daily watch has a live model; the rest are flat
- *  (their labour/travel/admin/report rates live on their flood page, not in
- *  the config the watch reads). Falls back to the verified constants. */
+/** Our flood prices: inspection and antimicrobial track 15% under BFYB's
+ *  CURRENT published rates when the daily watch has a live model; fan hire
+ *  is FLAT local-priced since 27 Nov 2026 (owner call: $45, $1 under Hubbed
+ *  Hire Armidale's $46 — BFYB don't hire fans locally, and the old 15%-under
+ *  figure sat below our own hire cost). The rest are flat (their
+ *  labour/travel/admin/report rates live on their flood page, not in the
+ *  config the watch reads). Falls back to the verified constants. */
 export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) {
   const under = (n: number) => Math.floor(n * (1 - FLOOD_UNDERCUT_PERCENT / 100));
   return {
@@ -377,7 +384,7 @@ export function floodPrices(model?: Pick<BfybModel, "flood" | "extras"> | null) 
     labourAfterHours: FLOOD_RATES.labourAfterHours,
     labourSaturday: FLOOD_RATES.labourSaturday,
     labourSunday: FLOOD_RATES.labourSunday,
-    fanPerDay: model?.extras?.fanPerDay ? under(model.extras.fanPerDay) : FLOOD_RATES.fanPerDay,
+    fanPerDay: FLOOD_RATES.fanPerDay,
     travelPerKm: FLOOD_RATES.travelPerKm,
     travelTechPerHour: FLOOD_RATES.travelTechPerHour,
     adminFee: FLOOD_RATES.adminFee,
